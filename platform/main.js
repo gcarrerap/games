@@ -2,10 +2,12 @@
 //   #/                     portal
 //   #/<juego>              lobby de ese juego
 //   #/<juego>/practica     mesa de práctica
+//   #/<juego>/<CÓDIGO>     mesa en línea (el enlace que se comparte)
 import { createSession } from "./app/session.js";
 import { startUpdateChecks } from "./app/updates.js";
 import { botDecide, advise } from "./app/ai.js";
-import { prefs, gamePrefs } from "./services/index.js";
+import { prefs, gamePrefs, initFirebase, signInWithGoogle, signOut, makeDb } from "./services/index.js";
+import { VERSION } from "./version.js";
 import { findGame } from "../games/registry.js";
 import { render } from "./ui/render.js";
 import { tickPlay } from "./ui/play.js";
@@ -18,8 +20,14 @@ const session = createSession({
   cancel: (id) => clearTimeout(id),
   random: Math.random,
   loadGame: async (id) => { const g = findGame(id); if (!g) throw new Error("Juego desconocido"); return (await g.load()).default; },
-  botDecide, advise, prefs, gamePrefs,
+  botDecide, advise, prefs, gamePrefs, version: VERSION,
+  auth: {
+    connect: async (onUser) => makeDb(await initFirebase((u) => onUser(u))),
+    signIn: signInWithGoogle,
+    signOut,
+  },
 });
+const connected = session.actions.connect();
 const app$ = { state: session.store.state, actions: session.actions, store: session.store };
 
 let frame = 0;
@@ -35,7 +43,14 @@ async function route() {
   closeOverlay();
   if (!gameId || !findGame(gameId)) { if (s.screen !== "portal") session.actions.goPortal(); else draw(); return; }
   if (s.gameId !== gameId || !s.game) await session.actions.openGame(gameId);
-  if (sub === "practica") { if (!s.table) location.replace(`#/${gameId}`); return; } // al recargar no hay práctica que retomar
+  if (sub === "practica") { if (!s.table || !s.practice) location.replace(`#/${gameId}`); return; } // al recargar no hay práctica que retomar
+  if (sub && /^[A-Z]{4}$/.test(sub.toUpperCase())) {
+    const code = sub.toUpperCase();
+    if (s.code === code && s.screen === "table") return;
+    await connected; // un enlace a una mesa puede abrirse antes de conectar
+    if (location.hash.split("/")[2]?.toUpperCase() === code) session.actions.openTable(code);
+    return;
+  }
   if (s.screen === "table") session.actions.leave();
 }
 window.addEventListener("hashchange", route);

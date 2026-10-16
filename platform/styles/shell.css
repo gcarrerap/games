@@ -22,3 +22,20 @@
 .cpurow.bot{flex-direction:column;align-items:stretch;gap:4px}
 .bothelp{margin:0;font-size:12px}
 @media (max-height:700px){.shell{gap:12px}.shell-head h1{font-size:26px}.big{min-height:64px;padding:12px 14px}.big b{font-size:18px}}
+/* Mesas abiertas y asientos de una mesa en línea */
+.tables{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.trow{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:var(--bg)}
+.trow .code,.shell-head h1 .code{font-family:var(--display);font-size:18px;letter-spacing:1px}
+.trow .meta{flex:1;min-width:0;color:var(--muted);font-size:13px;line-height:1.3}
+.trow button{min-height:40px;padding:0 14px;flex-shrink:0}
+.seatlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.seatrow{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.seatrow.mine{border-color:var(--accent)}
+.seatinfo{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.seatinfo .lbl{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.seatinfo .free{color:var(--muted)}
+.badge{font-size:11px;font-weight:800;padding:1px 8px;border-radius:10px;background:var(--line);color:var(--fg)}
+.addbot{display:flex;gap:8px;align-items:center}
+.addbot .botsel{flex:1}
+.teamdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+details.help .cpu{margin-bottom:12px}
