@@ -12,7 +12,7 @@ El sitio tiene tres tipos de piezas:
 
 | Juego | Carpeta | Jugadores | Estado |
 |---|---|---|---|
-| Dominó | `games/domino/` | 2–4 | Se puede practicar contra la compu. Mesas en línea: fase 5 |
+| Dominó | `games/domino/` | 2–4 | Práctica contra la compu y mesas en línea con la familia |
 | La Pata | `games/pata/` | por definir | Por migrar |
 
 ## Cómo está hecho

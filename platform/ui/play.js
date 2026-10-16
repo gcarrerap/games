@@ -3,7 +3,7 @@
 //
 // ctx: game, table (asientos, nombres, estado de la mesa), seat (el tuyo), view (lo que tu asiento puede ver),
 //      practice, clock (lo que queda del turno, o null), act(action), again(), leave(), advice + askAdvice() + closeAdvice(), setSeatBot(seat, profile),
-//      peek() (el estado completo, solo en práctica: para "ver manos"), prefs (las de este juego), err,
+//      peek() (el estado completo; solo en práctica, para "ver manos"; en línea es null), prefs (las de este juego), err,
 //      modal (donde van las ventanas), refresh() (volver a dibujar), setDragging(on) (no redibujar mientras arrastras)
 import { gamePrefs } from "../services/index.js";
 import { esc } from "./dom.js";
@@ -13,11 +13,11 @@ let loading = null; // { gameId, promise }
 let dragging = false;
 
 function buildCtx({ state, actions, store }, modal) {
-  const game = state.game, t = state.table, seat = 0;
+  const game = state.game, t = state.table, seat = actions.mySeat(), practice = state.practice;
   return {
-    game, table: t, seat, practice: true, clock: actions.clock(),
+    game, table: t, seat, practice, clock: actions.clock(),
     view: game.view(t.state, seat),
-    peek: () => store.state.table.state,
+    peek: practice ? () => store.state.table.state : null,
     act: (a) => actions.play(a),
     again: () => actions.again(),
     leave: () => { location.hash = `#/${game.id}`; },
@@ -34,7 +34,7 @@ function buildCtx({ state, actions, store }, modal) {
 export function renderPlay(app, modal, app$) {
   const { state } = app$;
   const game = state.game;
-  if (!game || !state.table) { app.className = "shell"; app.innerHTML = `<p class="hint">Cargando…</p>`; return; }
+  if (!game || !state.table || !state.table.state) { app.className = "shell"; app.innerHTML = `<p class="hint">Cargando…</p>`; return; }
   if (dragging) return;
   if (mounted && mounted.gameId === game.id && mounted.el === app) { mounted.ui.update(buildCtx(app$, modal)); return; }
   if (loading && loading.gameId === game.id) return;

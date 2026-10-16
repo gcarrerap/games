@@ -20,6 +20,4 @@ games/domino/
 
 Usa los módulos `random`, `choice`, `tournament` y `recording`.
 
-**Estado:** fase 4 de docs/ARCHITECTURE.md §8. Se juega en práctica contra la compu, con reloj, consejo, registro de fichas, notas y "ver manos". Mesas en línea: fase 5.
-
-Pruebas que se quedaron en myDomino por depender de `app/` y `services/` (llegan con las fases 3 a 5): `record.test.js`, `ai-worker.test.js` y la parte de `profiles.test.js` que revisa `botProfileOf`.
+**Estado:** completo. Práctica contra la compu y mesas en línea, con reloj, consejo, registro de fichas, notas y "ver manos" (en práctica). Las pruebas que en myDomino dependían de `app/` y `services/` ahora son de la plataforma (`tests/platform/`), y sirven para todos los juegos.

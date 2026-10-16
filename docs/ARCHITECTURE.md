@@ -101,7 +101,7 @@ Qué hay hoy en myDomino y a dónde va.
 | Colores, tipografía, reset, botones, ventanas | `styles/` | `platform/styles/` (lo del paño y las fichas, a `games/domino/styles/`) | ✅ fase 3 |
 | Práctica: la compu, el reloj, el consejo, revancha; portal, lobby, ventanas | `app/actions.js`, `app/bots.js`, `ui/` | `platform/app/session.js`, `platform/ui/` | ✅ fase 4 |
 | La mesa del dominó, su resultado, consejo y registro | `ui/screens/table.js`, `ui/components/`, `ui/svg/` | `games/domino/ui/` | ✅ fase 4 |
-| Mesas en línea: crear, sentarse, la compu en mesas en línea, entrar con Google | `app/actions.js`, `app/bots.js`, `ui/screens/lobby.js`, `seats.js` | `platform/app/`, `platform/ui/` | Fase 5 |
+| Mesas en línea: crear, sentarse, la compu en mesas en línea, entrar con Google, grabar partidas | `app/actions.js`, `app/bots.js`, `app/recorder.js`, `ui/screens/lobby.js`, `seats.js` | `platform/app/session.js`, `platform/ui/lobby.js`, `platform/ui/seats.js` | ✅ fase 5 |
 | Fichas, jugadas, puntos, modos, cadena, heurísticas, salida, criterios | `engine/`, `ai/`, `ui/svg/` | `games/domino/` | Se quedan |
 
 ## 4. El contrato de juego
@@ -185,7 +185,11 @@ juegos-mesas/{code}
 - **Una jugada** es una transacción que lee la mesa, revisa `turn`, aplica la acción con `modules/recording` (`step`, que le da a cada acción su azar y su hora a partir de la semilla de la mesa) y escribe el estado nuevo con `turn + 1`. Si otro teléfono ya jugó ese turno, se descarta. Como todas las acciones se aplican así, cualquier partida en línea se puede repetir desde su grabación.
 - **La compu de una mesa en línea** la mueve el teléfono de la persona sentada en el asiento más bajo; los demás esperan unos segundos de respaldo.
 - **`turnKey` = `"<round>:<turn>"`.** Una acción calculada para un turnKey solo se guarda si la mesa sigue en ese turnKey (la compu, el reloj y otro teléfono pueden competir por el mismo turno).
-- **Rutas:** `#/` portal · `#/<juego>` lobby · `#/<juego>/<code>` mesa, para compartir el enlace de una mesa.
+- **Rutas:** `#/` portal · `#/<juego>` lobby · `#/<juego>/practica` · `#/<juego>/<CÓDIGO>` mesa en línea (el enlace que se comparte).
+- **Una sola sesión para práctica y en línea** (`platform/app/session.js`): las dos usan las funciones puras de `table.js`; en práctica se aplican a la mesa en memoria, en línea dentro de una transacción, y el resultado llega de vuelta a todos los teléfonos por `watchTable`.
+- **La compu en línea** la mueve el teléfono de la persona sentada en el asiento más bajo; las demás personas sentadas son respaldo y esperan 4 s más. Quien solo mira no la mueve.
+- **Grabación:** al terminar una partida, cada teléfono sentado intenta guardarla en `juegos-grabaciones` con un id fijo; las reglas solo dejan crearla una vez.
+- **Salir** de una mesa te deja sentado; "Levantarme" libera el asiento. Las mesas que nadie toca se borran solas.
 - **Limitaciones conocidas:** el estado completo (manos de todos) vive en Firestore, así que alguien con herramientas podría verlo; y si nadie de la mesa tiene el juego abierto, la compu no mueve. Un servidor propio (Cloud Functions, o FastAPI con WebSockets) resolvería las dos cosas. Como las reglas son puras y el contrato es el mismo, ese cambio quedaría contenido en `platform/services/` y `platform/app/`. Queda como decisión aparte.
 
 ### Convivir con Noli, La Pata y myDomino
@@ -236,7 +240,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 2 ✅ | `games/domino/index.js` conforme al contrato. `now` inyectado en el motor. `modules/recording` y `modules/tournament`, probados también con un juego de juguete. |
 | 3 ✅ | `platform/services/` (sesión, mesas, grabaciones, preferencias, versión nueva), mesa genérica (`platform/app/table.js`), reloj, limpieza, store, estilos base. `modules/worker` y un solo worker para la compu de todos los juegos. Colecciones y prefijos propios para convivir con myDomino. |
 | 4 ✅ | Sesión de práctica (`platform/app/session.js`: la compu, el reloj, el consejo, revancha), portal, lobby genérico, ventanas, `index.html` y rutas. La mesa del dominó (`games/domino/ui/`). Dominó jugable en práctica. Prueba en navegador (`tests/browser/smoke.py`). |
-| 5 | Mesas en línea con `mesas` y el campo `game`. Dominó con las mismas funciones que myDomino. |
+| 5 ✅ | Mesas en línea (`juegos-mesas`): crear, ver las abiertas, sentarse, la compu en asientos libres (la mueve el asiento más bajo; los demás son respaldo), reloj, mirar sin jugar, enlace para compartir, revancha, entrar con Google, y cada partida terminada se graba. Probado con varios "teléfonos" en Node y en el navegador con un Firebase de mentira. |
 | 6 | La Pata. Al construir su compu, extraer `tracker`, `hidden-info`, `bot-profiles`, `notes`, `hand` y `advice` con los dos juegos a la vista. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
