@@ -1,5 +1,5 @@
 // Contrato de juego: la forma que cumple cada módulo en games/<id>/index.js.
-// La plataforma solo habla con los juegos por medio de esto. Ver docs/ARCHITECTURE.md §3.
+// La plataforma solo habla con los juegos por medio de esto. Ver docs/ARCHITECTURE.md §4.
 
 /**
  * @typedef {object} Ctx
