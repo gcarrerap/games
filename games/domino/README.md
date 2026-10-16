@@ -8,7 +8,8 @@ games/domino/
 ├── index.js      # el dominó conforme al contrato: setup, legalActions, apply, view, la compu, el reloj
 ├── engine/       # reglas (puro): fichas, modos, mesa, jugadas, puntos, tiempo, registro por mano
 ├── ai/           # la compu y el consejo (puro): heurísticas, deducción, Monte Carlo, perfiles, huella de estilo
-├── ui/           # la mesa (fase 4; por ahora un aviso)
+├── ui/           # la mesa: tu mano, la cadena, los jugadores, resultado, consejo y registro
+├── styles/       # paño, fichas y la mesa (los colores compartidos están en platform/styles/)
 └── scripts/
     └── torneo.mjs   # node games/domino/scripts/torneo.mjs — fuerza y estilo de los perfiles de la compu
 ```
@@ -19,6 +20,6 @@ games/domino/
 
 Usa los módulos `random`, `choice`, `tournament` y `recording`.
 
-**Estado:** fase 2 de docs/ARCHITECTURE.md §8. Reglas y compu listas y conformes al contrato; falta la mesa (fase 4).
+**Estado:** fase 4 de docs/ARCHITECTURE.md §8. Se juega en práctica contra la compu, con reloj, consejo, registro de fichas, notas y "ver manos". Mesas en línea: fase 5.
 
 Pruebas que se quedaron en myDomino por depender de `app/` y `services/` (llegan con las fases 3 a 5): `record.test.js`, `ai-worker.test.js` y la parte de `profiles.test.js` que revisa `botProfileOf`.

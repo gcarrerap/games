@@ -1,5 +1,10 @@
 # Notas para Claude
 
+**Flujo de trabajo:** cada cambio va en una rama y un PR. Cuando `npm test` pasa, Claude fusiona su propio PR sin
+esperar revisión (así lo pidió Guillermo). Si algo sale mal después, se arregla en un PR nuevo.
+Antes de fusionar un cambio que toca la interfaz, corre también la prueba en el navegador
+(`python3 -m http.server 8765 &` y `python3 tests/browser/smoke.py`).
+
 Sitio de juegos familiares: una plataforma compartida (`platform/`), módulos reutilizables que los juegos escogen usar (`modules/<nombre>/`) y un módulo por juego (`games/<id>/`). Lee `docs/ARCHITECTURE.md` antes de cambiar la estructura.
 
 - Si algo que escribes para un juego no sabe nada de ese juego, o un segundo juego lo necesita, va en `modules/` (criterio en ARCHITECTURE.md §3). Si solo *podría* servir, se queda en el juego y se anota en el inventario de §3.

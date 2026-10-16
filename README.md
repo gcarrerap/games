@@ -12,7 +12,7 @@ El sitio tiene tres tipos de piezas:
 
 | Juego | Carpeta | Jugadores | Estado |
 |---|---|---|---|
-| Dominó | `games/domino/` | 2–4 | Migrando desde [myDomino](https://github.com/gcarrerap/myDomino): reglas y compu listas y conformes al contrato; falta la mesa |
+| Dominó | `games/domino/` | 2–4 | Se puede practicar contra la compu. Mesas en línea: fase 5 |
 | La Pata | `games/pata/` | por definir | Por migrar |
 
 ## Cómo está hecho
@@ -65,13 +65,20 @@ El detalle (capas, reglas de dependencia, el contrato que cumple cada juego y c�
 Los módulos ES no abren con doble clic; hace falta un servidor local cualquiera:
 
 ```bash
-npx serve .          # o: python3 -m http.server 8000
+python3 -m http.server 8765      # luego abre http://localhost:8765
 ```
 
 Pruebas (Node 18 o más reciente, sin instalar nada):
 
 ```bash
 npm test
+```
+
+Prueba en un navegador de verdad (Python con Playwright y Chromium; abre el sitio, practica una mano de dominó en pantalla de teléfono y revisa que no haya errores):
+
+```bash
+python3 -m http.server 8765 &
+python3 tests/browser/smoke.py
 ```
 
 ## Agregar un juego
