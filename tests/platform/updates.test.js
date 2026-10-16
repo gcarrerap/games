@@ -79,8 +79,23 @@ const { VERSION } = await import("../../platform/version.js");
 const { checkForUpdate } = await import("../../platform/app/updates.js");
 const { fetchPublishedVersion } = await import("../../platform/services/index.js");
 
-test("sw: su caché no es la de myDomino (mismo dominio)", () => {
-  assert.match(fs.readFileSync(new URL("../../sw.js", import.meta.url), "utf8"), /const CACHE = "juegos-v1"/);
+test("sw: su caché no choca con las de las otras apps del mismo dominio", () => {
+  const { sw } = loadSW({ network: async () => new Response("x") });
+  assert.equal(sw.CACHE, "juegos-v1");
+  for (const other of ["mydomino-v1", "mypata-v1", "noli-v1"]) assert.ok(!other.startsWith(sw.PREFIX));
+});
+
+test("sw: al activarse borra solo sus cachés viejos, nunca los de Noli, La Pata o myDomino", async () => {
+  const deleted = [];
+  const ctx = {
+    self: { location: { origin: "https://gcarrerap.github.io" }, addEventListener: (t, f) => (ctx.listeners[t] = f), skipWaiting() {}, clients: { claim: async () => {} } },
+    listeners: {},
+    caches: { open: async () => ({}), keys: async () => ["juegos-v0", "juegos-v1", "noli-v1", "mypata-v1", "mydomino-v1"], delete: async (k) => { deleted.push(k); return true; } },
+    fetch: async () => new Response("x"), URL, Response, module: { exports: {} },
+  };
+  vm.runInNewContext(fs.readFileSync(new URL("../../sw.js", import.meta.url), "utf8"), ctx);
+  let done; ctx.listeners.activate({ waitUntil: (p) => (done = p) }); await done;
+  assert.deepEqual(deleted, ["juegos-v0"]);
 });
 
 test("la versión tiene el formato AAAA-MM-DD.N", () => {

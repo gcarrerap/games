@@ -2,7 +2,8 @@
 // confirmar que el archivo sigue igual (cache: "no-cache"), así el navegador nunca se queda con una versión vieja.
 // Guarda una copia de cada archivo para usarla solo si no hay conexión (la práctica contra la compu funciona sin internet).
 // Firebase, Google y cualquier otro sitio no pasan por aquí.
-const CACHE = "juegos-v1"; // distinto del de myDomino: los dos sitios viven en el mismo dominio
+const PREFIX = "juegos-";
+const CACHE = PREFIX + "v1"; // distinto de los de Noli, La Pata y myDomino: viven en el mismo dominio
 
 // Decide qué hacer con una petición; devuelve una promesa de respuesta, o null para no intervenir
 function handle(request, origin) {
@@ -26,8 +27,10 @@ async function networkFirst(request) {
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil((async () => {
-  // Borra cachés de versiones anteriores de este archivo y toma control de las pestañas abiertas
-  for (const key of await caches.keys()) if (key !== CACHE) await caches.delete(key);
+  // Borra SOLO cachés viejos de este sitio y toma control de las pestañas abiertas. Los cachés son por dominio, y en
+  // gcarrerap.github.io viven también Noli, La Pata y myDomino: borrar todo lo que no sea CACHE les quitaría su copia
+  // para jugar sin conexión.
+  for (const key of await caches.keys()) if (key !== CACHE && key.startsWith(PREFIX)) await caches.delete(key);
   await self.clients.claim();
 })()));
 self.addEventListener("fetch", (event) => {
@@ -36,4 +39,4 @@ self.addEventListener("fetch", (event) => {
 });
 
 // Para las pruebas en Node
-if (typeof module !== "undefined") module.exports = { handle, networkFirst, CACHE };
+if (typeof module !== "undefined") module.exports = { handle, networkFirst, CACHE, PREFIX };

@@ -91,9 +91,9 @@ La guía completa está en [docs/ADDING-A-GAME.md](docs/ADDING-A-GAME.md).
 
 ## Firebase
 
-Las mesas en línea y las cuentas usan el mismo proyecto de Firebase que myDomino (`dominomx`, configuración en `platform/config.js`), con colecciones propias (`juegos-mesas`, `juegos-grabaciones`) para que los dos sitios no se pisen. Detalle en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5.
+Las mesas en línea y las cuentas usan el proyecto de Firebase `dominomx` (configuración en `platform/config.js`), que comparten Noli, La Pata y myDomino. Este sitio usa sus propias colecciones (`juegos-mesas`, `juegos-grabaciones`). Detalle en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5.
 
-Las reglas están en `firestore.rules` y **incluyen las de myDomino**: publicar reglas reemplaza todas las del proyecto. Se publican desde la consola de Firebase (Firestore → Reglas) o con `firebase deploy --only firestore:rules`.
+Las reglas están en `firestore.rules` e **incluyen las de las cuatro apps**: el proyecto tiene un solo archivo de reglas y publicar reemplaza todas. Se publican desde la consola de Firebase (Firestore → Reglas, pegar el archivo completo) o con `firebase deploy --only firestore:rules`.
 
 ## Publicar
 

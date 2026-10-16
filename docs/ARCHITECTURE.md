@@ -188,18 +188,19 @@ juegos-mesas/{code}
 - **Rutas:** `#/` portal · `#/<juego>` lobby · `#/<juego>/<code>` mesa, para compartir el enlace de una mesa.
 - **Limitaciones conocidas:** el estado completo (manos de todos) vive en Firestore, así que alguien con herramientas podría verlo; y si nadie de la mesa tiene el juego abierto, la compu no mueve. Un servidor propio (Cloud Functions, o FastAPI con WebSockets) resolvería las dos cosas. Como las reglas son puras y el contrato es el mismo, ese cambio quedaría contenido en `platform/services/` y `platform/app/`. Queda como decisión aparte.
 
-### Convivir con myDomino
+### Convivir con Noli, La Pata y myDomino
 
-myDomino sigue en línea y vive en el mismo dominio (`gcarrerap.github.io`) y en el mismo proyecto de Firebase (`dominomx`). Para que ninguno pise al otro:
+Cuatro apps viven en el mismo dominio (`gcarrerap.github.io`) y en el mismo proyecto de Firebase (`dominomx`). Para que ninguna pise a otra:
 
-| Recurso | myDomino | Este sitio |
-|---|---|---|
-| Colección de mesas | `mesas` | `juegos-mesas` |
-| Colección de grabaciones | `manos` | `juegos-grabaciones` |
-| Claves de `localStorage` (compartido por dominio) | `dom.*` | `juegos.*` y `juegos.<juego>.*` |
-| Caché del service worker | `mydomino-v1` | `juegos-v1` |
+| Recurso | Noli | La Pata | myDomino | Este sitio |
+|---|---|---|---|---|
+| Colecciones de Firestore | `noli_perfiles`, `noli_vinculos`, `noli_salas` | `pata_mesas`, `pata_rondas`, `pata_llamadas` | `mesas`, `manos` | `juegos-mesas`, `juegos-grabaciones` |
+| Claves de `localStorage` (compartido por dominio) | `noli.*` | `pata.*` | `dom.*` | `juegos.*` y `juegos.<juego>.*` |
+| Caché del service worker (compartido por dominio) | `noli-v1` | `mypata-v1` | `mydomino-v1` | `juegos-v1` |
 
-**Reglas de Firestore:** publicar reglas reemplaza *todas* las del proyecto, así que `firestore.rules` de este repositorio lleva también las de myDomino. Si cambian las de myDomino, hay que copiarlas aquí antes de publicar.
+**Reglas de Firestore:** el proyecto tiene un solo archivo de reglas y publicar reemplaza *todas*. `firestore.rules` de este repositorio lleva los bloques de las cuatro apps (tomados de lo publicado el 2026-10-16, más `'brincar'` en el control remoto de Noli, que su código ya usa). `tests/platform/rules.test.js` falla si falta una colección de cualquiera de ellas. Si cambian las reglas de otra app, hay que copiarlas aquí antes de publicar desde aquí, y agregar el bloque de este sitio en la suya antes de publicar desde allá.
+
+**Cachés:** los cachés del navegador también son por dominio. El service worker de este sitio solo borra cachés que empiezan con `juegos-`. Los de Noli, La Pata y myDomino, al activarse, borran *todos* los que no son el suyo (incluido el de este sitio y los de las otras): cada app le quita a las demás su copia para jugar sin conexión. Se arregla en cada uno de esos repositorios con el mismo cambio de una línea que tiene `sw.js` aquí.
 
 ## 6. Cómo se cuidan las reglas
 
