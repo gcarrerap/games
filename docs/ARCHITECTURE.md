@@ -43,7 +43,7 @@ Este documento explica cómo se divide el sitio, qué comparte cada juego y qué
 | `modules/<m>/ui.js` | lo anterior y `platform/ui/` | juegos, `platform/app|services` |
 | `games/<id>/engine/` | `platform/core/`, módulos | su `ai/` y `ui/`, otros juegos, la plataforma salvo `core/` |
 | `games/<id>/ai/` | su `engine/`, `platform/core/`, módulos | su `ui/`, otros juegos, la plataforma salvo `core/` |
-| `games/<id>/ui/` | su `engine/` (lectura), módulos, `platform/ui/`, acciones de `platform/app/` | `services/`, otros juegos |
+| `games/<id>/ui/` | su `engine/` y su `ai/` (lectura), módulos, `platform/ui/` | `platform/app/` y `services/` (todo llega por `ctx`), otros juegos |
 
 Reglas concretas:
 
@@ -99,7 +99,9 @@ Qué hay hoy en myDomino y a dónde va.
 | Mesa genérica: asientos, la compu, empezar, jugar (con grabación) | `app/actions.js` (la parte que no es del dominó) | `platform/app/table.js` | ✅ fase 3 |
 | Reloj de turno, limpieza de mesas, store | `app/clock.js`, `app/cleanup.js`, `app/store.js` | `platform/app/` | ✅ fase 3 |
 | Colores, tipografía, reset, botones, ventanas | `styles/` | `platform/styles/` (lo del paño y las fichas, a `games/domino/styles/`) | ✅ fase 3 |
-| Acciones de la app, la compu en mesas en línea, portal, lobby, asientos, ventanas, resultado | `app/actions.js`, `app/bots.js`, `ui/` | `platform/app/`, `platform/ui/` | Fases 4 y 5 |
+| Práctica: la compu, el reloj, el consejo, revancha; portal, lobby, ventanas | `app/actions.js`, `app/bots.js`, `ui/` | `platform/app/session.js`, `platform/ui/` | ✅ fase 4 |
+| La mesa del dominó, su resultado, consejo y registro | `ui/screens/table.js`, `ui/components/`, `ui/svg/` | `games/domino/ui/` | ✅ fase 4 |
+| Mesas en línea: crear, sentarse, la compu en mesas en línea, entrar con Google | `app/actions.js`, `app/bots.js`, `ui/screens/lobby.js`, `seats.js` | `platform/app/`, `platform/ui/` | Fase 5 |
 | Fichas, jugadas, puntos, modos, cadena, heurísticas, salida, criterios | `engine/`, `ai/`, `ui/svg/` | `games/domino/` | Se quedan |
 
 ## 4. El contrato de juego
@@ -134,7 +136,7 @@ export default {
   advise(view, seat, { rnd }),
 
   // --- Interfaz (se carga al abrir el juego) ---
-  ui: () => import("./ui/index.js"),        // → { mount(el, ctx), unmount() }
+  ui: () => import("./ui/index.js"),        // → { mount(el, ctx), update(ctx), unmount(), tick?(ctx, clock) }
 };
 ```
 
@@ -143,7 +145,21 @@ export default {
 - **Pausas.** `currentSeats` vacío sin que `isOver` sea cierto es una pausa: nadie está obligado, pero `legalActions` puede ofrecer algo (en el dominó, `{ type: "next" }` entre manos). La interfaz lo muestra como botón; un torneo lo toma solo.
 - **El reloj es una acción.** Al vencerse el tiempo, la plataforma aplica `timing.autoAction(state, seat)` como cualquier otra acción. Así queda grabada y se repite igual.
 - **`view` es la frontera de la privacidad.** La compu y la interfaz solo reciben la vista. En el dominó, una prueba compara las decisiones de cinco perfiles de la compu (incluidos los que deducen y simulan) con su vista y con el estado completo: son idénticas.
-- **`ctx` de la interfaz** trae la vista del asiento propio, `act(action)`, la mesa (asientos, nombres, reloj), las preferencias y los componentes de `platform/ui/`.
+- **La interfaz del juego** se monta en `#app` y recibe un `ctx` en cada cambio (`update`); `tick` pinta el reloj varias veces por segundo sin redibujar. Lo que trae `ctx` (`platform/ui/play.js`):
+
+  | Campo | Qué es |
+  |---|---|
+  | `view`, `seat` | lo que tu asiento puede ver, y cuál es tu asiento |
+  | `table` | la mesa: asientos y nombres, `status`, `round`, `turn`, `config` |
+  | `act(action)` | tu jugada; si no se vale, queda en `err` |
+  | `again()`, `leave()` | otra partida en la misma mesa; salir al lobby |
+  | `clock` | lo que queda del turno (`secs`, `pct`) o `null` |
+  | `advice`, `askAdvice()`, `closeAdvice()` | el consejo, calculado por la plataforma con tu vista |
+  | `practice`, `peek()`, `setSeatBot(seat, profile)` | solo en práctica: el estado completo (para "ver manos") y cambiar el bot de un asiento |
+  | `prefs` | preferencias del dispositivo para este juego (`juegos.<id>.*`) |
+  | `modal`, `refresh()`, `setDragging(on)` | dónde van las ventanas (`platform/ui/sheet.js`), volver a dibujar, no redibujar mientras arrastras |
+
+  El juego no toca el store ni las acciones de la plataforma: todo pasa por `ctx`.
 
 ## 5. Mesas en línea
 
@@ -218,7 +234,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 1 ✅ | Copiar `engine/` y `ai/` de myDomino a `games/domino/` con sus pruebas. Extraer `modules/random` y `modules/choice`. Prueba de arquitectura. |
 | 2 ✅ | `games/domino/index.js` conforme al contrato. `now` inyectado en el motor. `modules/recording` y `modules/tournament`, probados también con un juego de juguete. |
 | 3 ✅ | `platform/services/` (sesión, mesas, grabaciones, preferencias, versión nueva), mesa genérica (`platform/app/table.js`), reloj, limpieza, store, estilos base. `modules/worker` y un solo worker para la compu de todos los juegos. Colecciones y prefijos propios para convivir con myDomino. |
-| 4 | Acciones de la app (práctica), la compu en la mesa, portal, lobby, ventanas, resultado, `index.html`. La mesa del dominó (`games/domino/ui/`). Dominó jugable en práctica. |
+| 4 ✅ | Sesión de práctica (`platform/app/session.js`: la compu, el reloj, el consejo, revancha), portal, lobby genérico, ventanas, `index.html` y rutas. La mesa del dominó (`games/domino/ui/`). Dominó jugable en práctica. Prueba en navegador (`tests/browser/smoke.py`). |
 | 5 | Mesas en línea con `mesas` y el campo `game`. Dominó con las mismas funciones que myDomino. |
 | 6 | La Pata. Al construir su compu, extraer `tracker`, `hidden-info`, `bot-profiles`, `notes`, `hand` y `advice` con los dos juegos a la vista. |
 

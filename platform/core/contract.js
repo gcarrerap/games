@@ -39,7 +39,8 @@
  * @property {GameBots} [bots]
  * @property {(view: object, seat: number, ctx: Ctx) => object} [advise]  Consejo para ese asiento.
  * @property {{build: Function, replay: Function}} [record]
- * @property {() => Promise<{mount: Function, unmount: Function}>} ui
+ * @property {() => Promise<{mount: Function, update: Function, unmount: Function, tick?: Function}>} ui
+ *   La mesa del juego. mount(el, ctx) y update(ctx) reciben el ctx de platform/ui/play.js (docs/ARCHITECTURE.md §4).
  */
 
 const REQUIRED_FNS = ["setup", "currentSeats", "legalActions", "apply", "view", "isOver", "result", "ui"];

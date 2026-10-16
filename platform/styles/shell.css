@@ -1,0 +1,24 @@
+/* Pantallas de la plataforma: portal y lobby de cada juego (basado en el lobby de myDomino #20) */
+.shell{max-width:560px;margin:0 auto;box-sizing:border-box;padding:16px;display:flex;flex-direction:column;gap:16px}
+.shell-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.shell-head h1{font-size:32px;line-height:1}
+.shell-head small{display:block;margin-top:2px;color:var(--muted);font-weight:600;font-size:13px}
+.game-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.big{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px 18px;border-radius:18px;min-height:84px}
+.big b{display:block;font-size:20px;font-weight:800;line-height:1.2}
+.big span span{display:block;font-size:14px;font-weight:600}
+.big .muted{color:var(--muted)}
+.game-card{justify-content:space-between}
+.game-card .chev{font-size:28px;color:var(--accent);line-height:1}
+.seg.col{flex-direction:column}
+.seg.col button{text-align:left}
+.err{color:var(--warn);font-weight:700;font-size:13px;margin:0}
+.err:empty{display:none}
+/* La compu en el lobby */
+.cpu{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.cpurow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cpuname{font-weight:700;font-size:14px}
+.botsel{font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);width:100%;min-height:44px}
+.cpurow.bot{flex-direction:column;align-items:stretch;gap:4px}
+.bothelp{margin:0;font-size:12px}
+@media (max-height:700px){.shell{gap:12px}.shell-head h1{font-size:26px}.big{min-height:64px;padding:12px 14px}.big b{font-size:18px}}
