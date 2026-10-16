@@ -1,0 +1,38 @@
+/* Tokens del dominó: paño, fichas y marcas de la mesa. Los compartidos están en platform/styles/tokens.css. */
+:root{
+  --felt:#1f5c49;
+  --felt-2:#184c3c;
+  --felt-fg:#eaf2ec;
+  --felt-muted:#a9c4b7;
+  --tile:#fbf7ec;
+  --tile-edge:#cfc6b0;
+  --pip:#1b1b1b;
+  --felt-warn:#ffb4a5;
+  --gold-tile:#f3dc9a;
+  --spec:#c9a2ff;
+  --spec-ink:#6b3fc4;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --felt:#164232;
+  --felt-2:#103428;
+  --felt-fg:#e8f1ec;
+  --felt-muted:#8fb2a2;
+  --tile:#efe7d3;
+  --tile-edge:#a99e84;
+  --pip:#1b1b1b;
+  --gold-tile:#f0d68c;
+  --spec:#cfb0ff;
+  --spec-ink:#cfb0ff;
+}}
+:root[data-theme="dark"]{
+  --felt:#164232;
+  --felt-2:#103428;
+  --felt-fg:#e8f1ec;
+  --felt-muted:#8fb2a2;
+  --tile:#efe7d3;
+  --tile-edge:#a99e84;
+  --pip:#1b1b1b;
+  --gold-tile:#f0d68c;
+  --spec:#cfb0ff;
+  --spec-ink:#cfb0ff;
+}

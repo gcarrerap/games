@@ -24,7 +24,9 @@
  * @property {string} name                                 Nombre que se muestra.
  * @property {{min: number, max: number}} players          Cuántos asientos admite.
  * @property {object[]} modes                              Configuraciones válidas para setup().
- * @property {(config: object, ctx: Ctx) => object} setup  Estado inicial (JSON simple).
+ * @property {(config: object, ctx: Ctx) => object} setup
+ *   Estado inicial (JSON simple). config = un modo de `modes` + opciones de la mesa (por ejemplo timer) +
+ *   `names`: el nombre de cada asiento, que la plataforma agrega al empezar.
  * @property {(state: object) => number[]} currentSeats
  *   Asientos que deben actuar ahora. Lista vacía sin terminar = pausa (por ejemplo, entre manos): nadie está
  *   obligado, pero legalActions puede ofrecer algo (repartir la siguiente mano).

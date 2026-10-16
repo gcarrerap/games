@@ -93,7 +93,7 @@ test("la lógica es pura", () => {
   const out = [];
   for (const { file } of files) {
     const w = where(file);
-    const logic = (w.kind === "game" && ["engine", "ai"].includes(w.layer) && !file.endsWith("/worker.js"))
+    const logic = (w.kind === "game" && ["engine", "ai"].includes(w.layer))
       || (w.kind === "module" && !file.endsWith("/ui.js")) || (w.kind === "platform" && w.layer === "core");
     if (!logic) continue;
     const code = readFileSync(join(ROOT, file), "utf8").split("\n").filter((l) => !/^\s*(\/\/|\/?\*)/.test(l)).join("\n");
