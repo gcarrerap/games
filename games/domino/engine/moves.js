@@ -1,5 +1,4 @@
 // Motor de dominó: funciones puras sobre el estado de la mesa.
-// Código movido sin cambios desde index.html (fase 2 de #3).
 
 import { P } from "./tiles.js";
 import { pushLog, nextSeat, nameOf } from "./table.js";
@@ -34,7 +33,7 @@ export function resolvePending(h, seat) {
   if (h.pend && h.pend.seat === seat) { h.lacks[seat] = h.pend.ends.slice().sort(); h.pend = null; }
 }
 
-export function play(st, seat, tile, side) {
+export function play(st, seat, tile, side, now = Date.now()) {
   const lp = legalPlays(st, seat).find((p) => p.tile === tile && (p.side === side || p.side === "X"));
   if (!lp) throw new Error("Jugada no válida");
   const h = structuredClone(st.hand);
@@ -49,16 +48,16 @@ export function play(st, seat, tile, side) {
   if (!h.played) h.played = h.hands.map(() => []);
   h.played[seat].push(tile);
   if (!h.history) h.history = [];
-  h.history.push({ s: seat, a: "play", tile, side: lp.side, ends: [h.board[0][0], h.board[h.board.length - 1][1]], forced: lp.side === "X" && !!st.hand.firstReq, t: Date.now() });
+  h.history.push({ s: seat, a: "play", tile, side: lp.side, ends: [h.board[0][0], h.board[h.board.length - 1][1]], forced: lp.side === "X" && !!st.hand.firstReq, t: now });
   resolvePending(h, seat);
   h.passes = 0; h.drew = 0;
   let s2 = { ...st, hand: h, log: pushLog(st.log, `${nameOf(st, seat)} tiró ${tile}`), v: st.v + 1 };
   if (!h.hands[seat].length) return endHand(s2, { type: "domino", seat });
-  h.turn = nextSeat(st, seat); h.since = Date.now();
+  h.turn = nextSeat(st, seat); h.since = now;
   return s2;
 }
 
-export function draw(st, seat) {
+export function draw(st, seat, now = Date.now()) {
   if (!canDraw(st, seat)) throw new Error("No puedes comer");
   const h = structuredClone(st.hand);
   const t = h.pozo.pop(); h.hands[seat].push(t); h.drew = (h.drew || 0) + 1;
@@ -68,20 +67,20 @@ export function draw(st, seat) {
   h.lacks[seat] = [];
   h.pend = { seat, ends: [...new Set(ends(h))] };
   if (!h.history) h.history = [];
-  h.history.push({ s: seat, a: "draw", ends: ends(h), t: Date.now() });
+  h.history.push({ s: seat, a: "draw", ends: ends(h), t: now });
   return { ...st, hand: h, log: pushLog(st.log, `${nameOf(st, seat)} comió`), v: st.v + 1 };
 }
 
-export function pass(st, seat) {
+export function pass(st, seat, now = Date.now()) {
   if (!canPass(st, seat)) throw new Error("No puedes pasar: tienes jugada");
   const h = structuredClone(st.hand);
   h.passes += 1; h.drew = 0;
   resolvePending(h, seat);
   h.lacks[seat] = [...new Set([...h.lacks[seat], ...ends(h)])].sort();
   if (!h.history) h.history = [];
-  h.history.push({ s: seat, a: "pass", ends: ends(h), t: Date.now() });
+  h.history.push({ s: seat, a: "pass", ends: ends(h), t: now });
   let s2 = { ...st, hand: h, log: pushLog(st.log, `${nameOf(st, seat)} pasó`), v: st.v + 1 };
   if (h.passes >= st.config.n) return endHand(s2, { type: "cerrado" });
-  h.turn = nextSeat(st, seat); h.since = Date.now();
+  h.turn = nextSeat(st, seat); h.since = now;
   return s2;
 }

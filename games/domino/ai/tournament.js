@@ -1,13 +1,17 @@
 // Torneo entre bots (#27): partidas simuladas sin interfaz, reproducibles con semilla, para medir qué tan fuerte es
 // cada perfil y si de verdad juega distinto ("huella de estilo"). Lo usan scripts/torneo.mjs y las pruebas.
-import { newTable, deal, play, draw, pass, legalPlays, P } from "../engine/index.js";
+// Las partidas las corre modules/tournament a través del contrato del dominó (cada bot solo ve su vista);
+// aquí queda lo que es del dominó: las estadísticas de estilo.
+import { legalPlays, P } from "../engine/index.js";
 import { botMove } from "./bots.js";
-import { openingPlan } from "./opening.js";
 import { getProfile } from "./profiles.js";
 import { seededRandom } from "../../../modules/random/index.js";
+import { playGame as runGame, ci95 } from "../../../modules/tournament/index.js";
 import { newEnds } from "./heuristics.js";
+import domino from "../index.js";
 
-// Corre fn con Math.random reemplazado por un generador con semilla (la IA y el motor lo usan por dentro)
+// Corre fn con Math.random reemplazado por un generador con semilla. Hace falta mientras ai/search.js use
+// Math.random por dentro (pendiente de docs/ARCHITECTURE.md §8).
 export function withSeed(seed, fn) {
   const real = Math.random; Math.random = seededRandom(seed);
   try { return fn(); } finally { Math.random = real; }
@@ -20,38 +24,33 @@ const emptyStats = () => ({ decisions: 0, mulaOpp: 0, mulaYes: 0, cuadreOpp: 0, 
 export function playGame(seats, { seed = 1, target = 100, config = { n: 4, teams: true, per: 7, timer: false }, maxHands = 60 } = {}) {
   return withSeed(seed, () => {
     const profs = seats.map(getProfile);
-    let st = newTable("TORNEO", config, "torneo");
-    st.seats = profs.map((p, i) => ({ id: "bot" + i, name: p.nombre, bot: true, perfil: p.id }));
     const stats = profs.map(emptyStats);
-    let hands = 0;
-    while (hands < maxHands) {
-      st = deal(st); hands++;
-      st.gameId = `torneo-${seed}`; // fijo: la memoria de los bots depende de él (la hora cambiaría el olvido)
-      const firstPlays = [0, 0, 0, 0];
-      for (let g = 0; g < 300 && st.status === "playing"; g++) {
-        const h = st.hand;
-        if (h.turn === null && !h.board.length) { // sale la pareja ganadora: el de mejor juego, con su plan
-          const s = h.openers.slice().sort((x, y) => openingPlan(h.hands[y]).rating - openingPlan(h.hands[x]).rating)[0];
-          const plan = openingPlan(h.hands[s]);
-          st = play(st, s, plan.tile, "X"); firstPlays[s]++; continue;
-        }
-        const s = h.turn, lp = legalPlays(st, s);
-        let scores = null;
-        const m = botMove(st, s, profs[s], { onScores: (sc) => { scores = sc; } });
-        if (m.type === "play" && lp.length > 1) record(stats[s], st, s, lp, m, scores, firstPlays[s] < 2);
-        st = m.type === "play" ? play(st, s, m.tile, m.side) : m.type === "draw" ? draw(st, s) : pass(st, s);
-        if (m.type === "play") {
-          firstPlays[s]++; stats[s].plays++;
-          const nh = st.hand; if (st.status === "playing" && nh.turn !== null && legalPlays(st, nh.turn).length === 0) stats[s].nextPassed++;
-        }
-      }
-      const total = st.scores;
-      if (total.some((x) => x >= target)) {
-        const winner = total[0] === total[1] ? st.lastWinner : total[0] < total[1] ? 0 : 1;
-        return { winner, scores: total, hands, stats };
-      }
-    }
-    return { winner: st.scores[0] <= st.scores[1] ? 0 : 1, scores: st.scores, hands, stats };
+    let firstPlays = profs.map(() => 0), lastWasOpening = false;
+    const decide = (v, seat, _profile, ctx) => {
+      const h = v.hand;
+      lastWasOpening = h.turn === null && !h.board.length;
+      if (lastWasOpening) return domino.bots.decide(v, seat, profs[seat].id, ctx); // sale con su plan de salida
+      const lp = legalPlays(v, seat);
+      let scores = null;
+      const m = botMove(v, seat, profs[seat], { rnd: ctx.rnd, onScores: (sc) => { scores = sc; } });
+      if (m.type === "play" && lp.length > 1) record(stats[seat], v, seat, lp, m, scores, firstPlays[seat] < 2);
+      return m;
+    };
+    const onStep = ({ state, seat, action }) => {
+      if (action.type === "next") { firstPlays = profs.map(() => 0); return; }
+      if (action.type !== "play") return;
+      firstPlays[seat]++;
+      if (lastWasOpening) return;
+      stats[seat].plays++;
+      const nh = state.hand; if (state.status === "playing" && nh.turn !== null && legalPlays(state, nh.turn).length === 0) stats[seat].nextPassed++;
+    };
+    const stopWhen = (st) => st.status !== "playing" && (st.scores.some((x) => x >= target) || st.handNo >= maxHands);
+    const { state: st } = runGame(domino, profs.map((p) => p.id), {
+      config: { ...config, code: "TORNEO", names: profs.map((p) => p.nombre) }, seed, decide, onStep, stopWhen,
+    });
+    const total = st.scores;
+    const winner = total[0] === total[1] ? st.lastWinner : total[0] < total[1] ? 0 : 1;
+    return { winner, scores: total, hands: st.handNo, stats };
   });
 }
 
@@ -101,6 +100,5 @@ export function match(profile, reference, { games = 20, seed = 1, target = 100 }
     diff += r.scores[1 - me] - r.scores[me]; hands += r.hands;
     st.push(r.stats[me], r.stats[me + 2]);
   }
-  const p = wins / games, se = Math.sqrt(Math.max(p * (1 - p), 1e-9) / games);
-  return { games, wins, winRate: p, ci95: [Math.max(0, p - 1.96 * se), Math.min(1, p + 1.96 * se)], pointsPerHand: diff / hands, fingerprint: fingerprint(st) };
+  return { games, wins, winRate: wins / games, ci95: ci95(wins, games), pointsPerHand: diff / hands, fingerprint: fingerprint(st) };
 }

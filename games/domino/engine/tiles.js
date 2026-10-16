@@ -1,5 +1,4 @@
 // Motor de dominó: funciones puras sobre el estado de la mesa.
-// Código movido sin cambios desde index.html (fase 2 de #3).
 
 export const T = (a, b) => (a >= b ? a + "-" + b : b + "-" + a); // canónica: mayor primero
 export const P = (t) => t.split("-").map(Number);

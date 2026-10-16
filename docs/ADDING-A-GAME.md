@@ -27,7 +27,7 @@
    export const GAMES = [ …, { ...pata, load: () => import("./pata/index.js") } ];
    ```
 
-7. **Pruebas.** `npm test` corre la prueba del contrato sobre todos los juegos registrados.
+7. **Pruebas.** `npm test` corre la prueba del contrato sobre todos los juegos registrados: revisa la forma, juega con la compu una partida completa en cada modo, y comprueba que sea reproducible y que su grabación se repita igual.
 
 8. **Mesa.** Escribe `ui/` usando los componentes de `platform/ui/` (ventanas, resultado, reloj) y los colores de `platform/styles/tokens.css`. La mesa solo llama a `ctx.act(action)`.
 

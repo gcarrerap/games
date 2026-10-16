@@ -12,7 +12,7 @@ El sitio tiene tres tipos de piezas:
 
 | Juego | Carpeta | Jugadores | Estado |
 |---|---|---|---|
-| Dominó | `games/domino/` | 2–4 | Migrando desde [myDomino](https://github.com/gcarrerap/myDomino): reglas y compu listas |
+| Dominó | `games/domino/` | 2–4 | Migrando desde [myDomino](https://github.com/gcarrerap/myDomino): reglas y compu listas y conformes al contrato; falta la mesa |
 | La Pata | `games/pata/` | por definir | Por migrar |
 
 ## Cómo está hecho
@@ -33,6 +33,8 @@ games/
 ├── modules/              # capacidades reutilizables que un juego escoge usar
 │   ├── random/           # azar con semilla
 │   ├── choice/           # escoger entre jugadas con puntaje, con dudas
+│   ├── recording/        # grabar y repetir partidas de cualquier juego
+│   ├── tournament/       # partidas entre bots de cualquier juego
 │   └── <nombre>/         # index.js (API pública), ui.js (opcional), README.md
 ├── games/
 │   ├── registry.js       # lista de juegos (solo manifiestos; el código se carga al abrir cada juego)
