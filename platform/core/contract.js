@@ -38,7 +38,9 @@
  * @property {{turnMs: Function, autoAction: Function}} [timing]
  * @property {GameBots} [bots]
  * @property {(view: object, seat: number, ctx: Ctx) => object} [advise]  Consejo para ese asiento.
- * @property {{build: Function, replay: Function}} [record]
+ * @property {(config: object, seat: number) => number|null} [teamOf]
+ *   El equipo de un asiento con esa configuración (0, 1, …), o null si se juega individual. Lo usa la pantalla
+ *   de asientos para mostrar quién va con quién.
  * @property {() => Promise<{mount: Function, update: Function, unmount: Function, tick?: Function}>} ui
  *   La mesa del juego. mount(el, ctx) y update(ctx) reciben el ctx de platform/ui/play.js (docs/ARCHITECTURE.md §4).
  */
@@ -58,6 +60,7 @@ export function validateGame(g) {
   if (g.bots && typeof g.bots.decide !== "function") errs.push("bots.decide: falta la función");
   if (g.bots && !Array.isArray(g.bots.profiles)) errs.push("bots.profiles: lista de perfiles");
   if (g.bots && g.bots.thinkMs && typeof g.bots.thinkMs !== "function") errs.push("bots.thinkMs: es una función");
+  if (g.teamOf && typeof g.teamOf !== "function") errs.push("teamOf: es una función");
   if (g.timing && (typeof g.timing.turnMs !== "function" || typeof g.timing.autoAction !== "function")) errs.push("timing: turnMs y autoAction son funciones");
   return errs;
 }

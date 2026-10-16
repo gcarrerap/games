@@ -89,9 +89,10 @@ Qué hay hoy en myDomino y a dónde va.
 | Partidas entre bots, enfrentamientos, intervalo de confianza | `ai/tournament.js` | `modules/tournament` | ✅ hecho. La huella de estilo y la escala de puntajes siguen en `games/domino/ai/tournament.js` |
 | Correr cálculos pesados en un hilo aparte, con plan B | `ai/worker.js`, `app/ai-client.js` | `modules/worker` + un solo worker para la compu de todos los juegos (`platform/app/ai-worker.js`) | ✅ hecho |
 | Registro por mano para análisis (JSONL) | `engine/record.js`, `scripts/export-partidas.mjs` | se queda en el dominó | Se podrá derivar de `modules/recording` cuando la plataforma grabe con él |
-| Registro de quién puede tener qué (deducción) | `ai/deduce.js` | `modules/tracker` | Con La Pata |
-| Leer los tiros ajenos y simular manos ocultas (Monte Carlo) | `ai/speculate.js`, `ai/search.js` | `modules/hidden-info` | Con La Pata |
-| Perfiles de la compu: estilo, memoria, olvido | `ai/profiles.js`, `ai/mind.js` (la parte de memoria) | `modules/bot-profiles` | Con La Pata (los criterios siguen siendo de cada juego) |
+| Escoger entre opciones cercanas con azar (La Pata: votación del descarte) | myPata `ai/random.js` (`vote`, `seededRandom`) | `modules/choice`, `modules/random` | ✅ fase 6: La Pata ya los usa; escogen exactamente lo mismo que su versión propia (`tests/games/pata/vote.test.js`) |
+| Registro de quién puede tener qué | dominó `ai/deduce.js`; La Pata `ai/deduce.js` | se queda en cada juego | Revisado en la fase 6: no se parecen. El dominó deduce con probabilidades fichas que nunca se vieron; La Pata solo sigue cartas exactas que se vieron al levantar el pozo. Un módulo común sería una abstracción forzada. |
+| Leer los tiros ajenos y simular manos ocultas (Monte Carlo) | dominó `ai/speculate.js`, `ai/search.js` | se queda en el dominó | La Pata no simula manos ocultas. Se revisa si un tercer juego lo necesita. |
+| Perfiles de la compu: estilo, memoria, olvido | dominó `ai/profiles.js`, `ai/mind.js`; La Pata `ai/tune.js` + personalidad por partida | se quedan en cada juego | Revisado en la fase 6: el dominó tiene 20 perfiles (estilo × capacidad); La Pata, 3 niveles con variaciones por partida. Lo común ya está en `modules/choice`. |
 | Consejo: qué haría cada nivel y por qué (ventana) | `ui/components/advice.js` | `modules/advice` (`ui.js`); la lógica sigue en el juego | Con La Pata |
 | Notas "creo que sí / no la tiene" | `ui` de la mesa | `modules/notes` | Con La Pata |
 | Acomodar la mano: tocar, arrastrar, reordenar | `ui/screens/table.js` | `modules/hand` (`ui.js`) | Con La Pata |
@@ -241,7 +242,9 @@ Cada fase es un PR que deja las pruebas en verde.
 | 3 ✅ | `platform/services/` (sesión, mesas, grabaciones, preferencias, versión nueva), mesa genérica (`platform/app/table.js`), reloj, limpieza, store, estilos base. `modules/worker` y un solo worker para la compu de todos los juegos. Colecciones y prefijos propios para convivir con myDomino. |
 | 4 ✅ | Sesión de práctica (`platform/app/session.js`: la compu, el reloj, el consejo, revancha), portal, lobby genérico, ventanas, `index.html` y rutas. La mesa del dominó (`games/domino/ui/`). Dominó jugable en práctica. Prueba en navegador (`tests/browser/smoke.py`). |
 | 5 ✅ | Mesas en línea (`juegos-mesas`): crear, ver las abiertas, sentarse, la compu en asientos libres (la mueve el asiento más bajo; los demás son respaldo), reloj, mirar sin jugar, enlace para compartir, revancha, entrar con Google, y cada partida terminada se graba. Probado con varios "teléfonos" en Node y en el navegador con un Firebase de mentira. |
-| 6 | La Pata. Al construir su compu, extraer `tracker`, `hidden-info`, `bot-profiles`, `notes`, `hand` y `advice` con los dos juegos a la vista. |
+| 6a ✅ | La Pata: reglas y compu de myPata conformes al contrato (vista privada, reloj, pausa entre rondas), probadas igual que el dominó. Usa `modules/random` y `modules/choice`. Equipos por asiento en el contrato (`teamOf`). |
+| 6b | La mesa de La Pata (`games/pata/ui/`) y registrarla. Al hacerlo, revisar con las dos mesas a la vista: acomodar la mano, notas, consejo. |
+| 6c | Llamadas de voz y video de La Pata como módulo, para cualquier mesa en línea. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 
