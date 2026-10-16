@@ -6,7 +6,8 @@
 import { createSession } from "./app/session.js";
 import { startUpdateChecks } from "./app/updates.js";
 import { botDecide, advise } from "./app/ai.js";
-import { prefs, gamePrefs, initFirebase, signInWithGoogle, signOut, makeDb } from "./services/index.js";
+import { prefs, gamePrefs, initFirebase, signInWithGoogle, signOut, makeDb, fetchIceServers } from "./services/index.js";
+import { installCallUnload } from "../modules/call/ui.js";
 import { VERSION } from "./version.js";
 import { findGame } from "../games/registry.js";
 import { render } from "./ui/render.js";
@@ -26,7 +27,14 @@ const session = createSession({
     signIn: signInWithGoogle,
     signOut,
   },
+  // Llamadas de voz y video (WebRTC): el entorno del navegador
+  callEnv: {
+    get RTCPeerConnection() { return globalThis.RTCPeerConnection; },
+    getUserMedia: (c) => navigator.mediaDevices.getUserMedia(c),
+    iceServers: () => fetchIceServers(),
+  },
 });
+installCallUnload(); // al cerrar la pestaña, salir de la llamada para que los demás no esperen
 const connected = session.actions.connect();
 const app$ = { state: session.store.state, actions: session.actions, store: session.store };
 

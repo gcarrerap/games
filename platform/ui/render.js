@@ -4,6 +4,7 @@ import { renderLobby } from "./lobby.js";
 import { renderPlay, unmountPlay } from "./play.js";
 import { renderSeats } from "./seats.js";
 import { renderUpdateBar } from "./update-bar.js";
+import { renderCall } from "../../modules/call/ui.js";
 import { syncOverlayHistory } from "./sheet.js";
 import { $, esc } from "./dom.js";
 
@@ -16,5 +17,7 @@ export function render(app$) {
   else if (state.table.status === "lobby") { unmountPlay(); modal.innerHTML = ""; renderSeats(app, app$); }
   else renderPlay(app, modal, app$);
   renderUpdateBar(state);
+  // La llamada de voz y video: en cualquier mesa en línea abierta (vive fuera de #app; se actualiza en su lugar)
+  renderCall(app$.actions.call, state.screen === "table" && !state.practice && !!state.table && state.online === "on");
   syncOverlayHistory();
 }

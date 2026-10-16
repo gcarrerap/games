@@ -4,13 +4,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { TABLES, RECORDINGS } from "../../platform/services/index.js";
+import { TABLES, RECORDINGS, CALLS } from "../../platform/services/index.js";
 
 const rules = fs.readFileSync(new URL("../../firestore.rules", import.meta.url), "utf8");
 const matched = new Set([...rules.matchAll(/match \/([A-Za-z0-9_-]+)\//g)].map((m) => m[1]));
 
 const APPS = {
-  "Juegos de la Familia": [TABLES, RECORDINGS],
+  "Juegos de la Familia": [TABLES, RECORDINGS, CALLS],
   "Noli (gcarrerap/noli)": ["noli_perfiles", "juegos", "noli_vinculos", "noli_salas", "senales", "acciones"],
   "La Pata (gcarrerap/myPata)": ["pata_mesas", "pata_rondas", "pata_llamadas"],
   "myDomino": ["mesas", "manos"],

@@ -40,7 +40,7 @@ Este documento explica cómo se divide el sitio, qué comparte cada juego y qué
 | `platform/app/` | `core/`, `services/`, módulos, `games/registry.js` | `ui/`, el código de un juego |
 | `platform/ui/` | `app/`, `core/`, módulos | `services/` directo, juegos |
 | `modules/<m>/index.js` | `platform/core/`, la API pública de otros módulos | juegos, `platform/app|services|ui` |
-| `modules/<m>/ui.js` | lo anterior y `platform/ui/` | juegos, `platform/app|services` |
+| `modules/<m>/ui.js` y `ui/` | lo anterior y `platform/ui/` | juegos, `platform/app|services` |
 | `games/<id>/engine/` | `platform/core/`, módulos | su `ai/` y `ui/`, otros juegos, la plataforma salvo `core/` |
 | `games/<id>/ai/` | su `engine/`, `platform/core/`, módulos | su `ui/`, otros juegos, la plataforma salvo `core/` |
 | `games/<id>/ui/` | su `engine/` y su `ai/` (lectura), módulos, `platform/ui/` | `platform/app/` y `services/` (todo llega por `ctx`), otros juegos |
@@ -60,7 +60,7 @@ Reglas concretas:
 ```
 modules/<nombre>/
 ├── index.js     # API pública, pura (corre en Node y en un Web Worker)
-├── ui.js        # opcional: la parte que dibuja
+├── ui.js        # opcional: la parte que dibuja (puede apoyarse en archivos de ui/)
 ├── *.js         # internos; nadie de fuera los importa
 └── README.md    # qué hace, su API y qué juegos lo usan
 tests/modules/<nombre>/
@@ -87,6 +87,7 @@ Qué hay hoy en myDomino y a dónde va.
 | Escoger entre opciones con puntaje, con dudas | `ai/decide.js` | `modules/choice` | ✅ hecho |
 | Grabar y repetir partidas de cualquier juego (acciones + semilla) | (nuevo; myDomino graba por mano en `engine/record.js`) | `modules/recording` | ✅ hecho. El adaptador de Firestore va en `platform/services` (fase 3) |
 | Partidas entre bots, enfrentamientos, intervalo de confianza | `ai/tournament.js` | `modules/tournament` | ✅ hecho. La huella de estilo y la escala de puntajes siguen en `games/domino/ai/tournament.js` |
+| Llamadas de voz y video (WebRTC, timbre, vistas, sin eco entre teléfonos juntos) | myPata `app/call*.js`, `app/near.js`, `ui/call-*.js`, `services/call-signaling.js` | `modules/call` + señalización en `platform/services/call-signaling.js` | ✅ fase 6c: el dominó y cualquier juego nuevo las tienen sin escribir nada |
 | Correr cálculos pesados en un hilo aparte, con plan B | `ai/worker.js`, `app/ai-client.js` | `modules/worker` + un solo worker para la compu de todos los juegos (`platform/app/ai-worker.js`) | ✅ hecho |
 | Registro por mano para análisis (JSONL) | `engine/record.js`, `scripts/export-partidas.mjs` | se queda en el dominó | Se podrá derivar de `modules/recording` cuando la plataforma grabe con él |
 | Escoger entre opciones cercanas con azar (La Pata: votación del descarte) | myPata `ai/random.js` (`vote`, `seededRandom`) | `modules/choice`, `modules/random` | ✅ fase 6: La Pata ya los usa; escogen exactamente lo mismo que su versión propia (`tests/games/pata/vote.test.js`) |
@@ -199,7 +200,7 @@ Cuatro apps viven en el mismo dominio (`gcarrerap.github.io`) y en el mismo proy
 
 | Recurso | Noli | La Pata | myDomino | Este sitio |
 |---|---|---|---|---|
-| Colecciones de Firestore | `noli_perfiles`, `noli_vinculos`, `noli_salas` | `pata_mesas`, `pata_rondas`, `pata_llamadas` | `mesas`, `manos` | `juegos-mesas`, `juegos-grabaciones` |
+| Colecciones de Firestore | `noli_perfiles`, `noli_vinculos`, `noli_salas` | `pata_mesas`, `pata_rondas`, `pata_llamadas` | `mesas`, `manos` | `juegos-mesas`, `juegos-grabaciones`, `juegos-llamadas` |
 | Claves de `localStorage` (compartido por dominio) | `noli.*` | `pata.*` | `dom.*` | `juegos.*` y `juegos.<juego>.*` |
 | Caché del service worker (compartido por dominio) | `noli-v1` | `mypata-v1` | `mydomino-v1` | `juegos-v1` |
 
@@ -244,7 +245,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 5 ✅ | Mesas en línea (`juegos-mesas`): crear, ver las abiertas, sentarse, la compu en asientos libres (la mueve el asiento más bajo; los demás son respaldo), reloj, mirar sin jugar, enlace para compartir, revancha, entrar con Google, y cada partida terminada se graba. Probado con varios "teléfonos" en Node y en el navegador con un Firebase de mentira. |
 | 6a ✅ | La Pata: reglas y compu de myPata conformes al contrato (vista privada, reloj, pausa entre rondas), probadas igual que el dominó. Usa `modules/random` y `modules/choice`. Equipos por asiento en el contrato (`teamOf`). |
 | 6b ✅ | La mesa de La Pata (`games/pata/ui/`), registrada en el portal. Cada juego carga sus estilos al montar su mesa y los quita al desmontarla (`platform/ui/styles.js`). `ctx.act` dice si la jugada se pudo. Revisado con las dos mesas a la vista: acomodar la mano (el dominó arrastra fichas; La Pata ordena por número o palo y aparta bajadas), notas (solo el dominó) y el consejo (cada juego explica a su manera; lo común, pedirlo con la vista del asiento, ya lo pone la plataforma) se quedan en cada juego. |
-| 6c | Llamadas de voz y video de La Pata como módulo, para cualquier mesa en línea. |
+| 6c ✅ | Llamadas de voz y video de La Pata como `modules/call`, para cualquier mesa en línea de cualquier juego. Señalización en `platform/services/call-signaling.js` (`juegos-llamadas`). |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 
