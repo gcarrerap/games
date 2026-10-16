@@ -4,7 +4,7 @@
 import { $, esc } from "./dom.js";
 
 // Equipos: los dice el juego (game.teamOf); si no, no hay equipos
-const TEAM_COLORS = ["var(--ta)", "var(--tb)", "var(--tc)"];
+const TEAM_COLORS = ["var(--ta)", "var(--tb)", "var(--tc)", "var(--td)"];
 const teamOf = (game, t, i) => (game.teamOf ? game.teamOf(t.config, i) : null);
 const teamDot = (game, t, i) => { const k = teamOf(game, t, i); return k === null || k === undefined ? "" : `<span class="teamdot" style="background:${TEAM_COLORS[k % TEAM_COLORS.length]}"></span>`; };
 // "Los asientos 1 y 3 contra 2 y 4" / "1 y 4, 2 y 5, 3 y 6"

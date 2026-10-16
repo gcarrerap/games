@@ -1,7 +1,9 @@
 """Prueba de humo en un navegador de verdad (Chromium con Playwright), en pantalla de teléfono y sin errores en la
 consola:
   1. Práctica: portal → lobby del dominó → práctica → una mano completa → "atrás" regresa al lobby.
-  2. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
+  2. La Pata en práctica: varios turnos (robar y descartar), el registro y el consejo; los estilos del dominó se
+     quitan al cambiar de juego.
+  3. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
      compu, empezar y jugar una mano completa; abrir la mesa por su enlace.
 
 Uso (desde la raíz del repositorio):
@@ -65,6 +67,23 @@ with sync_playwright() as p:
     page.go_back(); page.wait_for_timeout(300)
     back_to_lobby = bool(page.query_selector("#practice"))
 
+    # ---------- La Pata en práctica ----------
+    page.evaluate("location.hash = '#/pata'"); page.wait_for_selector("#practice")
+    page.click("[data-mode='4p']"); page.click("[data-timer='0']"); page.click("#practice")
+    page.wait_for_selector("#hand .cardbtn", timeout=10000); shot("7-pata")
+    pata_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+    pata_turns = 0
+    for _ in range(200):
+        if pata_turns >= 4: break
+        # Tu turno: roba; luego escoge una carta y descártala (cada toque redibuja la mesa, por eso un paso a la vez)
+        if tap("#draw:not([disabled])"): pass
+        elif page.query_selector("#discardbtn") and not page.query_selector(".cardbtn.sel"): tap(".cardbtn")
+        elif tap("#discardbtn:not([disabled])"): pata_turns += 1
+        page.wait_for_timeout(250)
+    shot("8-pata-turnos")
+    tap("[data-track='1']"); page.wait_for_selector(".sheet[data-sheet='track-1']"); tap("#trkclose")
+    page.wait_for_timeout(200)
+
     # ---------- En línea (Firebase de mentira) ----------
     on = browser.new_page(viewport={"width": 390, "height": 844})
     on.on("pageerror", lambda e: errors.append(f"pageerror (en línea): {e}"))
@@ -102,6 +121,8 @@ with sync_playwright() as p:
     browser.close()
 
 problems = []
+if pata_turns < 4: problems.append(f"La Pata: solo se jugaron {pata_turns} turnos")
+if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not online_finished: problems.append("en línea: la mano no terminó")
 if online_moves == 0: problems.append("en línea: no se pudo tirar ninguna ficha")
 if not finished: problems.append("la mano no terminó")
@@ -109,6 +130,7 @@ if moves == 0: problems.append("no se pudo tirar ninguna ficha")
 if not back_to_lobby: problems.append("'atrás' no regresó al lobby")
 problems += errors
 print(f"Práctica: fichas tiradas {moves}, mano terminada {finished}, atrás → lobby {back_to_lobby}.")
+print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_styles))}.")
 print(f"En línea: mesa {code}, fichas tiradas {online_moves}, mano terminada {online_finished}, en la lista {in_list}, se reabre por enlace {reopened}.")
 if problems:
     print("PROBLEMAS:\n- " + "\n- ".join(problems)); sys.exit(1)

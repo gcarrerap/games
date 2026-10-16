@@ -3,16 +3,10 @@
 // modo Girar, el orden de tu mano, tus notas) vive aquí.
 import { renderTable, paintClock } from "./table.js";
 
-const STYLES = ["../styles/tokens.css", "../styles/table.css"];
-function ensureStyles() {
-  for (const href of STYLES) {
-    const url = new URL(href, import.meta.url).href;
-    if (!document.querySelector(`link[data-game-style="${url}"]`)) {
-      const l = document.createElement("link"); l.rel = "stylesheet"; l.href = url; l.dataset.gameStyle = url;
-      document.head.appendChild(l);
-    }
-  }
-}
+import { loadStyles, unloadStyles } from "../../../platform/ui/styles.js";
+
+const STYLES = ["../styles/tokens.css", "../styles/table.css"].map((x) => new URL(x, import.meta.url).href);
+const ensureStyles = () => loadStyles("domino", STYLES);
 
 // Estado de la pantalla (no del juego)
 let ui = null;
@@ -36,4 +30,5 @@ export function tick(ctx, clock) { if (ui) paintClock(clock); }
 export function unmount() {
   if (ui && ui.el) ui.el.innerHTML = "";
   ui = null;
+  unloadStyles("domino");
 }

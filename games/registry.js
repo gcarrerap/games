@@ -3,9 +3,11 @@
 //
 // Cada entrada: { id, name, players: {min, max}, load: () => import("./<id>/index.js") }
 import domino from "./domino/manifest.js";
+import pata from "./pata/manifest.js";
 
 export const GAMES = [
   { ...domino, load: () => import("./domino/index.js") },
+  { ...pata, load: () => import("./pata/index.js") },
 ];
 
 export const findGame = (id) => GAMES.find((g) => g.id === id) || null;

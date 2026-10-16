@@ -142,11 +142,13 @@ export function createSession(deps) {
     if (s.practice) { try { applyLocal(fn); return Promise.resolve(); } catch (e) { return Promise.reject(e); } }
     return updateTable(s.db, s.code, fn);
   }
-  // Para la interfaz: aplica y muestra el error, si hay
+  // Para la interfaz: aplica y muestra el error, si hay. Devuelve una promesa con true si se pudo.
   function run(fn) {
     if (s.err) set({ err: "" });
-    if (s.practice) { try { if (s.table) applyLocal(fn); } catch (e) { fail(e); } return Promise.resolve(); }
-    return mutate(fn).catch(fail);
+    if (s.practice) {
+      try { if (s.table) applyLocal(fn); return Promise.resolve(true); } catch (e) { fail(e); return Promise.resolve(false); }
+    }
+    return mutate(fn).then(() => true, (e) => { fail(e); return false; });
   }
 
   // ---------- Práctica ----------
@@ -246,7 +248,7 @@ export function createSession(deps) {
   // ---------- Jugar ----------
   // Tu jugada. En línea solo cuenta si la mesa sigue en el turno que viste (otro teléfono pudo adelantarse).
   function play(action) {
-    const seat = me(); if (seat < 0 || !s.table) return Promise.resolve();
+    const seat = me(); if (seat < 0 || !s.table) return Promise.resolve(false);
     const key = turnKey(s.table);
     return run((t) => (turnKey(t) === key ? act(s.game, t, seat, action, now()) : SKIP));
   }
