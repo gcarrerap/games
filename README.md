@@ -2,13 +2,17 @@
 
 Un solo sitio para jugar en el navegador los juegos que nos gustan: solo contra la compu o con amigos y familia en mesas en línea, desde cualquier teléfono o computadora.
 
-Cada juego es un **módulo** independiente que se conecta a la plataforma. La plataforma pone lo que todos comparten: cuentas, mesas en línea, asientos, la compu en los asientos libres, reloj de turno, grabación de partidas, actualizaciones y el diseño base. Cada juego solo pone sus reglas, su compu y su mesa.
+El sitio tiene tres tipos de piezas:
+
+- **Plataforma** (`platform/`): lo que todo juego recibe sin pedirlo: cuentas, portal, mesas en línea, asientos, la compu en los asientos libres, reloj de turno, actualizaciones y el diseño base.
+- **Módulos** (`modules/`): capacidades que cualquier juego puede escoger usar, cada una independiente, con su API, pruebas y README: azar con semilla, la forma de escoger de la compu, y con el tiempo el registro de cartas o fichas, simulaciones, perfiles de la compu, notas, acomodar la mano…
+- **Juegos** (`games/`): cada juego es un módulo propio con sus reglas, su compu y su mesa, que usa la plataforma y los módulos que necesite.
 
 ## Juegos
 
 | Juego | Carpeta | Jugadores | Estado |
 |---|---|---|---|
-| Dominó | `games/domino/` | 2–4 | Por migrar desde [myDomino](https://github.com/gcarrerap/myDomino) |
+| Dominó | `games/domino/` | 2–4 | Migrando desde [myDomino](https://github.com/gcarrerap/myDomino): reglas y compu listas |
 | La Pata | `games/pata/` | por definir | Por migrar |
 
 ## Cómo está hecho
@@ -26,6 +30,10 @@ games/
 │   ├── app/              # estado, mesas, la compu, reloj, limpieza, rutas
 │   ├── ui/               # portal de juegos, lobby, asientos, ventanas, resultado
 │   └── styles/           # reset, colores y tipografía, componentes base
+├── modules/              # capacidades reutilizables que un juego escoge usar
+│   ├── random/           # azar con semilla
+│   ├── choice/           # escoger entre jugadas con puntaje, con dudas
+│   └── <nombre>/         # index.js (API pública), ui.js (opcional), README.md
 ├── games/
 │   ├── registry.js       # lista de juegos (solo manifiestos; el código se carga al abrir cada juego)
 │   ├── domino/
@@ -37,8 +45,10 @@ games/
 │   │   └── styles/
 │   └── pata/             # misma forma
 ├── tests/
-│   ├── platform/         # pruebas de la plataforma
+│   ├── architecture.test.js # las reglas de dependencia se cumplen (revisa los imports)
 │   ├── contract.test.js  # todos los juegos cumplen el contrato
+│   ├── platform/         # pruebas de la plataforma
+│   ├── modules/<nombre>/ # pruebas de cada módulo
 │   └── games/<juego>/    # pruebas de cada juego
 ├── scripts/              # herramientas (exportar partidas, torneos de bots…)
 └── docs/
