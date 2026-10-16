@@ -1,5 +1,4 @@
 // Motor de dominó: funciones puras sobre el estado de la mesa.
-// Código movido sin cambios desde index.html (fase 2 de #3).
 
 import { sumHand } from "./tiles.js";
 import { TARGET, nScores } from "./config.js";

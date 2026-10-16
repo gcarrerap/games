@@ -1,19 +1,20 @@
 // Motor de dominó: funciones puras sobre el estado de la mesa.
-// Código movido sin cambios desde index.html (fase 2 de #3).
 
 import { fullSet, shuffle, tileRank } from "./tiles.js";
 import { nScores } from "./config.js";
+import { hash32 } from "../../../modules/random/index.js";
 
-export function newTable(code, config, host) {
+// El tiempo entra como parámetro (`now`); el valor por defecto existe para quien todavía no lo pasa.
+export function newTable(code, config, host, now = Date.now()) {
   return {
-    code, config, host, created: Date.now(),
+    code, config, host, created: now,
     seats: Array(config.n).fill(null),
     status: "lobby", scores: Array(nScores(config)).fill(0),
     handNo: 0, lastWinner: null, hand: null, result: null, log: [], v: 0,
   };
 }
 
-export function deal(st, rnd = Math.random) {
+export function deal(st, rnd = Math.random, now = Date.now()) {
   const c = st.config, deck = shuffle(fullSet(), rnd);
   const hands = []; let k = 0;
   for (let i = 0; i < c.n; i++) { hands.push(deck.slice(k, k + c.per)); k += c.per; }
@@ -21,7 +22,7 @@ export function deal(st, rnd = Math.random) {
   let muestra = null, pozo = [];
   if (c.n === 3 && c.per === 9) muestra = rest[0];
   else pozo = rest;
-  const h = { hands, pozo, muestra, board: [], turn: null, mano: null, passes: 0, openers: null, firstReq: null, drew: 0, lacks: hands.map(() => []), played: hands.map(() => []), history: [], since: Date.now() };
+  const h = { hands, pozo, muestra, board: [], turn: null, mano: null, passes: 0, openers: null, firstReq: null, drew: 0, lacks: hands.map(() => []), played: hands.map(() => []), history: [], since: now };
   if (st.handNo === 0 || st.lastWinner === null) {
     // Primera mano: sale la mula más alta (o la ficha más alta si no hay mulas)
     let best = null, seat = 0;
@@ -35,14 +36,15 @@ export function deal(st, rnd = Math.random) {
   // Cómo empezó la mano, para poder grabarla y reproducirla después (#25)
   h.start = { t: h.since, hands: hands.map((x) => x.slice()), pozo: pozo.slice(), muestra, turn: h.turn, openers: h.openers.slice(), firstReq: h.firstReq };
   // Cada partida nueva (primera mano) recibe su propio identificador
-  const game = st.handNo === 0 || !st.gameId ? { gameId: newGameId(st.code), gameStart: h.since } : {};
+  const game = st.handNo === 0 || !st.gameId ? { gameId: newGameId(st.code, h.start, now), gameStart: h.since } : {};
   return { ...st, ...game, status: "playing", handNo: st.handNo + 1, hand: h, result: null,
     log: pushLog(st.log, `Mano ${st.handNo + 1}: repartidas ${c.per} fichas por jugador` + (muestra ? `, muestra ${muestra}` : "")), v: st.v + 1 };
 }
 
-function newGameId(code) {
+// Identificador de la partida: mesa + hora + un hash del reparto (no consume azar, así no cambia la sucesión de rnd)
+function newGameId(code, start, now) {
   const safe = String(code || "mesa").normalize("NFD").replace(/[^A-Za-z0-9]/g, "") || "mesa";
-  return safe + "-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  return safe + "-" + now.toString(36) + hash32(JSON.stringify(start)).toString(36).padStart(7, "0").slice(0, 5);
 }
 
 export function pushLog(log, msg) { return [...(log || []), msg].slice(-12); }

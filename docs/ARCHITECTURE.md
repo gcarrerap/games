@@ -66,6 +66,8 @@ modules/<nombre>/
 tests/modules/<nombre>/
 ```
 
+**Un módulo se prueba con un juego que no es del que salió.** `tests/modules/fixtures/nim.js` es un juego de juguete (Nim) que cumple el contrato; las pruebas de `recording` y `tournament` corren sobre él. Si un módulo solo funciona con el dominó, no es genérico todavía.
+
 ### Cuándo algo se vuelve módulo
 
 Se extrae a módulo cuando se cumple **una** de estas:
@@ -83,9 +85,10 @@ Qué hay hoy en myDomino y a dónde va.
 |---|---|---|---|
 | Azar con semilla, hash, número fijo por clave | `ai/rng.js` | `modules/random` | ✅ hecho |
 | Escoger entre opciones con puntaje, con dudas | `ai/decide.js` | `modules/choice` | ✅ hecho |
+| Grabar y repetir partidas de cualquier juego (acciones + semilla) | (nuevo; myDomino graba por mano en `engine/record.js`) | `modules/recording` | ✅ hecho. El adaptador de Firestore va en `platform/services` (fase 3) |
+| Partidas entre bots, enfrentamientos, intervalo de confianza | `ai/tournament.js` | `modules/tournament` | ✅ hecho. La huella de estilo y la escala de puntajes siguen en `games/domino/ai/tournament.js` |
 | Correr cálculos pesados en un hilo aparte | `ai/worker.js`, `app/ai-client.js` | `modules/worker` | Fase 3, junto con `ai-client` |
-| Grabar y repetir partidas (registro de acciones + semilla) | `engine/record.js`, `services/recordings.js`, `app/recorder.js` | `modules/recording` (+ adaptador en `platform/services`) | Fase 2, cuando las acciones del contrato existan |
-| Torneos de bots y escala de puntajes | `ai/tournament.js`, `scripts/torneo.mjs` | `modules/tournament` | Fase 2: con el contrato ya no depende del dominó |
+| Registro por mano para análisis (JSONL) | `engine/record.js`, `scripts/export-partidas.mjs` | se queda en el dominó | Se podrá derivar de `modules/recording` cuando la plataforma grabe con él |
 | Registro de quién puede tener qué (deducción) | `ai/deduce.js` | `modules/tracker` | Con La Pata |
 | Leer los tiros ajenos y simular manos ocultas (Monte Carlo) | `ai/speculate.js`, `ai/search.js` | `modules/hidden-info` | Con La Pata |
 | Perfiles de la compu: estilo, memoria, olvido | `ai/profiles.js`, `ai/mind.js` (la parte de memoria) | `modules/bot-profiles` | Con La Pata (los criterios siguen siendo de cada juego) |
@@ -117,10 +120,14 @@ export default {
   result(state),                            // → marcador final, ganador(es)
 
   // --- Opcionales ---
-  timing: { turnMs(state), autoAction(state, seat) },
-  bots: { profiles, decide(view, profile, { rnd }), heavy: true },
-  advise(view, { rnd }),
-  record: { build(state), replay(rec) },
+  timing: { turnMs(state), autoAction(state, seat) },   // tiempo por turno; acción al vencerse
+  bots: {
+    profiles,                                 // [{ id, name }]
+    decide(view, seat, profile, { rnd }),     // → acción; solo recibe la vista de su asiento
+    thinkMs(view, seat, now),                 // cuánto espera antes de actuar
+    heavy: true,                              // decide() puede tardar: va al hilo aparte
+  },
+  advise(view, seat, { rnd }),
 
   // --- Interfaz (se carga al abrir el juego) ---
   ui: () => import("./ui/index.js"),        // → { mount(el, ctx), unmount() }
@@ -128,7 +135,10 @@ export default {
 ```
 
 - **Acciones y estado son JSON simple** (`{ type: "play", tile: "6-4", side: "L" }`), sin clases ni `Map`. Viajan a Firestore, al Worker y a la grabación sin conversión.
-- **`currentSeats` devuelve una lista** para juegos donde varios actúan a la vez (por ejemplo, votar en un juego estilo Dixit).
+- **`currentSeats` devuelve una lista** para juegos donde varios actúan a la vez (salir en parejas en el dominó, votar en un juego estilo Dixit). Si varios bots pueden actuar, actúa primero el de menor `thinkMs`.
+- **Pausas.** `currentSeats` vacío sin que `isOver` sea cierto es una pausa: nadie está obligado, pero `legalActions` puede ofrecer algo (en el dominó, `{ type: "next" }` entre manos). La interfaz lo muestra como botón; un torneo lo toma solo.
+- **El reloj es una acción.** Al vencerse el tiempo, la plataforma aplica `timing.autoAction(state, seat)` como cualquier otra acción. Así queda grabada y se repite igual.
+- **`view` es la frontera de la privacidad.** La compu y la interfaz solo reciben la vista. En el dominó, una prueba compara las decisiones de cinco perfiles de la compu (incluidos los que deducen y simulan) con su vista y con el estado completo: son idénticas.
 - **`ctx` de la interfaz** trae la vista del asiento propio, `act(action)`, la mesa (asientos, nombres, reloj), las preferencias y los componentes de `platform/ui/`.
 
 ## 5. Mesas en línea
@@ -146,7 +156,7 @@ mesas/{code}
   version:   "2026.10.15"      // versión del sitio que creó la mesa
 ```
 
-- **Una jugada** es una transacción que lee la mesa, revisa `turn`, aplica `game.apply()` y escribe el estado nuevo con `turn + 1`. Si otro teléfono ya jugó ese turno, se descarta.
+- **Una jugada** es una transacción que lee la mesa, revisa `turn`, aplica la acción con `modules/recording` (`step`, que le da a cada acción su azar y su hora a partir de la semilla de la mesa) y escribe el estado nuevo con `turn + 1`. Si otro teléfono ya jugó ese turno, se descarta. Como todas las acciones se aplican así, cualquier partida en línea se puede repetir desde su grabación.
 - **La compu de una mesa en línea** la mueve el teléfono de la persona sentada en el asiento más bajo; los demás esperan unos segundos de respaldo.
 - **Rutas:** `#/` portal · `#/<juego>` lobby · `#/<juego>/<code>` mesa, para compartir el enlace de una mesa.
 - **Limitaciones conocidas:** el estado completo (manos de todos) vive en Firestore, así que alguien con herramientas podría verlo; y si nadie de la mesa tiene el juego abierto, la compu no mueve. Un servidor propio (Cloud Functions, o FastAPI con WebSockets) resolvería las dos cosas. Como las reglas son puras y el contrato es el mismo, ese cambio quedaría contenido en `platform/services/` y `platform/app/`. Queda como decisión aparte.
@@ -172,7 +182,7 @@ mesas/{code}
 
 **Firebase compat cargado después de dibujar.** Se hereda de myDomino (medido allí: el SDK modular pesa más sin bundler). Encapsulado en `platform/services/`.
 
-**Pruebas con `node:test`.** Sin dependencias. `tests/contract.test.js` revisa cada juego registrado con `validateGame()`; `tests/architecture.test.js` revisa las dependencias.
+**Pruebas con `node:test`.** Sin dependencias. `tests/contract.test.js` revisa cada juego registrado con `validateGame()`, juega con la compu una partida completa en cada modo, revisa que sea reproducible y que su grabación se repita igual; `tests/architecture.test.js` revisa las dependencias.
 
 ## 8. Plan de migración
 
@@ -182,13 +192,17 @@ Cada fase es un PR que deja las pruebas en verde.
 |---|---|
 | 0 ✅ | README, este documento, contrato y prueba del contrato. |
 | 1 ✅ | Copiar `engine/` y `ai/` de myDomino a `games/domino/` con sus pruebas. Extraer `modules/random` y `modules/choice`. Prueba de arquitectura. |
-| 2 | `games/domino/index.js`: adaptar el motor al contrato. Inyectar `now` en el motor (baja la lista `DEBT`). Extraer `modules/recording` y `modules/tournament`. |
+| 2 ✅ | `games/domino/index.js` conforme al contrato. `now` inyectado en el motor. `modules/recording` y `modules/tournament`, probados también con un juego de juguete. |
 | 3 | Subir a `platform/` lo genérico de myDomino (services, store, reloj, limpieza, estilos base, ventanas). Extraer `modules/worker`. |
 | 4 | `platform/app/session.js` y la compu genéricos; portal y lobby. Dominó jugable en práctica. |
 | 5 | Mesas en línea con `mesas` y el campo `game`. Dominó con las mismas funciones que myDomino. |
 | 6 | La Pata. Al construir su compu, extraer `tracker`, `hidden-info`, `bot-profiles`, `notes`, `hand` y `advice` con los dos juegos a la vista. |
 
-**Pendientes heredados** (de `DESIGN.md` de myDomino): el motor llama a `Date.now()` en vez de recibir `now`; `ai/tune.js` exporta `NOISE` mutable que `rolloutFull` apaga mientras simula; `tournament.js` reemplaza `Math.random` global mientras corre. Los tres bajan en la fase 2.
+**Pendientes heredados** (de `DESIGN.md` de myDomino):
+
+- ✅ El motor ya recibe `now` (fase 2).
+- `ai/search.js` y `ai/speculate.js` usan `Math.random` por dentro en vez del `rnd` que reciben. Por eso `ai/tournament.js` todavía reemplaza `Math.random` global (`withSeed`) para que los torneos sean reproducibles. Pasar `rnd` hasta adentro quita las tres entradas de `DEBT`; cambia las sucesiones de azar de la compu, así que va en su propio PR.
+- `ai/tune.js` exporta `NOISE`, mutable, que `rolloutFull` apaga mientras simula. Lo limpio es pasar el ruido como parámetro de `botMove`.
 
 ## 9. Fuera de alcance por ahora
 

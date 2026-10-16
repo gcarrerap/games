@@ -82,11 +82,9 @@ test("engine/ y ai/ de cada juego no importan ui/ ni servicios", () => {
 });
 
 // Pureza: engine/, ai/ y los módulos sin interfaz no tocan el DOM ni el almacenamiento. El tiempo y el azar entran
-// como parámetro; `rnd = Math.random` (o `|| Math.random`) como valor por defecto se permite. Lo heredado de myDomino está en DEBT con su
+// como parámetro; `rnd = Math.random` (o `|| Math.random`) y `now = Date.now()` como valores por defecto se permiten. Lo heredado de myDomino está en DEBT con su
 // cuenta máxima: puede bajar, nunca subir (ver docs/ARCHITECTURE.md §8, pendientes).
 const DEBT = {
-  "games/domino/engine/moves.js": 5,
-  "games/domino/engine/table.js": 4,
   "games/domino/ai/speculate.js": 1,
   "games/domino/ai/search.js": 2,
   "games/domino/ai/tournament.js": 2,
@@ -100,7 +98,7 @@ test("la lógica es pura", () => {
     if (!logic) continue;
     const code = readFileSync(join(ROOT, file), "utf8").split("\n").filter((l) => !/^\s*(\/\/|\/?\*)/.test(l)).join("\n");
     if (/\b(document|window|localStorage|sessionStorage)\s*\./.test(code)) out.push(`${file}: usa DOM o almacenamiento`);
-    const impure = (code.replace(/(\w+\s*=|\|\|)\s*Math\.random\b(?!\s*\()/g, "").match(/Date\.now\s*\(|Math\.random\b/g) || []).length;
+    const impure = (code.replace(/(\w+\s*=|\|\|)\s*Math\.random\b(?!\s*\()/g, "").replace(/\bnow\s*=\s*Date\.now\(\)/g, "").match(/Date\.now\s*\(|Math\.random\b/g) || []).length;
     if (impure > (DEBT[file] || 0)) out.push(`${file}: ${impure} usos de Date.now/Math.random (máximo ${DEBT[file] || 0})`);
   }
   assert.deepEqual(out, []);

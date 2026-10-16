@@ -4,6 +4,8 @@ Sitio de juegos familiares: una plataforma compartida (`platform/`), módulos re
 
 - Si algo que escribes para un juego no sabe nada de ese juego, o un segundo juego lo necesita, va en `modules/` (criterio en ARCHITECTURE.md §3). Si solo *podría* servir, se queda en el juego y se anota en el inventario de §3.
 - Un módulo se usa solo por `index.js` / `ui.js`, y no hace entrada/salida: recibe el almacenamiento como parámetro.
+- Un módulo se prueba también con un juego que no es del que salió (`tests/modules/fixtures/nim.js`).
+- Acciones de un juego se aplican con `modules/recording` (`step`/`nextCtx`) para que toda partida se pueda repetir.
 - `tests/architecture.test.js` hace cumplir las dependencias; no lo relajes para que pase un cambio. La lista `DEBT` solo puede bajar.
 
 - Módulos ES nativos, sin bundler ni dependencias en tiempo de ejecución. No agregues un paso de compilación.
