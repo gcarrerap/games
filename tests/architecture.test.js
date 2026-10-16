@@ -83,7 +83,7 @@ test("engine/ y ai/ de cada juego no importan ui/ ni servicios", () => {
 
 // Pureza: engine/, ai/ y los módulos sin interfaz no tocan el DOM ni el almacenamiento. El tiempo y el azar entran
 // como parámetro; `rnd = Math.random` (o `|| Math.random`) como valor por defecto se permite. Lo heredado de myDomino está en DEBT con su
-// cuenta máxima: puede bajar, nunca subir (ver docs/ARCHITECTURE.md §7, pendientes).
+// cuenta máxima: puede bajar, nunca subir (ver docs/ARCHITECTURE.md §8, pendientes).
 const DEBT = {
   "games/domino/engine/moves.js": 5,
   "games/domino/engine/table.js": 4,
