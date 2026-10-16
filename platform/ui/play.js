@@ -2,7 +2,7 @@
 // ver y hacer. La interfaz del juego exporta { mount(el, ctx), update(ctx), unmount(), tick?(ctx, clock) }.
 //
 // ctx: game, table (asientos, nombres, estado de la mesa), seat (el tuyo), view (lo que tu asiento puede ver),
-//      practice, clock (lo que queda del turno, o null), act(action), again(), leave(), advice + askAdvice() + closeAdvice(), setSeatBot(seat, profile),
+//      practice, clock (lo que queda del turno, o null), act(action) → Promise<boolean> (true si se pudo), again(), leave(), advice + askAdvice() + closeAdvice(), setSeatBot(seat, profile),
 //      peek() (el estado completo; solo en práctica, para "ver manos"; en línea es null), prefs (las de este juego), err,
 //      modal (donde van las ventanas), refresh() (volver a dibujar), setDragging(on) (no redibujar mientras arrastras)
 import { gamePrefs } from "../services/index.js";

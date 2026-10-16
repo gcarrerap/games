@@ -68,6 +68,18 @@ test("la compu decide lo mismo con su vista que con el estado completo", () => {
   }
 });
 
+test("el consejo también sale solo de lo que puedes ver", () => {
+  let checked = 0;
+  play(pata.setup(mode("4p"), stepCtx("advice", -1, 0)), {
+    max: 80,
+    each: (st, seat) => {
+      assert.deepEqual(pata.advise(pata.view(st, seat), seat), pata.advise(st, seat), `turno ${st.hand.turns}`);
+      checked++;
+    },
+  });
+  assert.ok(checked > 40);
+});
+
 test("entre rondas nadie está obligado y cualquiera reparte la siguiente", () => {
   let st = pata.setup(mode("2"), ctx());
   st = play(st, { max: 5000, until: (s) => s.status !== "playing" });

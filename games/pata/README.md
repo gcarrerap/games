@@ -8,7 +8,8 @@ games/pata/
 ├── index.js      # La Pata conforme al contrato: setup, legalActions, apply, view, la compu, el reloj, equipos
 ├── engine/       # reglas (puro): cartas, patas, bajarse, jugadas, puntos, tiempo, registro por ronda
 ├── ai/           # la compu (3 niveles) y el consejo (puro)
-└── ui/           # la mesa (fase 6b; por ahora un aviso)
+├── ui/           # la mesa: patas por equipo, mazo y pozo, tu mano, tu bajada, ver el pozo, resultado, consejo y registro
+└── styles/       # paño y cartas (los colores compartidos están en platform/styles/)
 ```
 
 **Acciones:** las del motor (`draw`, `peek`, `pickup`, `meld`, `add`, `discard`; ver `engine/moves.js`), más `next` (repartir la siguiente ronda, cualquier asiento) y `timeout` (el reloj roba si hace falta y descarta).
@@ -17,4 +18,4 @@ games/pata/
 
 Usa los módulos `random` y `choice` (la votación del descarte; `tests/games/pata/vote.test.js` comprueba que escoge lo mismo que en myPata).
 
-**Estado:** fase 6a de docs/ARCHITECTURE.md §8. Reglas y compu listas y conformes al contrato; todavía no está en el portal (falta la mesa, fase 6b).
+**Estado:** se juega en práctica contra la compu y en mesas en línea, de 2 a 6 jugadores. Falta traer las llamadas de voz y video de myPata (fase 6c).

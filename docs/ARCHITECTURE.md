@@ -93,9 +93,9 @@ Qué hay hoy en myDomino y a dónde va.
 | Registro de quién puede tener qué | dominó `ai/deduce.js`; La Pata `ai/deduce.js` | se queda en cada juego | Revisado en la fase 6: no se parecen. El dominó deduce con probabilidades fichas que nunca se vieron; La Pata solo sigue cartas exactas que se vieron al levantar el pozo. Un módulo común sería una abstracción forzada. |
 | Leer los tiros ajenos y simular manos ocultas (Monte Carlo) | dominó `ai/speculate.js`, `ai/search.js` | se queda en el dominó | La Pata no simula manos ocultas. Se revisa si un tercer juego lo necesita. |
 | Perfiles de la compu: estilo, memoria, olvido | dominó `ai/profiles.js`, `ai/mind.js`; La Pata `ai/tune.js` + personalidad por partida | se quedan en cada juego | Revisado en la fase 6: el dominó tiene 20 perfiles (estilo × capacidad); La Pata, 3 niveles con variaciones por partida. Lo común ya está en `modules/choice`. |
-| Consejo: qué haría cada nivel y por qué (ventana) | `ui/components/advice.js` | `modules/advice` (`ui.js`); la lógica sigue en el juego | Con La Pata |
-| Notas "creo que sí / no la tiene" | `ui` de la mesa | `modules/notes` | Con La Pata |
-| Acomodar la mano: tocar, arrastrar, reordenar | `ui/screens/table.js` | `modules/hand` (`ui.js`) | Con La Pata |
+| Consejo: pedirlo, "pensando…", descartarlo si cambia el turno | dominó y La Pata `app/actions.js` | `platform/app/session.js` (`askAdvice`) | ✅ fase 4. Cómo se muestra (niveles, pasos, fichas o cartas) se queda en cada juego |
+| Notas "creo que sí / no la tiene" | dominó `ui` | se queda en el dominó | Revisado en la fase 6b: La Pata no tiene notas |
+| Acomodar la mano | dominó (arrastrar y girar fichas); La Pata (ordenar por número o palo, apartar la bajada) | se quedan en cada juego | Revisado en la fase 6b: no se parecen |
 | Sesión (Google o invitado), mesas en Firestore, grabaciones, preferencias, service worker y versión nueva | `services/`, `app/updates.js`, `sw.js` | `platform/services/`, `platform/app/updates.js` | ✅ fase 3 |
 | Mesa genérica: asientos, la compu, empezar, jugar (con grabación) | `app/actions.js` (la parte que no es del dominó) | `platform/app/table.js` | ✅ fase 3 |
 | Reloj de turno, limpieza de mesas, store | `app/clock.js`, `app/cleanup.js`, `app/store.js` | `platform/app/` | ✅ fase 3 |
@@ -243,7 +243,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 4 ✅ | Sesión de práctica (`platform/app/session.js`: la compu, el reloj, el consejo, revancha), portal, lobby genérico, ventanas, `index.html` y rutas. La mesa del dominó (`games/domino/ui/`). Dominó jugable en práctica. Prueba en navegador (`tests/browser/smoke.py`). |
 | 5 ✅ | Mesas en línea (`juegos-mesas`): crear, ver las abiertas, sentarse, la compu en asientos libres (la mueve el asiento más bajo; los demás son respaldo), reloj, mirar sin jugar, enlace para compartir, revancha, entrar con Google, y cada partida terminada se graba. Probado con varios "teléfonos" en Node y en el navegador con un Firebase de mentira. |
 | 6a ✅ | La Pata: reglas y compu de myPata conformes al contrato (vista privada, reloj, pausa entre rondas), probadas igual que el dominó. Usa `modules/random` y `modules/choice`. Equipos por asiento en el contrato (`teamOf`). |
-| 6b | La mesa de La Pata (`games/pata/ui/`) y registrarla. Al hacerlo, revisar con las dos mesas a la vista: acomodar la mano, notas, consejo. |
+| 6b ✅ | La mesa de La Pata (`games/pata/ui/`), registrada en el portal. Cada juego carga sus estilos al montar su mesa y los quita al desmontarla (`platform/ui/styles.js`). `ctx.act` dice si la jugada se pudo. Revisado con las dos mesas a la vista: acomodar la mano (el dominó arrastra fichas; La Pata ordena por número o palo y aparta bajadas), notas (solo el dominó) y el consejo (cada juego explica a su manera; lo común, pedirlo con la vista del asiento, ya lo pone la plataforma) se quedan en cada juego. |
 | 6c | Llamadas de voz y video de La Pata como módulo, para cualquier mesa en línea. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
