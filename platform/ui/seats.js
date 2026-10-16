@@ -3,7 +3,18 @@
 // los perfiles de la compu salen del juego.
 import { $, esc } from "./dom.js";
 
-const teamDot = (t, i) => (t.config.teams ? `<span class="teamdot" style="background:${i % 2 ? "var(--tb)" : "var(--ta)"}"></span>` : "");
+// Equipos: los dice el juego (game.teamOf); si no, no hay equipos
+const TEAM_COLORS = ["var(--ta)", "var(--tb)", "var(--tc)"];
+const teamOf = (game, t, i) => (game.teamOf ? game.teamOf(t.config, i) : null);
+const teamDot = (game, t, i) => { const k = teamOf(game, t, i); return k === null || k === undefined ? "" : `<span class="teamdot" style="background:${TEAM_COLORS[k % TEAM_COLORS.length]}"></span>`; };
+// "Los asientos 1 y 3 contra 2 y 4" / "1 y 4, 2 y 5, 3 y 6"
+function teamsHint(game, t) {
+  const groups = new Map();
+  t.seats.forEach((_, i) => { const k = teamOf(game, t, i); if (k !== null && k !== undefined) { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i + 1); } });
+  if (!groups.size) return "";
+  const names = [...groups.values()].map((g) => g.length > 1 ? g.slice(0, -1).join(", ") + " y " + g[g.length - 1] : String(g[0]));
+  return `Equipos: asientos ${names.join(" contra ")}.`;
+}
 
 export function renderSeats(app, { state, actions }) {
   const t = state.table, game = state.game, me = actions.mySeat();
@@ -26,7 +37,7 @@ export function renderSeats(app, { state, actions }) {
       body = `<strong>${esc(x.name)}${x.id === state.me.id ? " (tú)" : ""}</strong>`;
       actionsHtml = x.id === state.me.id ? `<button class="ghost" data-stand="1">Levantarme</button>` : "";
     }
-    return `<li class="seatrow ${x && x.id === state.me.id ? "mine" : ""}"><div class="seatinfo"><span class="lbl">${teamDot(t, i)}Asiento ${i + 1}</span>${body}</div>${actionsHtml}</li>`;
+    return `<li class="seatrow ${x && x.id === state.me.id ? "mine" : ""}"><div class="seatinfo"><span class="lbl">${teamDot(game, t, i)}Asiento ${i + 1}</span>${body}</div>${actionsHtml}</li>`;
   };
 
   const link = `${location.origin}${location.pathname}#/${game.id}/${t.code}`;
@@ -36,7 +47,7 @@ export function renderSeats(app, { state, actions }) {
       <div><h1>Mesa ${esc(t.code)}</h1><small>${esc(game.name)} · ${esc((mode && (mode.label || mode.id)) || "")}${t.config.timer === false ? " · sin límite de tiempo" : ""}</small></div></header>
     ${state.me.name ? "" : `<section class="panel"><label class="field-label" for="nm">Tu nombre en la mesa</label><input type="text" id="nm" maxlength="16" placeholder="Ej. Barbara" autocomplete="nickname"></section>`}
     <ul class="seatlist">${t.seats.map(row).join("")}</ul>
-    ${t.config.teams ? `<p class="hint center">Los asientos 1 y 3 juegan contra 2 y 4.</p>` : ""}
+    ${teamsHint(game, t) ? `<p class="hint center">${esc(teamsHint(game, t))}</p>` : ""}
     <section class="panel">
       <p class="hint">${full ? "Todos sentados. Cualquiera que esté sentado puede empezar." : `Falta${missing === 1 ? "" : "n"} ${missing}.`}${t.seats.some((x) => x && x.bot) ? " A la compu la mueve el teléfono de quien está en el asiento más bajo." : ""}</p>
       <div class="row"><button id="share" class="ghost">Compartir enlace</button><span class="hint" id="shared"></span></div>

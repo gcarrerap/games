@@ -120,5 +120,6 @@ export default {
   timing,
   bots,
   advise: (v, seat) => advise(v, seat),
+  teamOf: (config, seat) => (config.teams ? seat % 2 : null),
   ui: () => import("./ui/index.js"),
 };

@@ -1,0 +1,265 @@
+// La compu: decide la siguiente acción de su turno (una a la vez, igual que una persona). Cada acción trae `why`,
+// el motivo en palabras, que también usa el consejo. Solo usa la vista pública (view.js): su mano, la mesa, el pozo
+// y lo que los demás levantaron. Antes de proponer una acción la revisa con las reglas del motor.
+import { RULES, check, pickupPairs, discardOptions, removeCards, rankOf, rankName, isNatural, isWild, isJoker, isTwo, isRed3,
+  cardName, isClosed, meldClass, meetsGoOut, apply } from "../engine/index.js";
+import { publicView } from "./view.js";
+import { roundLate, startable, holdForSpecial } from "./specials.js";
+import { tuneFor } from "./tune.js";
+import { personalize, decisionRandom } from "./random.js";
+import { byRank, wildsOf, needs, findOpening, chooseDiscard, visibleCount } from "./heuristics.js";
+
+const names = (cards) => cards.map(cardName).join(" ");
+const ok = (st, seat, a) => !check(st, seat, a);
+
+// ---------- Robar ----------
+function drawDecision(st, seat, v, t, level) {
+  const pairs = pickupPairs(st, seat);
+  const ranked = pairs.slice().sort((a, b) => kindRank(a) - kindRank(b));
+  // Si el equipo ya puede irse, el avanzado no levanta un pozo con 3 (los negros no se pueden bajar y los rojos restan)
+  const ready = meetsGoOut(v.melds), hasRed3Meld = v.melds.some((m) => m.kind === "red3");
+  const dead = t.rush && ready && v.discard.slice(-RULES.pickupN, -1).some((c) => c[0] === "3" && !(isRed3(c) && hasRed3Meld));
+  for (const pair of dead ? [] : ranked) {
+    if (isRed3(pair[0]) && !wantRed3Meld(v, t, 1)) continue;
+    if (isWild(pair[0]) && !(t.specials && v.hand.filter(isWild).length >= 5 && needs(v.melds).dirty === 0)) continue;
+    const a = { type: "pickup", pair };
+    let why = `Con tu par de ${pairLabel(pair)} te llevas ${Math.min(RULES.pickupN, v.discard.length)} cartas en lugar de 2.`;
+    if (v.needsMin) {
+      const open = findOpening(removeCards(v.hand, pair), v.minimum, t);
+      if (!open) continue;
+      a.open = open;
+      why += ` Para levantar te bajas antes con ${open.map((g) => names(g)).join(", ")} (sin contar el par ni el pozo).`;
+    }
+    if (ok(st, seat, a)) return { ...a, why };
+  }
+  const why = dead && pairs.length ? "Tu equipo ya puede irse y el pozo trae 3 que no podrías bajar: mejor robar." : !v.top ? "El pozo está vacío." : v.top[0] === "3" && !isRed3(v.top) ? "Hay un 3 negro en el pozo: no se puede levantar."
+    : pairs.length ? (v.needsMin ? `Tienes el par, pero sin él no llegas a los ${v.minimum} puntos para bajarte.` : "No te conviene levantar con ese par.")
+    : "No tienes un par para el tope del pozo.";
+  return { type: "draw", why };
+}
+const kindRank = (p) => (isNatural(p[0]) ? 0 : isWild(p[0]) ? 2 : 1);
+const pairLabel = (p) => (isRed3(p[0]) ? "3 rojos" : isWild(p[0]) ? "comodines" : rankName(rankOf(p[0])));
+
+// ¿Vale la pena empezar (o levantar para) la pata de 3 rojos? Solo si todavía hay tiempo en la ronda y quedan
+// suficientes 3 rojos sin salir para completarla (incompleta resta 5000).
+// extra: 3 rojos que se suman sin estar en la mano (el tope del pozo al levantar con un par de 3 rojos)
+export function wantRed3Meld(v, t, extra = 0, from = t.red3From) {
+  if (!t.specials || roundLate(v, t)) return false;
+  if (v.melds.some((m) => m.kind === "red3")) return false;
+  const mine = v.hand.filter(isRed3).length + extra;
+  return mine >= from && startable(v, "red3", mine, t.specialMargin, t.red3Share / v.nTeams);
+}
+
+// ---------- Bajar y agregar ----------
+function* layCandidates(st, seat, v, t) {
+  const melds = v.melds, hand = v.hand, nd = needs(melds);
+  if (!v.down[v.team]) {
+    const open = findOpening(hand, v.minimum, t);
+    if (open) yield { type: "meld", groups: open, why: `Te bajas con ${open.reduce((s, g) => s + g.length, 0)} cartas y llegas a los ${v.minimum} puntos de la ronda ${v.round}.` };
+    return;
+  }
+  // 3 rojos a su pata especial (si quedara incompleta resta 5000)
+  const red3s = hand.filter(isRed3), r3 = melds.find((m) => m.kind === "red3");
+  if (red3s.length && r3) yield { type: "add", meld: r3.id, cards: red3s, why: "Completa la pata de 3 rojos: incompleta resta 5000." };
+  // Comodines a la pata especial de comodines que esté abierta
+  for (const m of melds.filter((x) => x.kind === "wild" && !isClosed(x))) {
+    const cls = meldClass(m), fit = hand.filter((c) => (cls === "twos" ? isTwo(c) : cls === "jokers" ? isJoker(c) : isWild(c)));
+    if (fit.length) yield { type: "add", meld: m.id, cards: fit, why: "Avanza la pata especial de comodines: incompleta resta su valor." };
+  }
+  // Naturales a la pata abierta de su número
+  const nat = byRank(hand);
+  for (const [r, cs] of nat) {
+    const opens = melds.filter((m) => m.kind === "natural" && m.rank === r && !isClosed(m));
+    if (!opens.length) continue;
+    // Si hay limpia y sucia abiertas del mismo número, la natural va primero a la limpia mientras falten limpias
+    const target = (nd.clean > 0 && opens.find((m) => meldClass(m) === "clean")) || opens[0];
+    const why = target.cards.length + cs.length >= RULES.closeAt ? `Cierras la pata de ${rankName(r)}.` : `Avanza la pata de ${rankName(r)} (${target.cards.length + cs.length} de 7).`;
+    yield { type: "add", meld: target.id, cards: cs, why };
+    if (cs.length > 1) yield { type: "add", meld: target.id, cards: cs.slice(0, -1), why };
+  }
+  // Patas nuevas con tres o más naturales
+  for (const [r, cs] of nat) {
+    if (cs.length < 3 || melds.some((m) => m.kind === "natural" && m.rank === r && !isClosed(m))) continue;
+    yield { type: "meld", groups: [cs], why: `Tienes ${cs.length} de ${rankName(r)}: empieza otra pata.` };
+    if (cs.length > 3) yield { type: "meld", groups: [cs.slice(0, -1)], why: `Tienes ${cs.length} de ${rankName(r)}: empieza otra pata.` };
+  }
+  // Naturales sueltas a una pata cerrada de su número: solo para llegar al siguiente montón o para irse
+  // (sin montones y sin poder irse, conviene juntarlas para armar patas nuevas)
+  if (v.myPilesLeft > 0 || meetsGoOut(melds)) {
+    for (const [r, cs] of nat) {
+      if (melds.some((m) => m.kind === "natural" && m.rank === r && !isClosed(m))) continue;
+      const target = melds.find((m) => m.kind === "natural" && m.rank === r);
+      if (!target) continue;
+      const why = v.myPilesLeft > 0 ? `Tu equipo ya cerró la pata de ${rankName(r)}: te deshaces de cartas para llegar a tu siguiente montón.` : `Tu equipo ya puede irse: te deshaces de cartas en la pata de ${rankName(r)}.`;
+      yield { type: "add", meld: target.id, cards: cs, why };
+      if (cs.length > 1) yield { type: "add", meld: target.id, cards: cs.slice(0, -1), why };
+    }
+  }
+  // Comodines para cerrar patas que ya están cerca. Los que saben lo que le falta al equipo no gastan comodines en
+  // sucias que ya no hacen falta (se guardan para las especiales o para irse) y nunca ensucian una limpia que el
+  // equipo necesita: se reservan las limpias abiertas más avanzadas (las que todavía se pueden completar).
+  const wilds = wildsOf(hand), ready = meetsGoOut(melds);
+  const reserved = t.needAware ? reservedCleans(v, t, nd) : new Set();
+  for (const m of melds.filter((x) => x.kind === "natural" && !isClosed(x) && x.cards.length >= t.closeAt)) {
+    const need = RULES.closeAt - m.cards.length, natN = m.cards.filter(isNatural).length, wN = m.cards.length - natN;
+    if (need > wilds.length || wN + need > natN) continue;
+    const dirtyNow = wN > 0;
+    if (t.needAware && !ready && nd.dirty === 0) continue;
+    if (t.needAware && !dirtyNow && (reserved.has(m.id) || (nd.dirty === 0 && !ready))) continue;
+    yield { type: "add", meld: m.id, cards: wilds.slice(0, need), why: ready ? `Cierras la pata de ${rankName(m.rank)} con comodín: tu equipo ya puede irse y así te deshaces de cartas.` : `Cierras la pata de ${rankName(m.rank)} con comodín: ${dirtyNow ? `a tu equipo le faltan ${nd.dirty} sucias` : `a tu equipo le faltan ${nd.dirty} sucias y esta limpia no es de las que necesita`}.` };
+  }
+  // Par + comodín para empezar una sucia cuando hacen falta (el avanzado, una de más por si acaso, pero solo mientras
+  // falten sucias). Si el equipo ya puede irse, también sirve para deshacerse de tres cartas de una vez.
+  if (t.pairWild && wilds.length && (nd.dirty > 0 || (ready && (!v.myPilesLeft || t.rush)))) {
+    const openDirty = melds.filter((m) => m.kind === "natural" && !isClosed(m) && meldClass(m) === "dirty").length;
+    if (ready || openDirty < nd.dirty + (t.extraDirty || 0)) {
+      for (const [r, cs] of nat) {
+        if (cs.length !== 2 || melds.some((m) => m.kind === "natural" && m.rank === r && !isClosed(m))) continue;
+        yield { type: "meld", groups: [[...cs, wilds[0]]], why: ready ? `Tu equipo ya puede irse: con tu par de ${rankName(r)} y un comodín te deshaces de tres cartas.` : `A tu equipo le faltan ${nd.dirty} sucias: empiezas una de ${rankName(r)} con un par y un comodín.` };
+        break;
+      }
+    }
+  }
+  // Para irse: comodines a las patas sucias (sin pasar de un comodín por natural)
+  if (ready && (!v.myPilesLeft || t.rush)) {
+    for (const w of wilds) for (const m of melds.filter((x) => x.kind === "natural" && meldClass(x) === "dirty")) {
+      const natN = m.cards.filter(isNatural).length;
+      if (m.cards.length - natN + 1 <= natN) { yield { type: "add", meld: m.id, cards: [w], why: v.myPilesLeft ? "Tu equipo ya puede irse: te deshaces de comodines para llegar antes a tu último montón." : "Tu equipo ya puede irse: te deshaces de los comodines para quedarte sin cartas." }; break; }
+    }
+  }
+  // Patas especiales de comodines: solo si todavía hay tiempo, quedan suficientes para completarla y no le quitan a
+  // las sucias los comodines que les hacen falta. Los jokers (+3000) antes que los 2 (+2000).
+  if (t.specials && !roundLate(v, t) && !melds.some((m) => m.kind === "wild" && !isClosed(m))) {
+    const twos = hand.filter(isTwo), jokers = hand.filter(isJoker);
+    const spare = (used) => wilds.length - used >= Math.min(nd.dirty, t.dirtyWildsKept);
+    if (jokers.length >= t.wildFrom && spare(jokers.length) && startable(v, "jokers", jokers.length, t.specialMargin, t.wildShare / v.nTeams))
+      yield { type: "meld", groups: [jokers], why: `Empiezas la pata de jokers: quedan suficientes sin salir para completarla (+${RULES.specials.jokers}).` };
+    else if (twos.length >= t.wildFrom && spare(twos.length) && startable(v, "twos", twos.length, t.specialMargin, t.wildShare / v.nTeams))
+      yield { type: "meld", groups: [twos], why: `Empiezas la pata de 2: quedan suficientes sin salir para completarla (+${RULES.specials.twos}).` };
+  }
+  if (t.specials && RULES.red3FromHand && red3s.length >= 3 && !r3 && wantRed3Meld(v, t)) {
+    yield { type: "meld", groups: [red3s], why: `Empiezas la pata de 3 rojos: hay suficientes sin salir para completarla (+${RULES.specials.red3}).` };
+  }
+}
+
+// Limpias abiertas que el equipo necesita para irse: las nd.clean más avanzadas. El avanzado cuenta las cartas que ya
+// salieron y no reserva una limpia que ya no se puede completar sin comodines.
+function reservedCleans(v, t, nd) {
+  if (!nd.clean) return new Set();
+  const open = v.melds.filter((m) => m.kind === "natural" && !isClosed(m) && meldClass(m) === "clean");
+  const left = (m) => RULES.closeAt - m.cards.length;
+  const feasible = (m) => !t.danger || 4 * v.decks - visibleCount(v, m.rank) >= left(m);
+  open.sort((a, b) => feasible(b) - feasible(a) || b.cards.length - a.cards.length);
+  return new Set(open.slice(0, nd.clean).map((m) => m.id));
+}
+
+function onlyWildsLeft(st, seat, a) {
+  const s = apply(st, seat, a, { now: 0, rnd: () => 0 }), h = s.hand.hands[seat];
+  return s.hand.pileNo[seat] === st.hand.pileNo[seat] && h.length >= 2 && h.every(isWild);
+}
+function planWhy(st, seat, a) {
+  const cards = a.type === "add" ? a.cards : a.groups.flat();
+  return cards.some(isWild)
+    ? "Para llegar a tu siguiente montón sin tirar un comodín al pozo, lo pones en una pata."
+    : "Te deshaces de cartas para llegar a tu siguiente montón.";
+}
+
+// Mientras se espera a completar una especial: la jugada debe dejar al menos 2 cartas, o completar la especial
+function keepsGoing(st, seat, a) {
+  const s = apply(st, seat, a, { now: 0, rnd: () => 0 }), v = publicView(s, seat);
+  return v.hand.length >= 2 || !holdForSpecial(v);
+}
+
+// ---------- Terminar el montón ----------
+// Con montones por abrir, quedarse sin cartas abre el siguiente. Si la mano ya es chica, se busca la secuencia de
+// jugadas que la vacíe (o que deje una sola carta normal para descartar) sin tirar comodines al pozo: un comodín en el
+// pozo deja que el siguiente lo levante con cualquier par. Busca entre agregar cada carta a una pata del equipo y
+// bajar patas nuevas; cada paso se revisa con las reglas del motor.
+const PLAN_HAND = 6; // solo con manos de hasta tantas cartas (la búsqueda crece rápido)
+
+function planSteps(st, seat, v, t) {
+  const nd = needs(v.melds), reserved = t.needAware ? reservedCleans(v, t, nd) : new Set(), out = [];
+  const hand = v.hand, wilds = hand.filter(isWild), nat = byRank(hand);
+  // Naturales: todas las de un número juntas a una pata de ese número (la abierta si hay), o patas nuevas
+  for (const [r, cs] of nat) {
+    const ms = v.melds.filter((m) => m.kind === "natural" && m.rank === r);
+    const target = ms.find((m) => !isClosed(m)) || ms[0];
+    if (target) out.push({ a: { type: "add", meld: target.id, cards: cs }, cost: 0 });
+    else if (cs.length >= 3) out.push({ a: { type: "meld", groups: [cs] }, cost: 0 });
+    else if (cs.length === 2 && wilds.length) out.push({ a: { type: "meld", groups: [[...cs, wilds[0]]] }, cost: nd.dirty > 0 ? 0 : 1 });
+  }
+  const red3s = hand.filter(isRed3), r3 = v.melds.find((m) => m.kind === "red3");
+  if (red3s.length && r3) out.push({ a: { type: "add", meld: r3.id, cards: red3s }, cost: 0 });
+  // Un comodín (el primero; da igual cuál) a la pata donde menos cuesta: en una sucia que todavía hace falta, nada;
+  // en una sucia de más, poco; ensuciar una limpia que no es de las que necesita el equipo, más. Nunca a una
+  // limpia reservada. Se prueban hasta 2 destinos de cada costo (por si una ya no acepta más comodines).
+  if (wilds.length) {
+    const opts = [];
+    for (const m of v.melds) {
+      if (m.kind !== "natural" || reserved.has(m.id)) continue;
+      const cls = meldClass(m), closed = isClosed(m);
+      if (cls === "clean" && closed) continue;
+      const natN = m.cards.filter(isNatural).length;
+      if (m.cards.length - natN + 1 > natN) continue; // no más comodines que naturales
+      opts.push({ a: { type: "add", meld: m.id, cards: [wilds[0]] }, cost: cls === "clean" ? 3 : !closed && nd.dirty > 0 ? 0 : 1 });
+    }
+    opts.sort((a, b) => a.cost - b.cost);
+    const per = {};
+    for (const o of opts) if ((per[o.cost] = (per[o.cost] || 0) + 1) <= 2) out.push(o);
+  }
+  return out.sort((a, b) => a.cost - b.cost);
+}
+
+// Mejor plan para terminar el montón: { cost, first } o null. Costo del descarte final: un comodín vale 10.
+const PLAN_BUDGET = 300; // jugadas que se prueban como máximo por decisión
+function planEmpty(st, seat, t, depth = 0, memo = new Map(), budget = { n: PLAN_BUDGET }) {
+  const v = publicView(st, seat), pile = st.hand.pileNo[seat];
+  const key = v.hand.slice().sort().join() + "|" + v.melds.map((m) => m.cards.length).join();
+  if (memo.has(key)) return memo.get(key);
+  let best = null;
+  if (v.hand.length === 1) best = { cost: isWild(v.hand[0]) ? 10 : 0, first: null };
+  if (depth < PLAN_HAND) {
+    for (const { a, cost } of planSteps(st, seat, v, t)) {
+      if ((best && cost >= best.cost) || budget.n-- <= 0) continue;
+      let s; try { s = apply(st, seat, a, { now: 0, rnd: () => 0 }); } catch { continue; }
+      // Se quedó sin cartas y abrió su siguiente montón: listo (y sigue su turno)
+      const sub = s.hand.pileNo[seat] !== pile ? { cost: -1 } : planEmpty(s, seat, t, depth + 1, memo, budget);
+      if (sub && (!best || cost + sub.cost < best.cost)) best = { cost: cost + sub.cost, first: a };
+    }
+  }
+  memo.set(key, best);
+  return best;
+}
+
+// Siguiente acción de la compu en su turno: { type, …, why }.
+// opts.random (por omisión true): la compu jugando tiene personalidad y vota los descartes parejos (random.js). El
+// consejo pasa random: false para mostrar siempre la mejor jugada de cada nivel.
+export function botMove(st, seat, level = 2, opts = {}) {
+  if (!st || st.status !== "playing" || st.hand.turn !== seat) return null;
+  const random = opts.random !== false;
+  const t = random ? personalize(tuneFor(level), st, seat) : tuneFor(level), v = publicView(st, seat);
+  if (v.phase === "draw") return drawDecision(st, seat, v, t, level);
+  // Si irse ahora deja una pata especial incompleta que todavía se puede completar, no se va: se queda con al menos
+  // 2 cartas para descartar una y seguir (salvo que esa jugada complete la especial)
+  const hold = t.needAware && !v.myPilesLeft ? holdForSpecial(v) : null;
+  // Con montones por abrir y la mano ya chica: el plan para quedarse sin cartas sin pagar comodines al pozo
+  if (v.myPilesLeft && v.hand.length <= PLAN_HAND) {
+    const plan = planEmpty(st, seat, t);
+    if (plan && plan.first && plan.cost < 10) return { ...plan.first, why: planWhy(st, seat, plan.first) };
+  }
+  for (const a of layCandidates(st, seat, v, t)) {
+    if (!ok(st, seat, a) || (hold && !keepsGoing(st, seat, a))) continue;
+    // No se queda solo con comodines: tendría que tirar uno al pozo y además no llegaría a su siguiente montón
+    if (v.myPilesLeft && onlyWildsLeft(st, seat, a)) continue;
+    return a;
+  }
+  // Guarda los 3 rojos en la mano mientras pueda juntar los 3 para empezar su pata y haya tiempo de completarla
+  v.red3Plan = wantRed3Meld(v, t, 0, t.red3Keep);
+  const d = chooseDiscard(v, discardOptions(st, seat), t, random ? decisionRandom(st, seat) : null);
+  if (!d) return null;
+  const goesOut = v.hand.length === 1 && !v.myPilesLeft;
+  const why = goesOut ? "Con este descarte te vas."
+    : hold ? `No te vas todavía: a tu equipo le falta completar la pata ${hold.cls === "red3" ? "de 3 rojos" : "de comodines"} (incompleta resta ${hold.value}). ${d.why}`
+    : d.why;
+  return { type: "discard", card: d.card, why };
+}
