@@ -82,6 +82,12 @@ npm test
 
 La guía completa está en [docs/ADDING-A-GAME.md](docs/ADDING-A-GAME.md).
 
+## Firebase
+
+Las mesas en línea y las cuentas usan el mismo proyecto de Firebase que myDomino (`dominomx`, configuración en `platform/config.js`), con colecciones propias (`juegos-mesas`, `juegos-grabaciones`) para que los dos sitios no se pisen. Detalle en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5.
+
+Las reglas están en `firestore.rules` y **incluyen las de myDomino**: publicar reglas reemplaza todas las del proyecto. Se publican desde la consola de Firebase (Firestore → Reglas) o con `firebase deploy --only firestore:rules`.
+
 ## Publicar
 
 Se publica con GitHub Pages desde `main`. En cada publicación cambia `platform/version.js` para que los teléfonos abiertos vean "Hay una versión nueva · Actualizar".

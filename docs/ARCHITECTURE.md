@@ -87,7 +87,7 @@ Qué hay hoy en myDomino y a dónde va.
 | Escoger entre opciones con puntaje, con dudas | `ai/decide.js` | `modules/choice` | ✅ hecho |
 | Grabar y repetir partidas de cualquier juego (acciones + semilla) | (nuevo; myDomino graba por mano en `engine/record.js`) | `modules/recording` | ✅ hecho. El adaptador de Firestore va en `platform/services` (fase 3) |
 | Partidas entre bots, enfrentamientos, intervalo de confianza | `ai/tournament.js` | `modules/tournament` | ✅ hecho. La huella de estilo y la escala de puntajes siguen en `games/domino/ai/tournament.js` |
-| Correr cálculos pesados en un hilo aparte | `ai/worker.js`, `app/ai-client.js` | `modules/worker` | Fase 3, junto con `ai-client` |
+| Correr cálculos pesados en un hilo aparte, con plan B | `ai/worker.js`, `app/ai-client.js` | `modules/worker` + un solo worker para la compu de todos los juegos (`platform/app/ai-worker.js`) | ✅ hecho |
 | Registro por mano para análisis (JSONL) | `engine/record.js`, `scripts/export-partidas.mjs` | se queda en el dominó | Se podrá derivar de `modules/recording` cuando la plataforma grabe con él |
 | Registro de quién puede tener qué (deducción) | `ai/deduce.js` | `modules/tracker` | Con La Pata |
 | Leer los tiros ajenos y simular manos ocultas (Monte Carlo) | `ai/speculate.js`, `ai/search.js` | `modules/hidden-info` | Con La Pata |
@@ -95,7 +95,11 @@ Qué hay hoy en myDomino y a dónde va.
 | Consejo: qué haría cada nivel y por qué (ventana) | `ui/components/advice.js` | `modules/advice` (`ui.js`); la lógica sigue en el juego | Con La Pata |
 | Notas "creo que sí / no la tiene" | `ui` de la mesa | `modules/notes` | Con La Pata |
 | Acomodar la mano: tocar, arrastrar, reordenar | `ui/screens/table.js` | `modules/hand` (`ui.js`) | Con La Pata |
-| Entrar, mesas en línea, asientos, la compu en mesas, reloj, limpieza, actualizaciones, preferencias, ventanas, resultado, estilos base | `services/`, `app/`, `ui/components/`, `styles/` | `platform/` | Fases 3 a 5 |
+| Sesión (Google o invitado), mesas en Firestore, grabaciones, preferencias, service worker y versión nueva | `services/`, `app/updates.js`, `sw.js` | `platform/services/`, `platform/app/updates.js` | ✅ fase 3 |
+| Mesa genérica: asientos, la compu, empezar, jugar (con grabación) | `app/actions.js` (la parte que no es del dominó) | `platform/app/table.js` | ✅ fase 3 |
+| Reloj de turno, limpieza de mesas, store | `app/clock.js`, `app/cleanup.js`, `app/store.js` | `platform/app/` | ✅ fase 3 |
+| Colores, tipografía, reset, botones, ventanas | `styles/` | `platform/styles/` (lo del paño y las fichas, a `games/domino/styles/`) | ✅ fase 3 |
+| Acciones de la app, la compu en mesas en línea, portal, lobby, asientos, ventanas, resultado | `app/actions.js`, `app/bots.js`, `ui/` | `platform/app/`, `platform/ui/` | Fases 4 y 5 |
 | Fichas, jugadas, puntos, modos, cadena, heurísticas, salida, criterios | `engine/`, `ai/`, `ui/svg/` | `games/domino/` | Se quedan |
 
 ## 4. El contrato de juego
@@ -145,21 +149,41 @@ export default {
 
 Se conserva el modelo de myDomino: **sin servidor de juego**. Firestore guarda y sincroniza; cada teléfono aplica las reglas del módulo.
 
+La mesa es la misma en práctica (en memoria) y en línea (Firestore la guarda tal cual, como JSON). Su forma y todo lo que se le hace (sentarse, la compu, empezar, jugar) está en `platform/app/table.js`, puro y sin saber de ningún juego:
+
 ```
-mesas/{code}
-  game:      "domino"          // qué juego la interpreta
-  mode:      { ... }           // una de las configuraciones de modes
-  seats:     [{ uid, name } | { bot: "b02" } | null, ...]
-  state:     { ... }           // estado del juego (JSON)
-  turn:      17                // contador de jugadas: la transacción solo aplica si no cambió
-  updatedAt: <timestamp>
-  version:   "2026.10.15"      // versión del sitio que creó la mesa
+juegos-mesas/{code}
+  json:     { v, code, game, mode, config, seats, host, seed, round, status, state, rec, turn, created, version }
+  code, game, created, updated          // fuera del JSON, para ordenar, filtrar y limpiar
+
+  game:     "domino"                    // qué juego la interpreta
+  config:   { n, per, teams, timer }    // el modo escogido + opciones
+  seats:    [null | { id, name } | { bot: true, profile, name }]
+  status:   "lobby" | "playing" | "over"
+  round:    2                           // partida número 2 en esta mesa; su semilla es "<seed>:2"
+  state:    { … }                       // estado del juego
+  rec:      { … }                       // grabación de la partida en curso (modules/recording)
+  turn:     17                          // acciones en esta partida
 ```
 
 - **Una jugada** es una transacción que lee la mesa, revisa `turn`, aplica la acción con `modules/recording` (`step`, que le da a cada acción su azar y su hora a partir de la semilla de la mesa) y escribe el estado nuevo con `turn + 1`. Si otro teléfono ya jugó ese turno, se descarta. Como todas las acciones se aplican así, cualquier partida en línea se puede repetir desde su grabación.
 - **La compu de una mesa en línea** la mueve el teléfono de la persona sentada en el asiento más bajo; los demás esperan unos segundos de respaldo.
+- **`turnKey` = `"<round>:<turn>"`.** Una acción calculada para un turnKey solo se guarda si la mesa sigue en ese turnKey (la compu, el reloj y otro teléfono pueden competir por el mismo turno).
 - **Rutas:** `#/` portal · `#/<juego>` lobby · `#/<juego>/<code>` mesa, para compartir el enlace de una mesa.
 - **Limitaciones conocidas:** el estado completo (manos de todos) vive en Firestore, así que alguien con herramientas podría verlo; y si nadie de la mesa tiene el juego abierto, la compu no mueve. Un servidor propio (Cloud Functions, o FastAPI con WebSockets) resolvería las dos cosas. Como las reglas son puras y el contrato es el mismo, ese cambio quedaría contenido en `platform/services/` y `platform/app/`. Queda como decisión aparte.
+
+### Convivir con myDomino
+
+myDomino sigue en línea y vive en el mismo dominio (`gcarrerap.github.io`) y en el mismo proyecto de Firebase (`dominomx`). Para que ninguno pise al otro:
+
+| Recurso | myDomino | Este sitio |
+|---|---|---|
+| Colección de mesas | `mesas` | `juegos-mesas` |
+| Colección de grabaciones | `manos` | `juegos-grabaciones` |
+| Claves de `localStorage` (compartido por dominio) | `dom.*` | `juegos.*` y `juegos.<juego>.*` |
+| Caché del service worker | `mydomino-v1` | `juegos-v1` |
+
+**Reglas de Firestore:** publicar reglas reemplaza *todas* las del proyecto, así que `firestore.rules` de este repositorio lleva también las de myDomino. Si cambian las de myDomino, hay que copiarlas aquí antes de publicar.
 
 ## 6. Cómo se cuidan las reglas
 
@@ -193,8 +217,8 @@ Cada fase es un PR que deja las pruebas en verde.
 | 0 ✅ | README, este documento, contrato y prueba del contrato. |
 | 1 ✅ | Copiar `engine/` y `ai/` de myDomino a `games/domino/` con sus pruebas. Extraer `modules/random` y `modules/choice`. Prueba de arquitectura. |
 | 2 ✅ | `games/domino/index.js` conforme al contrato. `now` inyectado en el motor. `modules/recording` y `modules/tournament`, probados también con un juego de juguete. |
-| 3 | Subir a `platform/` lo genérico de myDomino (services, store, reloj, limpieza, estilos base, ventanas). Extraer `modules/worker`. |
-| 4 | `platform/app/session.js` y la compu genéricos; portal y lobby. Dominó jugable en práctica. |
+| 3 ✅ | `platform/services/` (sesión, mesas, grabaciones, preferencias, versión nueva), mesa genérica (`platform/app/table.js`), reloj, limpieza, store, estilos base. `modules/worker` y un solo worker para la compu de todos los juegos. Colecciones y prefijos propios para convivir con myDomino. |
+| 4 | Acciones de la app (práctica), la compu en la mesa, portal, lobby, ventanas, resultado, `index.html`. La mesa del dominó (`games/domino/ui/`). Dominó jugable en práctica. |
 | 5 | Mesas en línea con `mesas` y el campo `game`. Dominó con las mismas funciones que myDomino. |
 | 6 | La Pata. Al construir su compu, extraer `tracker`, `hidden-info`, `bot-profiles`, `notes`, `hand` y `advice` con los dos juegos a la vista. |
 
