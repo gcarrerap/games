@@ -8,7 +8,23 @@ import { renderCall } from "../../modules/call/ui.js";
 import { syncOverlayHistory } from "./sheet.js";
 import { $, esc } from "./dom.js";
 
-export function render(app$) {
+// Si estás escribiendo en un campo y la pantalla se redibuja (llegó una mesa nueva a la lista, alguien se sentó…),
+// el campo nuevo recupera el foco y el cursor. Si no, el teclado del teléfono se cerraría a media palabra.
+function keepTyping(draw) {
+  const el = document.activeElement;
+  const typing = el && el.id && (el.tagName === "INPUT" || el.tagName === "TEXTAREA") && el.closest("#app, #modal");
+  const at = typing ? { id: el.id, start: el.selectionStart, end: el.selectionEnd } : null;
+  draw();
+  if (!at) return;
+  const again = document.getElementById(at.id);
+  if (!again || again === document.activeElement) return;
+  again.focus({ preventScroll: true });
+  try { again.setSelectionRange(at.start, at.end); } catch {}
+}
+
+export function render(app$) { keepTyping(() => draw(app$)); }
+
+function draw(app$) {
   const app = $("#app"), modal = $("#modal"), { state } = app$;
   if (state.screen !== "table") { unmountPlay(); modal.innerHTML = ""; }
   if (state.screen === "portal") renderPortal(app, app$);

@@ -67,5 +67,7 @@ route();
 // Reloj: se pinta varias veces por segundo y resuelve el turno vencido
 setInterval(() => { const c = session.actions.tick(); if (c !== null || app$.state.screen === "table") tickPlay(app$, $("#modal"), c); }, 250);
 
-window.addEventListener("resize", draw);
+// Al cambiar el tamaño solo se redibuja la mesa (la cadena y la mano se acomodan al ancho). En el lobby no: en el
+// teléfono, abrir el teclado cambia el tamaño, y redibujar ahí quitaba el foco del campo y cerraba el teclado.
+window.addEventListener("resize", () => { if (app$.state.screen === "table") draw(); });
 startUpdateChecks((v) => session.actions.setUpdateAvailable(v));

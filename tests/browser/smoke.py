@@ -3,7 +3,9 @@ consola:
   1. Práctica: portal → lobby del dominó → práctica → una mano completa → "atrás" regresa al lobby.
   2. La Pata en práctica: varios turnos (robar y descartar), el registro y el consejo; los estilos del dominó se
      quitan al cambiar de juego.
-  3. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
+  3. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
+     mientras escribes; el campo no debe perder el foco (el teclado se abría y cerraba sin parar).
+  4. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
      compu, empezar y jugar una mano completa; abrir la mesa por su enlace.
 
 Uso (desde la raíz del repositorio):
@@ -84,6 +86,24 @@ with sync_playwright() as p:
     tap("[data-track='1']"); page.wait_for_selector(".sheet[data-sheet='track-1']"); tap("#trkclose")
     page.wait_for_timeout(200)
 
+    # ---------- Escribir tu nombre sin que se cierre el teclado ----------
+    kb = browser.new_page(viewport={"width": 390, "height": 844})
+    kb.on("pageerror", lambda e: errors.append(f"pageerror (teclado): {e}"))
+    kb.add_init_script(FAKE_SCRIPT)
+    kb.goto(URL + "#/domino"); kb.wait_for_selector("#create:not([disabled])")
+    kb.click("#nm"); kb.keyboard.type("Me", delay=30)
+    kb.set_viewport_size({"width": 390, "height": 480}); kb.wait_for_timeout(300)  # se abre el teclado
+    keyboard_resize_ok = kb.evaluate("document.activeElement && document.activeElement.id") == "nm"
+    # Otra persona crea una mesa mientras escribes: la lista cambia y la pantalla se redibuja
+    kb.evaluate("""firebase.firestore().doc('juegos-mesas/ZZZZ').set({ json: JSON.stringify({ v: 1, code: 'ZZZZ', game: 'domino', mode: '2x7',
+      config: { n: 2, per: 7, teams: false }, seats: [{ id: 'x', name: 'Beto' }, null], status: 'lobby', round: 0, turn: 0, created: Date.now() }),
+      code: 'ZZZZ', game: 'domino', created: Date.now(), updated: Date.now() })""")
+    kb.wait_for_selector("[data-open='ZZZZ']")
+    kb.keyboard.type("mo", delay=30)
+    typed = kb.input_value("#nm")
+    list_redraw_ok = kb.evaluate("document.activeElement && document.activeElement.id") == "nm" and typed == "Memo"
+    kb.close()
+
     # ---------- En línea (Firebase de mentira) ----------
     on = browser.new_page(viewport={"width": 390, "height": 844})
     on.on("pageerror", lambda e: errors.append(f"pageerror (en línea): {e}"))
@@ -121,6 +141,8 @@ with sync_playwright() as p:
     browser.close()
 
 problems = []
+if not keyboard_resize_ok: problems.append("al abrir el teclado, el campo del nombre pierde el foco")
+if not list_redraw_ok: problems.append(f"al cambiar la lista de mesas, el campo del nombre pierde el foco (escrito: {typed!r})")
 if pata_turns < 4: problems.append(f"La Pata: solo se jugaron {pata_turns} turnos")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not online_finished: problems.append("en línea: la mano no terminó")
@@ -131,6 +153,7 @@ if not back_to_lobby: problems.append("'atrás' no regresó al lobby")
 problems += errors
 print(f"Práctica: fichas tiradas {moves}, mano terminada {finished}, atrás → lobby {back_to_lobby}.")
 print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_styles))}.")
+print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
 print(f"En línea: mesa {code}, fichas tiradas {online_moves}, mano terminada {online_finished}, en la lista {in_list}, se reabre por enlace {reopened}.")
 if problems:
     print("PROBLEMAS:\n- " + "\n- ".join(problems)); sys.exit(1)
