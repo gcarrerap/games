@@ -18,4 +18,4 @@ games/pata/
 
 Usa los módulos `random` y `choice` (la votación del descarte; `tests/games/pata/vote.test.js` comprueba que escoge lo mismo que en myPata).
 
-**Estado:** se juega en práctica contra la compu y en mesas en línea, de 2 a 6 jugadores. Falta traer las llamadas de voz y video de myPata (fase 6c).
+**Estado:** completo. Práctica contra la compu y mesas en línea, de 2 a 6 jugadores. Las llamadas de voz y video de myPata ahora son de la plataforma (`modules/call`): sirven en la mesa en línea de cualquier juego.

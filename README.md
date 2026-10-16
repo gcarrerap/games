@@ -4,7 +4,7 @@ Un solo sitio para jugar en el navegador los juegos que nos gustan: solo contra 
 
 El sitio tiene tres tipos de piezas:
 
-- **Plataforma** (`platform/`): lo que todo juego recibe sin pedirlo: cuentas, portal, mesas en línea, asientos, la compu en los asientos libres, reloj de turno, actualizaciones y el diseño base.
+- **Plataforma** (`platform/`): lo que todo juego recibe sin pedirlo: cuentas, portal, mesas en línea, asientos, la compu en los asientos libres, reloj de turno, **llamadas de voz y video en cada mesa en línea**, actualizaciones y el diseño base.
 - **Módulos** (`modules/`): capacidades que cualquier juego puede escoger usar, cada una independiente, con su API, pruebas y README: azar con semilla, la forma de escoger de la compu, y con el tiempo el registro de cartas o fichas, simulaciones, perfiles de la compu, notas, acomodar la mano…
 - **Juegos** (`games/`): cada juego es un módulo propio con sus reglas, su compu y su mesa, que usa la plataforma y los módulos que necesite.
 
@@ -13,7 +13,7 @@ El sitio tiene tres tipos de piezas:
 | Juego | Carpeta | Jugadores | Estado |
 |---|---|---|---|
 | Dominó | `games/domino/` | 2–4 | Práctica contra la compu y mesas en línea con la familia |
-| La Pata | `games/pata/` | 2–6 | Práctica contra la compu y mesas en línea. Llamadas de voz y video: fase 6c |
+| La Pata | `games/pata/` | 2–6 | Práctica contra la compu y mesas en línea |
 
 ## Cómo está hecho
 
@@ -35,6 +35,8 @@ games/
 │   ├── choice/           # escoger entre jugadas con puntaje, con dudas
 │   ├── recording/        # grabar y repetir partidas de cualquier juego
 │   ├── tournament/       # partidas entre bots de cualquier juego
+│   ├── worker/           # cálculos pesados en un hilo aparte
+│   ├── call/             # llamadas de voz y video en la mesa
 │   └── <nombre>/         # index.js (API pública), ui.js (opcional), README.md
 ├── games/
 │   ├── registry.js       # lista de juegos (solo manifiestos; el código se carga al abrir cada juego)

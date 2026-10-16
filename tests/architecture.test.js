@@ -36,6 +36,9 @@ function where(path) {
   return { kind: "other" };
 }
 
+// La interfaz de un módulo: su ui.js y lo que esté en su carpeta ui/ (ahí sí hay DOM, audio, tiempo)
+const isModuleUi = (file) => /^modules\/[^/]+\/(ui\.js$|ui\/)/.test(file);
+
 const files = walk(ROOT).map((f) => ({ file: rel(f), imports: importsOf(f) }));
 
 function violations(rule) {
@@ -94,7 +97,7 @@ test("la lógica es pura", () => {
   for (const { file } of files) {
     const w = where(file);
     const logic = (w.kind === "game" && ["engine", "ai"].includes(w.layer))
-      || (w.kind === "module" && !file.endsWith("/ui.js")) || (w.kind === "platform" && w.layer === "core");
+      || (w.kind === "module" && !isModuleUi(file)) || (w.kind === "platform" && w.layer === "core");
     if (!logic) continue;
     const code = readFileSync(join(ROOT, file), "utf8").split("\n").filter((l) => !/^\s*(\/\/|\/?\*)/.test(l)).join("\n");
     if (/\b(document|window|localStorage|sessionStorage)\s*\./.test(code)) out.push(`${file}: usa DOM o almacenamiento`);

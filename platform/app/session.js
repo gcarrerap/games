@@ -14,7 +14,8 @@ import {
 } from "./table.js";
 import { clockStatus, timeoutAction } from "./clock.js";
 import { cleanupInactiveTables, CLEANUP_EVERY_MS } from "./cleanup.js";
-import { TABLES, SKIP, watchTableList, watchTable, saveNewTable, updateTable, saveRecording } from "../services/index.js";
+import { TABLES, SKIP, watchTableList, watchTable, saveNewTable, updateTable, saveRecording, callSignaling } from "../services/index.js";
+import { createCallController, createCallSession } from "../../modules/call/index.js";
 
 export const PRACTICE_CODE = "PRÁCTICA";
 export const BOT_NAMES = ["Lupe", "Toño", "Chuy", "Meche", "Pancho", "Licha", "Beto"];
@@ -24,9 +25,10 @@ const CODE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 // deps: { now(), schedule(fn, ms) → id, cancel(id), random() → [0,1), loadGame(id) → Promise<módulo>,
 //         botDecide(game, view, seat, profile, seed) → Promise<acción>, advise(game, view, seat, seed) → Promise,
 //         prefs, gamePrefs(id), version,
-//         auth: { connect(onUser) → Promise<db>, signIn() → Promise, signOut() → Promise } (opcional: sin auth, solo práctica) }
+//         auth: { connect(onUser) → Promise<db>, signIn() → Promise, signOut() → Promise } (opcional: sin auth, solo práctica),
+//         callEnv: { RTCPeerConnection, getUserMedia(c), iceServers() } (opcional: sin él, no hay llamadas) }
 export function createSession(deps) {
-  const { now, schedule, cancel, random, loadGame, botDecide, advise, prefs, gamePrefs, auth = null, version = null } = deps;
+  const { now, schedule, cancel, random, loadGame, botDecide, advise, prefs, gamePrefs, auth = null, version = null, callEnv = null } = deps;
   let deviceId = prefs.get("dev");
   if (!deviceId) { deviceId = "d" + Math.floor(random() * 36 ** 8).toString(36); prefs.set("dev", deviceId); }
 
@@ -44,6 +46,11 @@ export function createSession(deps) {
     updateAvailable: null,
   });
   const s = store.state;
+  // Llamada de voz y video de la mesa en línea abierta (modules/call). Su estado está en call.state.
+  const call = callEnv ? createCallController({
+    makeSession: (code, onChange) => createCallSession({ signaling: callSignaling(s.db.fs, code, { now }), me: s.me, env: callEnv, onChange }),
+    me: () => s.me, prefs, onChange: () => store.notify(),
+  }) : null;
   let botTimer = null, botKey = null, unsubTable = null, unsubList = null, lastCleanup = 0;
   const saved = new Set(); // partidas ya grabadas desde este teléfono
 
@@ -87,6 +94,7 @@ export function createSession(deps) {
   function closeTable() {
     stopBots();
     if (unsubTable) { unsubTable(); unsubTable = null; }
+    if (call && call.state.code) call.stop(); // cuelga y deja de escuchar la llamada de esa mesa
   }
   function stopList() { if (unsubList) { unsubList(); unsubList = null; } }
 
@@ -206,6 +214,7 @@ export function createSession(deps) {
     closeTable(); stopList();
     const gameId = s.game.id;
     set({ screen: "table", table: null, practice: false, code, err: "", advice: null });
+    if (call && s.db.fs) call.watch(code);
     unsubTable = watchTable(s.db, code, (t) => {
       if (s.code !== code) return;
       if (!t) { set({ table: null, err: "Esta mesa ya no existe." }); return; }
@@ -352,7 +361,7 @@ export function createSession(deps) {
   return {
     store,
     actions: {
-      connect, googleIn, googleOut, setName, setError, isGoogle, mySeat: me,
+      connect, googleIn, googleOut, setName, setError, isGoogle, mySeat: me, call,
       goPortal, openGame, leave,
       practiceSettings, savePractice, startPractice,
       createTable, openTable, sitAt, standUp, addBotAt, removeBotAt, setSeatBot, startGame,
