@@ -27,7 +27,7 @@ Este documento explica cómo se divide el sitio, qué comparte cada juego y qué
 |---|---|---|---|
 | **`platform/`** | La casa: lo que todo juego recibe sin pedirlo. | El sitio; los juegos solo a través del contrato y `ctx`. | Entrar, portal y lobby, mesas en línea, asientos, la compu en asientos libres, reloj de turno, limpieza, actualizaciones, estilos base. |
 | **`modules/<nombre>/`** | Una capacidad que un juego **escoge** usar. Independiente, con API pública. | Cualquier juego que la importe (y la plataforma si le sirve). | Azar con semilla, escoger con dudas, registro de lo que cada quien puede tener, simulaciones Monte Carlo, perfiles de la compu, notas, acomodar la mano. |
-| **`games/<id>/`** | Un juego. Cumple el contrato. | La plataforma, por medio de `games/registry.js`. | Dominó, La Pata, Piojos, Continental, La Viuda, Panal, Skull. |
+| **`games/<id>/`** | Un juego. Cumple el contrato. | La plataforma, por medio de `games/registry.js`. | Dominó, La Pata, Piojos, Continental, La Viuda, Panal, Skull, Damas chinas. |
 
 **Plataforma o módulo:** si *todo* juego lo necesita para existir en el sitio, es plataforma; si un juego puede vivir sin eso, es módulo.
 
@@ -97,6 +97,7 @@ Qué hay hoy en myDomino y a dónde va.
 | Consejo: pedirlo, "pensando…", descartarlo si cambia el turno | dominó y La Pata `app/actions.js` | `platform/app/session.js` (`askAdvice`) | ✅ fase 4. Cómo se muestra (niveles, pasos, fichas o cartas) se queda en cada juego |
 | Notas "creo que sí / no la tiene" | dominó `ui` | se queda en el dominó | Revisado en la fase 6b: La Pata no tiene notas |
 | Acomodar la mano | dominó (arrastrar y girar fichas); La Pata (ordenar por número o palo, apartar la bajada) | se quedan en cada juego | Revisado en la fase 6b: no se parecen |
+| Rejilla hexagonal | Panal `engine/hex.js`; damas chinas `engine/board.js` | se queda en cada juego | Revisado al llegar las damas chinas: Panal es una colmena sin límites (casillas como texto `"q,r"`, conectividad, puntos de corte); las damas chinas, una estrella fija de 121 hoyos con vecinos y saltos precalculados por índice. Lo único común son las seis direcciones. Se revisa si un tercer juego usa rejilla hexagonal. |
 | Sesión (Google o invitado), mesas en Firestore, grabaciones, preferencias, service worker y versión nueva | `services/`, `app/updates.js`, `sw.js` | `platform/services/`, `platform/app/updates.js` | ✅ fase 3 |
 | Mesa genérica: asientos, la compu, empezar, jugar (con grabación) | `app/actions.js` (la parte que no es del dominó) | `platform/app/table.js` | ✅ fase 3 |
 | Reloj de turno, limpieza de mesas, store | `app/clock.js`, `app/cleanup.js`, `app/store.js` | `platform/app/` | ✅ fase 3 |
@@ -258,6 +259,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 8 ✅ | La Viuda (póker de 5 cartas con la viuda): reglas con comodín creciente y fichas, compu con tres estilos, mesa con botón de reglas. Usa `modules/cards` (barajas, revolver y dibujo de cartas). |
 | 9 ✅ | Panal (juego de colmena para 2): tablero hexagonal sin límites, compu con tres niveles (la difícil mira la respuesta del rival, en el hilo aparte), consejo, mesa que se acomoda a la pantalla, bichos dibujados en SVG y un banco de imágenes (`games/panal/assets/`) que los reemplaza cuando existe. No tocó `platform/` ni `modules/`. |
 | 10 ✅ | Skull (faroleo con flores y una calavera): reglas, compu con tres estilos y mesa con botón de reglas. Primer juego en que varios asientos actúan a la vez (todos ponen su primer disco al mismo tiempo). No tocó `platform/` ni `modules/`. |
+| 11 ✅ | Damas chinas: tablero de estrella (coordenadas hexagonales), pasos y saltos encadenados, regla contra el bloqueo, compu con tres estilos y mesa en SVG que gira para que tu punta quede abajo. Sin azar; no tocó `platform/` ni `modules/`. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 

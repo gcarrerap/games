@@ -9,6 +9,7 @@ import continental from "./continental/manifest.js";
 import viuda from "./viuda/manifest.js";
 import panal from "./panal/manifest.js";
 import skull from "./skull/manifest.js";
+import damasChinas from "./damas-chinas/manifest.js";
 
 export const GAMES = [
   { ...domino, load: () => import("./domino/index.js") },
@@ -18,6 +19,7 @@ export const GAMES = [
   { ...viuda, load: () => import("./viuda/index.js") },
   { ...panal, load: () => import("./panal/index.js") },
   { ...skull, load: () => import("./skull/index.js") },
+  { ...damasChinas, load: () => import("./damas-chinas/index.js") },
 ];
 
 export const findGame = (id) => GAMES.find((g) => g.id === id) || null;
