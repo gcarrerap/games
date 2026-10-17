@@ -4,6 +4,8 @@ consola:
   2. La Pata en práctica: varios turnos (robar y descartar), el registro y el consejo; los estilos del dominó se
      quitan al cambiar de juego.
   3. Piojos en práctica: tirar y plantarse varios turnos contra la compu; solo sus estilos quedan cargados.
+  3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar y
+     pasar a la siguiente mano.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
      el consejo y abrir el menú. En línea: la regla escogida se ve en la pantalla de asientos.
   5. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
@@ -131,6 +133,30 @@ with sync_playwright() as p:
     cont_menu = "Se compra con castigo, sin límite" in page.inner_text(".sheet")
     tap("#menuclose"); page.wait_for_timeout(200)
 
+    # ---------- La Viuda en práctica ----------
+    page.evaluate("location.hash = '#/viuda'"); page.wait_for_selector("#practice")
+    page.click("[data-mode='3']"); page.click("[data-timer='0']"); page.click("#practice")
+    page.wait_for_selector(".game.viuda", timeout=10000); shot("11-viuda")
+    page.click("#rules"); page.wait_for_selector(".sheet[data-sheet='rules'] .ranking")
+    viuda_rules = "Flor imperial" in page.inner_text(".sheet[data-sheet='rules']"); shot("12-viuda-reglas")
+    page.click("#rulesclose"); page.wait_for_timeout(200)
+    viuda_acts = viuda_hands = 0
+    for _ in range(300):
+        if (viuda_hands >= 1 and viuda_acts >= 3) or viuda_hands >= 5 or page.query_selector(".sheet #again"): break
+        if page.query_selector(".sheet #next"):
+            if viuda_hands == 0: shot("13-viuda-manos")
+            if tap(".sheet #next"): viuda_hands += 1
+        elif page.query_selector("#all") and page.query_selector("#pass") and not page.query_selector("#swap"):
+            if tap("#all" if viuda_hands else "#pass"): viuda_acts += 1   # a ciegas: pasa la primera mano, luego toma
+        elif page.query_selector("#swap"):
+            if viuda_acts >= 3 and tap("#knock"): viuda_acts += 1
+            # Cambiar una: tu carta, la de la viuda y el botón (cada toque redibuja la mesa, un paso a la vez)
+            elif not page.query_selector("[data-give].sel"): tap("[data-give]")
+            elif not page.query_selector("[data-take].sel"): tap("[data-take]")
+            elif tap("#swap:not([disabled])"): viuda_acts += 1
+        page.wait_for_timeout(300)
+    viuda_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+
     # ---------- Escribir tu nombre sin que se cierre el teclado ----------
     kb = browser.new_page(viewport={"width": 390, "height": 844})
     kb.on("pageerror", lambda e: errors.append(f"pageerror (teclado): {e}"))
@@ -207,6 +233,10 @@ if cont_online_buy: problems.append("Continental en línea: con 'no se compra' a
 if pata_turns < 4: problems.append(f"La Pata: solo se jugaron {pata_turns} turnos")
 if piojos_rolls < 3: problems.append(f"Piojos: solo se tiraron {piojos_rolls} veces")
 if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {piojos_styles}")
+if not viuda_rules: problems.append("La Viuda: el botón Reglas no mostró las reglas")
+if viuda_acts < 3: problems.append(f"La Viuda: solo se jugaron {viuda_acts} turnos")
+if viuda_hands < 1: problems.append("La Viuda: no terminó ninguna mano")
+if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not online_finished: problems.append("en línea: la mano no terminó")
 if online_moves == 0: problems.append("en línea: no se pudo tirar ninguna ficha")
@@ -216,6 +246,7 @@ if not back_to_lobby: problems.append("'atrás' no regresó al lobby")
 problems += errors
 print(f"Práctica: fichas tiradas {moves}, mano terminada {finished}, atrás → lobby {back_to_lobby}.")
 print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_styles))}.")
+print(f"La Viuda: reglas {viuda_rules}, turnos {viuda_acts}, manos {viuda_hands}.")
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")

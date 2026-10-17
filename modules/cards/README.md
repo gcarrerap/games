@@ -23,4 +23,4 @@ siendo JSON simple.
 | `cardChip(c)` | La carta chica en texto, con su color. |
 | `CARD_STYLES` | La hoja de estilos (colores de cara, reverso y palos; `.cchip`). El juego la agrega a su `loadStyles`. |
 
-**Lo usan:** La Pata y el Continental.
+**Lo usan:** La Pata, el Continental y La Viuda.

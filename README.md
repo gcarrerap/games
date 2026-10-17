@@ -16,6 +16,7 @@ El sitio tiene tres tipos de piezas:
 | La Pata | `games/pata/` | 2–6 | Práctica contra la compu y mesas en línea |
 | Piojos | `games/piojos/` | 2–6 | Dados de póker. Práctica contra la compu y mesas en línea |
 | Continental | `games/continental/` | 2–6 | Práctica contra la compu y mesas en línea; la regla de compra se escoge al crear la mesa |
+| La Viuda | `games/viuda/` | 2–8 | Póker de 5 cartas con la viuda. Práctica contra la compu y mesas en línea |
 
 ## Cómo está hecho
 
@@ -52,7 +53,8 @@ games/
 │   │   └── styles/
 │   ├── pata/             # misma forma
 │   ├── piojos/           # misma forma
-│   └── continental/      # misma forma
+│   ├── continental/      # misma forma
+│   └── viuda/            # misma forma
 ├── tests/
 │   ├── architecture.test.js # las reglas de dependencia se cumplen (revisa los imports)
 │   ├── contract.test.js  # todos los juegos cumplen el contrato
