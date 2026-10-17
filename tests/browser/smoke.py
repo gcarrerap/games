@@ -4,9 +4,11 @@ consola:
   2. La Pata en práctica: varios turnos (robar y descartar), el registro y el consejo; los estilos del dominó se
      quitan al cambiar de juego.
   3. Piojos en práctica: tirar y plantarse varios turnos contra la compu; solo sus estilos quedan cargados.
-  4. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
+  4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
+     el consejo y abrir el menú. En línea: la regla escogida se ve en la pantalla de asientos.
+  5. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
      mientras escribes; el campo no debe perder el foco (el teclado se abría y cerraba sin parar).
-  5. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
+  6. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
      compu, empezar y jugar una mano completa; abrir la mesa por su enlace.
 
 Uso (desde la raíz del repositorio):
@@ -104,6 +106,31 @@ with sync_playwright() as p:
         page.wait_for_timeout(300)
     shot("10-piojos-turnos")
 
+    # ---------- El Continental en práctica ----------
+    page.evaluate("location.hash = '#/continental'"); page.wait_for_selector("#practice")
+    page.click("[data-mode='4']"); page.click("[data-timer='0']"); page.click("[data-opt='buy'][data-val='free']")
+    page.click("#practice"); page.wait_for_selector("#hand .cardbtn", timeout=10000); shot("11-continental")
+    cont_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+    cont_turns = cont_buys = cont_downs = 0
+    for _ in range(400):
+        if cont_turns >= 8 and cont_buys and cont_downs: break
+        if tap(".sheet #next"): page.wait_for_timeout(300); continue
+        if tap("#buy"): cont_buys += 1
+        elif tap("#draw"): pass
+        elif page.query_selector("#discardbtn") and tap("#advice:not([disabled])"):
+            # En tu turno, haz lo que dice el consejo (bajarse si ya se puede; si no, descartar)
+            try: page.wait_for_selector("#advplay", timeout=3000)
+            except PWError: continue
+            txt = page.inner_text("#advplay")
+            if tap("#advplay"):
+                if txt.startswith("Bájate"): cont_downs += 1
+                if txt.startswith("Descarta"): cont_turns += 1
+        page.wait_for_timeout(200)
+    shot("12-continental-turnos")
+    tap("#menu"); page.wait_for_selector(".sheet[data-sheet='gameMenu']")
+    cont_menu = "Se compra con castigo, sin límite" in page.inner_text(".sheet")
+    tap("#menuclose"); page.wait_for_timeout(200)
+
     # ---------- Escribir tu nombre sin que se cierre el teclado ----------
     kb = browser.new_page(viewport={"width": 390, "height": 844})
     kb.on("pageerror", lambda e: errors.append(f"pageerror (teclado): {e}"))
@@ -156,11 +183,27 @@ with sync_playwright() as p:
     in_list = True
     on.evaluate(f"location.hash = '#/domino/{code}'"); on.wait_for_selector("#hand, .sheet #next", timeout=5000)
     reopened = True
+    # El Continental en línea: la regla de compra escogida se ve en los asientos y se puede empezar con la compu
+    on.evaluate("location.hash = '#/continental'"); on.wait_for_selector("#create:not([disabled])")
+    on.click("[data-mode='3']"); on.click("[data-opt='buy'][data-val='none']"); on.click("#create")
+    on.wait_for_selector(".seatlist")
+    cont_online_rule = "No se compra" in on.inner_text(".shell-head")
+    for i in (1, 2):
+        on.click(f"[data-addbot='{i}']"); on.wait_for_timeout(100)
+    on.click("#start:not([disabled])"); on.wait_for_selector("#hand .cardbtn", timeout=10000)
+    cont_online_buy = bool(on.query_selector("#buy"))
     browser.close()
 
 problems = []
 if not keyboard_resize_ok: problems.append("al abrir el teclado, el campo del nombre pierde el foco")
 if not list_redraw_ok: problems.append(f"al cambiar la lista de mesas, el campo del nombre pierde el foco (escrito: {typed!r})")
+if cont_turns < 8: problems.append(f"Continental: solo se jugaron {cont_turns} turnos")
+if not cont_buys: problems.append("Continental: nunca se pudo comprar fuera de turno")
+if not cont_downs: problems.append("Continental: nunca se pudo bajar")
+if not cont_menu: problems.append("Continental: el menú no dice la regla de compra")
+if "pata" in cont_styles or "domino" in cont_styles: problems.append("estilos de otro juego cargados en el Continental")
+if not cont_online_rule: problems.append("Continental en línea: la pantalla de asientos no dice la regla de compra")
+if cont_online_buy: problems.append("Continental en línea: con 'no se compra' apareció el botón de comprar")
 if pata_turns < 4: problems.append(f"La Pata: solo se jugaron {pata_turns} turnos")
 if piojos_rolls < 3: problems.append(f"Piojos: solo se tiraron {piojos_rolls} veces")
 if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {piojos_styles}")
@@ -174,6 +217,7 @@ problems += errors
 print(f"Práctica: fichas tiradas {moves}, mano terminada {finished}, atrás → lobby {back_to_lobby}.")
 print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_styles))}.")
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
+print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
 print(f"En línea: mesa {code}, fichas tiradas {online_moves}, mano terminada {online_finished}, en la lista {in_list}, se reabre por enlace {reopened}.")
 if problems:

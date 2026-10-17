@@ -15,6 +15,7 @@ El sitio tiene tres tipos de piezas:
 | Dominó | `games/domino/` | 2–4 | Práctica contra la compu y mesas en línea con la familia |
 | La Pata | `games/pata/` | 2–6 | Práctica contra la compu y mesas en línea |
 | Piojos | `games/piojos/` | 2–6 | Dados de póker. Práctica contra la compu y mesas en línea |
+| Continental | `games/continental/` | 2–6 | Práctica contra la compu y mesas en línea; la regla de compra se escoge al crear la mesa |
 
 ## Cómo está hecho
 
@@ -38,6 +39,7 @@ games/
 │   ├── tournament/       # partidas entre bots de cualquier juego
 │   ├── worker/           # cálculos pesados en un hilo aparte
 │   ├── call/             # llamadas de voz y video en la mesa
+│   ├── cards/            # baraja francesa: notación, barajas, revolver y dibujo de cartas
 │   └── <nombre>/         # index.js (API pública), ui.js (opcional), README.md
 ├── games/
 │   ├── registry.js       # lista de juegos (solo manifiestos; el código se carga al abrir cada juego)
@@ -49,7 +51,8 @@ games/
 │   │   ├── ui/           # la mesa del juego
 │   │   └── styles/
 │   ├── pata/             # misma forma
-│   └── piojos/           # misma forma
+│   ├── piojos/           # misma forma
+│   └── continental/      # misma forma
 ├── tests/
 │   ├── architecture.test.js # las reglas de dependencia se cumplen (revisa los imports)
 │   ├── contract.test.js  # todos los juegos cumplen el contrato

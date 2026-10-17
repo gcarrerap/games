@@ -1,8 +1,9 @@
 // La mesa de La Pata, montada por la plataforma (platform/ui/play.js). Solo usa lo que recibe en ctx.
 import { loadStyles, unloadStyles } from "../../../platform/ui/styles.js";
+import { CARD_STYLES } from "../../../modules/cards/ui.js";
 import { renderTable, paintClock } from "./table.js";
 
-const STYLES = ["../styles/tokens.css", "../styles/table.css"].map((x) => new URL(x, import.meta.url).href);
+const STYLES = [CARD_STYLES, ...["../styles/tokens.css", "../styles/table.css"].map((x) => new URL(x, import.meta.url).href)];
 
 let ui = null;
 

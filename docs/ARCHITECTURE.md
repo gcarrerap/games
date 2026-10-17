@@ -27,7 +27,7 @@ Este documento explica cómo se divide el sitio, qué comparte cada juego y qué
 |---|---|---|---|
 | **`platform/`** | La casa: lo que todo juego recibe sin pedirlo. | El sitio; los juegos solo a través del contrato y `ctx`. | Entrar, portal y lobby, mesas en línea, asientos, la compu en asientos libres, reloj de turno, limpieza, actualizaciones, estilos base. |
 | **`modules/<nombre>/`** | Una capacidad que un juego **escoge** usar. Independiente, con API pública. | Cualquier juego que la importe (y la plataforma si le sirve). | Azar con semilla, escoger con dudas, registro de lo que cada quien puede tener, simulaciones Monte Carlo, perfiles de la compu, notas, acomodar la mano. |
-| **`games/<id>/`** | Un juego. Cumple el contrato. | La plataforma, por medio de `games/registry.js`. | Dominó, La Pata, Piojos. |
+| **`games/<id>/`** | Un juego. Cumple el contrato. | La plataforma, por medio de `games/registry.js`. | Dominó, La Pata, Piojos, Continental. |
 
 **Plataforma o módulo:** si *todo* juego lo necesita para existir en el sitio, es plataforma; si un juego puede vivir sin eso, es módulo.
 
@@ -104,6 +104,8 @@ Qué hay hoy en myDomino y a dónde va.
 | Práctica: la compu, el reloj, el consejo, revancha; portal, lobby, ventanas | `app/actions.js`, `app/bots.js`, `ui/` | `platform/app/session.js`, `platform/ui/` | ✅ fase 4 |
 | La mesa del dominó, su resultado, consejo y registro | `ui/screens/table.js`, `ui/components/`, `ui/svg/` | `games/domino/ui/` | ✅ fase 4 |
 | Mesas en línea: crear, sentarse, la compu en mesas en línea, entrar con Google, grabar partidas | `app/actions.js`, `app/bots.js`, `app/recorder.js`, `ui/screens/lobby.js`, `seats.js` | `platform/app/session.js`, `platform/ui/lobby.js`, `platform/ui/seats.js` | ✅ fase 5 |
+| Baraja francesa: notación de cartas, barajas con jokers, revolver, dibujo de cartas | La Pata `engine/cards.js`, `ui/svg/card.js` | `modules/cards` | ✅ al llegar el Continental (segundo juego de cartas). Lo que vale cada carta y qué es comodín se queda en cada juego |
+| Reglas que se escogen al crear la mesa (por ejemplo, cómo se compra en el Continental) | (nuevo) | contrato: `options` del juego; el lobby, los asientos y la sesión las muestran y guardan | ✅ genérico: cualquier juego las declara en su manifiesto |
 | Fichas, jugadas, puntos, modos, cadena, heurísticas, salida, criterios | `engine/`, `ai/`, `ui/svg/` | `games/domino/` | Se quedan |
 
 ## 4. El contrato de juego
@@ -117,6 +119,7 @@ export default {
   name: "Dominó",
   players: { min: 2, max: 4 },
   modes: [ /* configuraciones válidas: jugadores, reparto, parejas… */ ],
+  options: [ /* opcional: reglas que se escogen aparte al crear la mesa, ver abajo */ ],
 
   // --- Reglas (puras) ---
   setup(config, { rnd, now }),              // → estado inicial de la partida
@@ -142,6 +145,10 @@ export default {
 };
 ```
 
+- **Opciones de la mesa.** `options: [{ id, label, default, choices: [{ id, label, hint? }] }]`. El lobby las muestra
+  como botones junto al modo y al reloj, se recuerdan por juego, y la escogida llega a `setup()` en `config[id]` (y se
+  ve en la lista de mesas y en los asientos). Si no viene (pruebas, mesas viejas), el juego usa su default. Ejemplo: la
+  regla de compra del Continental.
 - **Acciones y estado son JSON simple** (`{ type: "play", tile: "6-4", side: "L" }`), sin clases ni `Map`. Viajan a Firestore, al Worker y a la grabación sin conversión.
 - **`currentSeats` devuelve una lista** para juegos donde varios actúan a la vez (salir en parejas en el dominó, votar en un juego estilo Dixit). Si varios bots pueden actuar, actúa primero el de menor `thinkMs`.
 - **Pausas.** `currentSeats` vacío sin que `isOver` sea cierto es una pausa: nadie está obligado, pero `legalActions` puede ofrecer algo (en el dominó, `{ type: "next" }` entre manos). La interfaz lo muestra como botón; un torneo lo toma solo.

@@ -36,13 +36,4 @@
   --spec:#cfb0ff;
   --spec-ink:#cfb0ff;
 }
-/* Cartas */
-:root{
-  --card-face:#fffdf7; --card-edge:#c9c2ae; --suit-red:#c0352b; --suit-black:#1b1b1b; --card-back:#8a2f2a; --card-back-line:#e8c27a;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --card-face:#f3ecdb; --card-edge:#9d937c; --suit-red:#c0352b; --suit-black:#1b1b1b; --card-back:#7a2a26; --card-back-line:#d9b26a;
-}}
-:root[data-theme="dark"]{
-  --card-face:#f3ecdb; --card-edge:#9d937c; --suit-red:#c0352b; --suit-black:#1b1b1b; --card-back:#7a2a26; --card-back-line:#d9b26a;
-}
+/* Los colores de las cartas están en modules/cards/ui/cards.css */

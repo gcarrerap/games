@@ -1,0 +1,5 @@
+/* Tokens del Continental: el paño (los mismos del dominó y La Pata). Los compartidos están en platform/styles/tokens.css
+   y los de las cartas en modules/cards/ui/cards.css. */
+:root{ --felt:#1f5c49; --felt-2:#184c3c; --felt-fg:#eaf2ec; --felt-muted:#a9c4b7; --wild:#6b3fc4; }
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){ --felt:#164232; --felt-2:#103428; --felt-fg:#e8f1ec; --felt-muted:#8fb2a2; --wild:#b08cf0; }}
+:root[data-theme="dark"]{ --felt:#164232; --felt-2:#103428; --felt-fg:#e8f1ec; --felt-muted:#8fb2a2; --wild:#b08cf0; }

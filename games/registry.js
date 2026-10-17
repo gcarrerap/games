@@ -5,11 +5,13 @@
 import domino from "./domino/manifest.js";
 import pata from "./pata/manifest.js";
 import piojos from "./piojos/manifest.js";
+import continental from "./continental/manifest.js";
 
 export const GAMES = [
   { ...domino, load: () => import("./domino/index.js") },
   { ...pata, load: () => import("./pata/index.js") },
   { ...piojos, load: () => import("./piojos/index.js") },
+  { ...continental, load: () => import("./continental/index.js") },
 ];
 
 export const findGame = (id) => GAMES.find((g) => g.id === id) || null;

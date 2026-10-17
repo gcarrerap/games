@@ -7,6 +7,7 @@ import { FNS } from "../../platform/app/ai-worker.js";
 import { seededRandom } from "../../modules/random/index.js";
 import nim from "../modules/fixtures/nim.js";
 import domino from "../../games/domino/index.js";
+import continental from "../../games/continental/index.js";
 
 function memPrefs() {
   const all = new Map();
@@ -17,7 +18,7 @@ function memPrefs() {
   return { all, prefs: make("juegos."), gamePrefs: (id) => make(`juegos.${id}.`) };
 }
 
-function harness(games = { nim, domino }) {
+function harness(games = { nim, domino, continental }) {
   let clock = 1_000_000, nextId = 1;
   const timers = new Map();
   const { prefs, gamePrefs, all } = memPrefs();
@@ -174,4 +175,41 @@ test("revancha: otra partida en la misma mesa; salir regresa al lobby y detiene 
   assert.deepEqual([h.st.screen, h.st.table, h.timers.size], ["lobby", null, 0]);
   h.a.goPortal();
   assert.equal(h.st.screen, "portal");
+});
+
+test("opciones del juego (game.options): se escogen en el lobby, llegan a la partida y se recuerdan", async () => {
+  const h = harness();
+  await h.a.openGame("continental");
+  assert.deepEqual(h.a.practiceSettings().options, { buy: "limit" }, "sin escoger: el default");
+  h.a.savePractice({ options: { buy: "none" } });
+  assert.deepEqual(h.a.practiceSettings().options, { buy: "none" });
+  h.a.savePractice({ options: { buy: "no-existe" } });
+  assert.deepEqual(h.a.practiceSettings().options, { buy: "limit" }, "un valor que no existe vuelve al default");
+  h.a.startPractice({ ...h.a.practiceSettings(), mode: "4", timer: false, options: { buy: "free" } });
+  assert.equal(h.st.table.config.buy, "free");
+  assert.equal(h.st.table.state.config.buy, "free");
+  assert.deepEqual(h.a.practiceSettings().options, { buy: "free" });
+  // Un juego sin opciones no recibe nada de más
+  await h.a.openGame("domino");
+  assert.deepEqual(h.a.practiceSettings().options, {});
+});
+
+test("continental: la compu compra y juega; tú puedes comprar fuera de turno", async () => {
+  const h = harness();
+  await h.a.openGame("continental");
+  h.a.startPractice({ ...h.a.practiceSettings(), mode: "3", timer: false, options: { buy: "limit" } });
+  let bought = false;
+  for (let i = 0; i < 600 && h.st.table.status === "playing" && h.st.table.state.roundNo < 3; i++) {
+    const g = h.st.game, t = h.st.table;
+    if (g.currentSeats(t.state).includes(0)) {
+      const la = g.legalActions(t.state, 0);
+      if (la[0].type === "buy") bought = true;
+      h.a.play(la[0]); continue;
+    }
+    if (!g.currentSeats(t.state).length) { h.a.play(g.legalActions(t.state, 0)[0]); continue; }
+    assert.ok(await h.runNext(), "la compu debía tener algo programado");
+  }
+  assert.equal(h.st.err, "");
+  assert.ok(bought, "te tocó pedir el descarte alguna vez");
+  assert.ok(h.st.table.state.roundNo >= 2);
 });
