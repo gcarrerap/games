@@ -110,7 +110,7 @@ Qué hay hoy en myDomino y a dónde va.
 | Fichas, jugadas, puntos, modos, cadena, heurísticas, salida, criterios | `engine/`, `ai/`, `ui/svg/` | `games/domino/` | Se quedan |
 | Banco de imágenes: una imagen por llave con respaldo a un dibujo propio | (nuevo) Panal `assets/bank.js` + `ui/art.js` | se queda en Panal | Candidato a `modules/` cuando un segundo juego use imágenes generadas (por ejemplo, uno estilo Dixit) |
 | Casillas hexagonales: vecinos, colmena unida, puntos de corte | (nuevo) Panal `engine/hex.js` | se queda en Panal | Candidato si llega otro juego de tablero hexagonal |
-| Tutorial con lecciones jugables: posición armada, tarea, revisión y "Muéstrame" | (nuevo) Panal `ui/lessons.js`, `ui/tutorial.js` | se queda en Panal | Candidato a `modules/` cuando un segundo juego tenga tutorial: la forma de una lección (posición + tarea + revisión con las reglas del juego) parece común; el dibujo es de cada juego |
+| Tutorial con lecciones jugables: posición armada, tarea, revisión y "Muéstrame" | (nuevo) Panal `ui/lessons.js`, `ui/tutorial.js`; Skull `ui/tutorial-script.js`, `ui/tutorial.js` | se queda en cada juego | Con los dos a la vista, lo común es poco: una ventana por pasos (paso *i* de *N*, puntos, Atrás/Siguiente, no avanzar hasta cumplir). El contenido es distinto: Panal hace jugar posiciones armadas con revisión de las reglas; Skull reproduce una ronda de ejemplo con `engine/` y hace preguntas de estrategia. Se extrae la ventana por pasos si un tercer juego la necesita o si las dos se empiezan a copiar |
 
 ## 4. El contrato de juego
 

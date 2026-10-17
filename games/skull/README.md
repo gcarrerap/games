@@ -4,6 +4,8 @@ Juego de faroleo para 3 a 6 jugadores. Cada quien tiene 3 flores y 1 calavera; s
 
 En la mesa, el botón **Reglas** abre las reglas en cualquier momento (también están en el menú de la partida).
 
+**Tutorial:** diez pasos con una ronda de ejemplo (Tú, Lupe y Beto) y preguntas en los momentos clave: qué disco poner, cuánto apostar, subir o pasar, qué voltear primero, de quién voltear y qué disco perder. Se abre desde el aviso de la primera ronda (sale hasta que lo abres una vez), desde la ventana de Reglas y desde el menú. La ronda se juega con `engine/` (`ui/tutorial-script.js`), así las escenas no se apartan de las reglas; `tests/games/skull/tutorial.test.js` lo revisa.
+
 ## Reglas
 
 - **Al empezar la ronda** todos ponen a la vez un disco boca abajo en su tapete.
@@ -23,9 +25,9 @@ games/skull/
 ├── index.js      # Skull conforme al contrato: setup, legalActions, apply, view, la compu, el reloj
 ├── engine/       # reglas (puro)
 ├── ai/           # la compu: prudente, normal y atrevida (puro)
-├── ui/           # la mesa: tapetes, la apuesta, tus discos, botones y la ventana de reglas
+├── ui/           # la mesa: tapetes, la apuesta, tus discos, botones, la ventana de reglas y el tutorial
 ├── assets/       # banco de imágenes de los discos (catrinas); ver assets/README.md
-└── styles/       # paño y discos (colores del dibujo SVG de respaldo)
+└── styles/       # paño y discos (table.css) y el tutorial (tutorial.css) (colores del dibujo SVG de respaldo)
 ```
 
 **Acciones:** `place` (`disc`: `"F"` flor o `"S"` calavera), `bid` (`n`), `pass`, `flip` (`seat`: tu tapete primero), `discard` (`disc`: qué pierdes si te topaste con tu calavera) y `next` (siguiente ronda).
