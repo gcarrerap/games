@@ -9,7 +9,7 @@ let ui = null;
 
 export function mount(el, ctx) {
   loadStyles("viuda", STYLES);
-  ui = { el, seenSeq: -1, give: null, take: null };
+  ui = { el, seenSeq: -1, give: null, take: null, knockSeen: null };
   renderTable(el, ctx, ui);
   paintClock(ctx.clock);
 }

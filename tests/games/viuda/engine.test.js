@@ -105,13 +105,30 @@ test("si al partir sale el comodín, se lo queda quien partió y solo recibe 4 m
   assert.fail("ninguna semilla dio comodín al partir");
 });
 
-test("a ciegas solo se toma la viuda completa o se pasa", () => {
+test("a ciegas se toma la viuda completa, se pasa o se toca; no se cambia una", () => {
   const st = fresh();
-  assert.deepEqual(legalActions(st, st.turn), [{ type: "all" }, { type: "pass" }]);
-  assert.throws(() => apply(st, st.turn, { type: "knock" }, ctx), /tapada/);
+  assert.deepEqual(legalActions(st, st.turn), [{ type: "knock" }, { type: "all" }, { type: "pass" }]);
+  assert.throws(() => apply(st, st.turn, { type: "swap", give: st.hands[st.turn][0], take: st.widow[0] }, ctx), /tapada/);
   assert.throws(() => apply(st, (st.turn + 1) % 3, { type: "pass" }, ctx), /turno/);
   assert.equal(game.view(st, 0).widow, null, "la viuda tapada no se ve");
   assert.equal(typeof game.view(st, 0).hands[1], "number", "la mano ajena no se ve");
+});
+
+test("tocar con la viuda tapada: los demás solo pueden tomarla a ciegas o pasar; si la toman, se destapa", () => {
+  let st = rig(fresh(), ["AS AH AD 5S 7H", "2H 3C 4H 9H 7D", "KD KS 4D 5D 7C"], "QD JC TD 8H 6C", { turn: 0 });
+  st = apply(st, 0, { type: "knock" }, ctx);
+  assert.equal(st.phase, "last");
+  assert.equal(st.knocker, 0);
+  assert.equal(st.widowOpen, false);
+  assert.deepEqual(legalActions(st, 1), [{ type: "pass" }, { type: "all" }]);
+  assert.equal(game.view(st, 1).widow, null);
+  st = apply(st, 1, { type: "all" }, ctx);
+  assert.equal(st.widowOpen, true);
+  assert.deepEqual(st.hands[1], H("QD JC TD 8H 6C"));
+  assert.ok(legalActions(st, 2).some((a) => a.type === "swap"), "el siguiente ya puede cambiar una");
+  st = apply(st, 2, { type: "pass" }, ctx);
+  assert.equal(st.phase, "pause", "quien tocó no vuelve a jugar");
+  assert.equal(st.showdown.knocker, 0);
 });
 
 test("tomar la viuda a ciegas la abre: tu mano queda en la mesa", () => {
@@ -140,7 +157,7 @@ test("si todos pasan a ciegas, la mano se acaba con las manos repartidas", () =>
 });
 
 test("al tocar, los demás tienen un último turno (pueden pasar) y luego se muestran las manos", () => {
-  let st = rig(fresh(), ["AS AH AD 5S 7H", "2H 3C 4H 9H 7D", "KD KS 4D 5D 7C"], "QD JC TD 8H 6C", { turn: 0, phase: "open" });
+  let st = rig(fresh(), ["AS AH AD 5S 7H", "2H 3C 4H 9H 7D", "KD KS 4D 5D 7C"], "QD JC TD 8H 6C", { turn: 0, phase: "open", widowOpen: true });
   st = apply(st, 0, { type: "knock" }, ctx);
   assert.equal(st.phase, "last");
   assert.deepEqual(legalActions(st, 1).slice(0, 2), [{ type: "pass" }, { type: "all" }]);
@@ -154,7 +171,7 @@ test("al tocar, los demás tienen un último turno (pueden pasar) y luego se mue
 });
 
 test("cambiar una: la carta va a la viuda y la de la viuda a tu mano", () => {
-  const st = rig(fresh(), ["AS AH AD 5S 7H", "2H 3C 4H 9H 7D", "KD KS 4D 5D 7C"], "QD JC TD 8H 6C", { turn: 0, phase: "open" });
+  const st = rig(fresh(), ["AS AH AD 5S 7H", "2H 3C 4H 9H 7D", "KD KS 4D 5D 7C"], "QD JC TD 8H 6C", { turn: 0, phase: "open", widowOpen: true });
   const s2 = apply(st, 0, { type: "swap", give: "5S", take: "QD" }, ctx);
   assert.deepEqual(s2.hands[0], H("AS AH AD QD 7H"));
   assert.deepEqual(s2.widow, H("5S JC TD 8H 6C"));
@@ -209,10 +226,10 @@ test("el reloj pasa a ciegas, toca con la viuda abierta y pasa después de que t
 test("la compu toma la viuda a ciegas con una mano mala y toca con una buena", () => {
   const st = rig(fresh(), ["2S 5H 9D JC 3S", "2H 3C 4H 9H 7D", "KD KS 4D 5D 7C"], "QD JC TD 8H 6C", { turn: 0 });
   assert.deepEqual(decide(game.view(st, 0), 0, "normal"), { type: "all" });
-  const good = rig(st, ["AS AH AD 5S 7H", "2H 3C 4H 9H 7D", "KD KS 4D 5D 7C"], "QD JC TD 8H 6C", { phase: "open" });
+  const good = rig(st, ["AS AH AD 5S 7H", "2H 3C 4H 9H 7D", "KD KS 4D 5D 7C"], "QD JC TD 8H 6C", { phase: "open", widowOpen: true });
   assert.deepEqual(decide(game.view(good, 0), 0, "normal"), { type: "knock" });
   // Después de que tocaron, solo cambia si mejora
-  const last = rig(st, ["AS AH AD 5S 7H", "2H 3C 4H 9H 7D", "KD KS 4D 5D 7C"], "QD JC TD 8H 6C", { phase: "last", turn: 0 });
+  const last = rig(st, ["AS AH AD 5S 7H", "2H 3C 4H 9H 7D", "KD KS 4D 5D 7C"], "QD JC TD 8H 6C", { phase: "last", turn: 0, widowOpen: true });
   assert.deepEqual(decide(game.view(last, 0), 0, "normal"), { type: "swap", give: "5S", take: "QD" }, "mejora la carta suelta");
   const full = rig(last, ["AS AH AD KS KH", "2H 3C 4H 9H 7D", "KD QS 4D 5D 7C"], "QD JC TD 8H 6C");
   assert.deepEqual(decide(game.view(full, 0), 0, "normal"), { type: "pass" });

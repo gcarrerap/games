@@ -5,11 +5,11 @@
 //   1. Reparte el siguiente jugador (rota cada mano); parte el de su izquierda y empieza el de su derecha. El turno
 //      pasa a la derecha (al siguiente asiento). Si al partir queda a la vista un comodín, se lo queda quien partió
 //      y solo recibe 4 cartas más. Cada quien recibe 5 cartas y otras 5 quedan boca abajo: la viuda.
-//   2. Primera ronda, viuda oculta: tomas las 5 a ciegas (tu mano queda boca arriba como la nueva viuda) o pasas.
-//      Si todos pasan, la mano se acaba ahí y se comparan las manos repartidas.
+//   2. Primera ronda, viuda oculta: tomas las 5 a ciegas (tu mano queda boca arriba como la nueva viuda), pasas
+//      o tocas. Si todos pasan, la mano se acaba ahí y se comparan las manos repartidas.
 //   3. Con la viuda abierta: cambias una carta, cambias las 5 o tocas. No se puede pasar.
-//   4. Cuando alguien toca, cada uno de los demás tiene un último turno: cambiar una, cambiar las 5 o pasar.
-//      Luego se muestran las manos.
+//   4. Cuando alguien toca, cada uno de los demás tiene un último turno: cambiar una, cambiar las 5 o pasar (si la
+//      viuda sigue tapada, solo tomarla a ciegas o pasar). Luego se muestran las manos.
 //   5. Solo la peor mano pierde una ficha (si empatan del todo, pierden todas las empatadas).
 // Fichas: 3 cada quien. El primero que se queda sin fichas recibe una extra, la viuda (una sola vez por partida).
 // Quien se queda sin fichas después sale. Gana el último con fichas.
@@ -60,6 +60,7 @@ export function newGame(config, names, now, rnd) {
     wild: null,
     hands: [],
     widow: [],
+    widowOpen: false, // la viuda se destapa cuando alguien la toma
     cut: null, // { seat, card, took }: lo que quedó a la vista al partir
     turn: 0,
     knocker: null,
@@ -105,7 +106,7 @@ export function deal(st, rnd) {
     ...st,
     hand, wild, dealer,
     phase: "blind",
-    hands, widow,
+    hands, widow, widowOpen: false,
     cut: { seat: cutter, card, took },
     turn: starter,
     knocker: null,
@@ -127,7 +128,8 @@ export function legalActions(st, seat) {
   if (st.phase === "over") return [];
   if (st.phase === "pause") return [{ type: "next" }];
   if (seat !== st.turn) return [];
-  if (st.phase === "blind") return [{ type: "all" }, { type: "pass" }];
+  if (st.phase === "blind") return [{ type: "knock" }, { type: "all" }, { type: "pass" }];
+  if (!st.widowOpen) return [{ type: "pass" }, { type: "all" }]; // tocaron con la viuda tapada
   const swaps = [];
   for (const give of st.hands[seat]) for (const take of st.widow) swaps.push({ type: "swap", give, take });
   if (st.phase === "open") return [{ type: "knock" }, { type: "all" }, ...swaps];
@@ -141,8 +143,8 @@ export function check(st, seat, a) {
   if (st.phase === "pause") return a.type === "next" ? "" : "Espera la siguiente mano.";
   if (a.type === "next") return "La mano no ha terminado.";
   if (seat !== st.turn) return "No es tu turno.";
-  if (st.phase === "blind" && a.type !== "all" && a.type !== "pass") return "Con la viuda tapada solo puedes tomarla completa o pasar.";
-  if (a.type === "knock" && st.phase !== "open") return st.phase === "last" ? "Ya tocaron." : "Todavía no se puede tocar.";
+  if (a.type === "swap" && !st.widowOpen) return "Con la viuda tapada solo puedes tomarla completa, pasar o tocar.";
+  if (a.type === "knock" && st.phase === "last") return "Ya tocaron.";
   if (a.type === "pass" && st.phase === "open") return "No se puede pasar hasta que alguien toque.";
   if (a.type === "swap") {
     if (!st.hands[seat].includes(a.give)) return "No tienes esa carta.";
@@ -162,8 +164,8 @@ export function apply(st, seat, action, { rnd }) {
   const hands = st.hands.slice();
   if (action.type === "all") {
     hands[seat] = st.widow.slice();
-    const blind = st.phase === "blind";
-    s = { ...s, hands, widow: st.hands[seat].slice(), phase: blind ? "open" : st.phase, last: { seat, kind: "all", blind } };
+    const blind = !st.widowOpen;
+    s = { ...s, hands, widow: st.hands[seat].slice(), widowOpen: true, phase: st.phase === "blind" ? "open" : st.phase, last: { seat, kind: "all", blind } };
     s.log = pushLog(st.log, blind ? `${who} tomó la viuda a ciegas` : `${who} cambió las 5`);
   } else if (action.type === "swap") {
     hands[seat] = st.hands[seat].map((c) => (c === action.give ? action.take : c));

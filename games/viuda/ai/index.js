@@ -1,7 +1,8 @@
 // La compu de La Viuda. Solo recibe la vista: su mano, la viuda si está abierta y lo público.
 //
 // Como solo pierde la peor mano, no hace falta tener la mejor: basta con no quedar abajo. La compu:
-//   - A ciegas toma la viuda si su mano es mala (carta alta; la arriesgada, también con un par bajo).
+//   - Con la viuda tapada toca si su mano ya llega a su límite, y la toma a ciegas si su mano es mala (carta alta;
+//     la arriesgada, también con un par bajo).
 //   - Con la viuda abierta toca si su mano ya llega a su límite (prudente: par alto, normal: dos pares,
 //     arriesgada: tercia), y si no, hace el cambio que más mejora su mano. Si ningún cambio la mejora, toca.
 //     Conforme pasan las rondas baja su límite, para que la mano no se alargue.
@@ -34,7 +35,9 @@ export function decide(v, seat, style = "normal", rnd = () => 0.5) {
   const s = STYLES[style] || STYLES.normal;
   const hand = v.hands[seat], cur = evaluate(hand, v.wild);
 
-  if (v.phase === "blind") {
+  if (!v.widowOpen) {
+    // Viuda tapada: toca si su mano ya llega a su límite (y nadie ha tocado); toma la viuda si su mano es mala
+    if (v.phase === "blind" && reaches(cur, s.knock)) return { type: "knock" };
     // Un poco de duda: a veces se queda con una carta alta muy alta
     if (cur.cat === CAT.high && cur.ranks[0] === 14 && rnd() < 0.15) return { type: "pass" };
     const weak = cur.cat === CAT.high || (cur.cat === CAT.pair && cur.ranks[0] < s.lowPair);

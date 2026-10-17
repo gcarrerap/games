@@ -84,3 +84,24 @@
 @media (max-width:380px){
   .viuda .bar-info{display:none}
 }
+
+/* Ya tocaron: el paño se pone rojo, el nombre de quien tocó destacado y un aviso arriba */
+.viuda{--knock:#c62828;--knock-2:#8e1b1b;--knock-hi:#ffd54a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .viuda{--knock:#e53935;--knock-2:#7a1616}}
+:root[data-theme="dark"] .viuda{--knock:#e53935;--knock-2:#7a1616}
+.viuda .felt.lastround{background:radial-gradient(ellipse at 50% 45%,var(--knock),var(--knock-2));box-shadow:inset 0 0 0 3px var(--knock-hi)}
+.viuda .felt.lastround .status{color:#fff}
+.viuda .felt.lastround .widowlbl{color:#ffd9d4}
+.viuda .knockalert{display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:12px;background:rgba(0,0,0,.28);border:2px solid var(--knock-hi);color:#fff;text-align:left}
+.viuda .knockalert .kicon{font-size:26px;line-height:1}
+.viuda .knockalert .ktitle{font-weight:800;font-size:17px}
+.viuda .knockalert .knocker{color:var(--knock-hi);font-size:20px;text-transform:uppercase;letter-spacing:.02em}
+.viuda .knockalert .ksub{font-size:13px;font-weight:700;color:#ffe3df}
+.viuda .knockalert.flash{animation:knockin .6s cubic-bezier(.3,1.5,.6,1) both, knockpulse 1s ease-in-out .6s 3}
+@keyframes knockin{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
+@keyframes knockpulse{50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--knock-hi) 45%,transparent)}}
+.viuda .prow.knocked{border-color:var(--knock);background:color-mix(in srgb,var(--knock) 14%,var(--card));box-shadow:0 0 0 2px var(--knock)}
+.viuda .prow.knocked .pname{color:var(--knock)}
+.viuda .kbadge{font-size:11px;font-weight:900;letter-spacing:.06em;color:#fff;background:var(--knock);border-radius:6px;padding:1px 6px}
+.viuda .actions .knockbtn{border-color:var(--knock);color:var(--knock)}
+@media (prefers-reduced-motion:reduce){.viuda .knockalert.flash{animation:none}}

@@ -22,7 +22,7 @@ function view(st, seat) {
   return {
     ...st,
     hands: st.hands.map((h, s) => (s === seat ? h.slice() : h.length)),
-    widow: st.phase === "blind" ? null : st.widow.slice(),
+    widow: st.widowOpen ? st.widow.slice() : null,
     widowCount: st.widow.length,
   };
 }
@@ -30,7 +30,7 @@ function view(st, seat) {
 const bots = {
   profiles: Object.entries(STYLES).map(([id, s]) => ({ id, name: s.name })),
   decide: (v, seat, profile, { rnd }) => decide(v, seat, profile, rnd),
-  thinkMs: (v) => (v.phase === "blind" ? 1100 : 1500),
+  thinkMs: (v) => (v.widowOpen ? 1500 : 1100),
   heavy: false,
 };
 
