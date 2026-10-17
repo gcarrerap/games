@@ -15,6 +15,8 @@ consola:
      el consejo y abrir el menú. En línea: la regla escogida se ve en la pantalla de asientos.
   5. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
      mientras escribes; el campo no debe perder el foco (el teclado se abría y cerraba sin parar).
+  7. Skull con la tele como tablero (al final): crear la mesa con la opción, abrirla como tele desde el lobby (espera
+     con el código), empezar desde el teléfono (solo lo suyo), y la tele con los tapetes de todos y sin botones.
   6. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
      compu, empezar y jugar una mano completa; abrir la mesa por su enlace.
 
@@ -312,6 +314,31 @@ with sync_playwright() as p:
         on.click(f"[data-addbot='{i}']"); on.wait_for_timeout(100)
     on.click("#start:not([disabled])"); on.wait_for_selector("#hand .cardbtn", timeout=10000)
     cont_online_buy = bool(on.query_selector("#buy"))
+    # Skull con la tele como tablero: el mismo aparato hace de teléfono y de tele (el Firebase de mentira vive en la página)
+    on.evaluate("location.hash = '#/skull'"); on.wait_for_selector("#create:not([disabled])")
+    on.click("[data-mode='3']"); on.click("[data-timer='0']"); on.click("[data-tvopt='1']"); on.click("#create")
+    on.wait_for_selector(".seatlist")
+    tv_code = on.evaluate("location.hash.split('/')[2]")
+    tv_hint = bool(on.query_selector(".tvinfo"))
+    for i in (1, 2):
+        on.click(f"[data-addbot='{i}']"); on.wait_for_timeout(100)
+    on.evaluate("location.hash = '#/skull'"); on.wait_for_selector(f"[data-tv='{tv_code}']")
+    on.set_viewport_size({"width": 1280, "height": 720})
+    on.click(f"[data-tv='{tv_code}']"); on.wait_for_selector(".tvwait")
+    tv_wait = tv_code in on.inner_text(".tvcode") and not on.query_selector("[data-sit], #start"); shot("16-tele-espera")
+    on.set_viewport_size({"width": 390, "height": 844})
+    on.evaluate(f"location.hash = '#/skull/{tv_code}'"); on.wait_for_selector("#start:not([disabled])")
+    on.click("#start"); on.wait_for_selector(".game.skull.phone [data-place]:not([disabled])", timeout=10000)
+    tv_phone = not on.query_selector(".game.skull .board"); shot("17-tele-telefono")
+    on.click("[data-place='S']"); on.wait_for_timeout(300)
+    on.set_viewport_size({"width": 1280, "height": 720})
+    on.evaluate(f"location.hash = '#/skull/{tv_code}/tele'"); on.wait_for_selector(".game.skull.tv .board")
+    on.wait_for_timeout(2500)  # la compu no la mueve la tele, pero sí se ve lo que ya pasó
+    tv_board = (len(on.query_selector_all(".skull.tv .prow")) == 3 and not on.query_selector(".skull.tv [data-place], .skull.tv #bid, .skull.tv [data-flip]")
+                and on.evaluate("document.documentElement.classList.contains('tv')"))
+    shot("18-tele-tablero")
+    on.evaluate(f"location.hash = '#/skull/{tv_code}'"); on.wait_for_selector(".game.skull.phone")
+    tv_left = not on.evaluate("document.documentElement.classList.contains('tv')")
     browser.close()
 
 problems = []
@@ -349,6 +376,11 @@ if cc_moves < 5: problems.append(f"Damas chinas: solo se movieron {cc_moves} can
 if cc_styles != ["damas-chinas"]: problems.append(f"Damas chinas: estilos cargados {cc_styles}")
 if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
+if not tv_hint: problems.append("Skull con tele: la pantalla de asientos no explica cómo abrir la tele")
+if not tv_wait: problems.append("Skull con tele: la tele no muestra la espera con el código (o tiene botones de asiento)")
+if not tv_phone: problems.append("Skull con tele: el teléfono muestra los tapetes de todos")
+if not tv_board: problems.append("Skull con tele: la tele no muestra los 3 tapetes sin botones")
+if not tv_left: problems.append("Skull con tele: al volver al teléfono sigue en modo tele")
 if not online_finished: problems.append("en línea: la mano no terminó")
 if online_moves == 0: problems.append("en línea: no se pudo tirar ninguna ficha")
 if not finished: problems.append("la mano no terminó")
@@ -364,6 +396,7 @@ print(f"Damas chinas: reglas {cc_rules}, jugadas {cc_moves}, estilos cargados {c
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
+print(f"Tele: aviso {tv_hint}, espera {tv_wait}, teléfono {tv_phone}, tablero {tv_board}, salir {tv_left}.")
 print(f"En línea: mesa {code}, fichas tiradas {online_moves}, mano terminada {online_finished}, en la lista {in_list}, se reabre por enlace {reopened}.")
 if problems:
     print("PROBLEMAS:\n- " + "\n- ".join(problems)); sys.exit(1)

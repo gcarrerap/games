@@ -39,3 +39,21 @@
 .addbot .botsel{flex:1}
 .teamdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
 details.help .cpu{margin-bottom:12px}
+/* La tele como tablero (platform/ui/tv.js): pantalla de espera mientras se sientan. Todo grande, sin botones de juego. */
+.tvwait{min-height:100vh;box-sizing:border-box;padding:4vh 5vw;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;text-align:center}
+.tvhead{display:flex;align-items:center;gap:24px;flex-wrap:wrap;justify-content:center}
+.tvhead h1{font-size:clamp(36px,6vw,84px)}
+.tvcode{display:flex;flex-direction:column;align-items:center;line-height:1}
+.tvcode small{color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:2px;font-size:clamp(14px,1.6vw,24px)}
+.tvcode b{font-family:var(--display);font-weight:400;font-size:clamp(72px,14vw,200px);letter-spacing:.12em;color:var(--accent)}
+.tvjoin{font-size:clamp(18px,2.2vw,32px);max-width:40em;margin:0;text-wrap:balance}
+.tvseats{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:14px}
+.tvseats li{display:flex;align-items:center;gap:10px;background:var(--card);border:2px dashed var(--line);border-radius:16px;padding:12px 20px;font-size:clamp(18px,2vw,30px)}
+.tvseats li.taken{border-style:solid;border-color:var(--accent)}
+.tvseats li i{color:var(--muted)}
+.tvseats li small{color:var(--muted);font-size:.6em}
+.tvseatn{display:inline-grid;place-items:center;width:1.6em;height:1.6em;border-radius:50%;background:var(--bg);font-weight:800;font-size:.8em}
+.tvhint{color:var(--muted);font-size:clamp(16px,1.8vw,26px);margin:0}
+/* En la tele las ventanas (por ejemplo, el resultado de una ronda) también crecen */
+html.tv .sheet{max-width:min(900px,92vw);font-size:clamp(16px,1.6vw,26px)}
+html.tv .sheet h2{font-size:1.6em}

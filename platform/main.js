@@ -3,6 +3,7 @@
 //   #/<juego>              lobby de ese juego
 //   #/<juego>/practica     mesa de práctica
 //   #/<juego>/<CÓDIGO>     mesa en línea (el enlace que se comparte)
+//   #/<juego>/<CÓDIGO>/tele  esa mesa en la tele: el tablero para todos, sin asiento
 import { createSession } from "./app/session.js";
 import { startUpdateChecks } from "./app/updates.js";
 import { botDecide, advise } from "./app/ai.js";
@@ -46,17 +47,17 @@ installOverlayKeys();
 
 // Rutas
 async function route() {
-  const [, gameId, sub] = (location.hash || "#/").replace(/^#/, "").split("/");
+  const [, gameId, sub, extra] = (location.hash || "#/").replace(/^#/, "").split("/");
   const s = app$.state;
   closeOverlay();
   if (!gameId || !findGame(gameId)) { if (s.screen !== "portal") session.actions.goPortal(); else draw(); return; }
   if (s.gameId !== gameId || !s.game) await session.actions.openGame(gameId);
   if (sub === "practica") { if (!s.table || !s.practice) location.replace(`#/${gameId}`); return; } // al recargar no hay práctica que retomar
   if (sub && /^[A-Z]{4}$/.test(sub.toUpperCase())) {
-    const code = sub.toUpperCase();
-    if (s.code === code && s.screen === "table") return;
+    const code = sub.toUpperCase(), tv = extra === "tele";
+    if (s.code === code && s.screen === "table" && s.tv === tv) return;
     await connected; // un enlace a una mesa puede abrirse antes de conectar
-    if (location.hash.split("/")[2]?.toUpperCase() === code) session.actions.openTable(code);
+    if (location.hash.split("/")[2]?.toUpperCase() === code) session.actions.openTable(code, { tv });
     return;
   }
   if (s.screen === "table") session.actions.leave();

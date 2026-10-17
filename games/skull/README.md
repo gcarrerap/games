@@ -4,6 +4,8 @@ Juego de faroleo para 3 a 6 jugadores. Cada quien tiene 3 flores y 1 calavera; s
 
 En la mesa, el botón **Reglas** abre las reglas en cualquier momento (también están en el menú de la partida).
 
+**La tele como tablero:** al crear la mesa en línea, escoge "La tele como tablero" y abre la mesa en la tele con el botón **Tele** del lobby. La tele muestra los tapetes de todos (con los discos volteados), la apuesta, el reto y el resultado de cada ronda, sin botones. El teléfono queda con tu tapete, tu mano y tus botones; al voltear, escoges de quién por nombre. Ver `docs/ARCHITECTURE.md` §5.
+
 **Tutorial:** diez pasos con una ronda de ejemplo (Tú, Lupe y Beto) y preguntas en los momentos clave: qué disco poner, cuánto apostar, subir o pasar, qué voltear primero, de quién voltear y qué disco perder. Se abre desde el aviso de la primera ronda (sale hasta que lo abres una vez), desde la ventana de Reglas y desde el menú. La ronda se juega con `engine/` (`ui/tutorial-script.js`), así las escenas no se apartan de las reglas; `tests/games/skull/tutorial.test.js` lo revisa.
 
 ## Reglas

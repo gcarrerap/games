@@ -11,8 +11,10 @@ import { fakeFirestore } from "../fakes/firebase.js";
 import { seededRandom } from "../../modules/random/index.js";
 import nim from "../modules/fixtures/nim.js";
 import domino from "../../games/domino/index.js";
+import skull from "../../games/skull/index.js";
+import { displayFor } from "../../platform/app/table.js";
 
-const GAMES = { nim, domino };
+const GAMES = { nim, domino, skull };
 
 // Un mundo: un Firestore, un reloj y una cola de temporizadores compartidos por todos los teléfonos
 function world() {
@@ -228,4 +230,61 @@ test("una mesa de otro juego no se abre como si fuera de este", async () => {
   B.a.openTable(code);
   assert.equal(B.st.table, null);
   assert.match(B.st.err, /otro juego/);
+});
+
+test("la tele como tablero: la opción solo existe si el juego la admite y queda en la mesa", async () => {
+  const w = world(), A = w.phone("A");
+  await ready(A, "skull", "Ana");
+  assert.equal(A.a.practiceSettings().tv, false);
+  A.a.savePractice({ tv: true });
+  assert.equal(A.a.practiceSettings().tv, true);
+  const code = await A.a.createTable({ ...A.a.practiceSettings(), mode: "3", timer: false });
+  A.a.openTable(code);
+  assert.equal(A.st.table.config.tv, true);
+  // El dominó no tiene tele: aunque se pida, no queda en la mesa
+  const B = w.phone("B"); await ready(B, "domino", "Beto");
+  const c2 = await B.a.createTable({ ...B.a.practiceSettings(), mode: "2x7", timer: false, tv: true });
+  B.a.openTable(c2);
+  assert.equal(B.st.table.config.tv, undefined);
+  assert.equal(B.a.practiceSettings().tv, false);
+});
+
+test("la tele: nunca tiene asiento (aunque en ese aparato se haya sentado alguien), no mueve a la compu, no graba y no ve discos", async () => {
+  const w = world(), A = w.phone("A"), T = w.phone("T");
+  await ready(A, "skull", "Ana"); await ready(T, "skull", "Tele");
+  const code = await A.a.createTable({ ...A.a.practiceSettings(), mode: "3", timer: false, tv: true });
+  A.a.openTable(code); await A.a.addBotAt(1, skull.bots.profiles[0].id); await A.a.addBotAt(2, skull.bots.profiles[0].id);
+  T.a.openTable(code, { tv: true });
+  assert.equal(T.st.tv, true);
+  assert.equal(T.seat(), -1);
+  await A.a.startGame();
+  assert.equal(T.st.table.status, "playing");
+  // La tele no juega: su jugada no cuenta
+  const before = T.st.table.turn;
+  assert.equal(await T.a.play({ type: "place", disc: "F" }), false);
+  assert.equal(T.st.table.turn, before);
+  // Ni su reloj resuelve turnos ni mueve a la compu
+  assert.ok([...w.timers.values()].every((x) => x.phone !== "T"));
+  // Lo que ve la tele: ningún disco boca abajo
+  await A.a.play({ type: "place", disc: "S" });
+  const v = skull.view(T.st.table.state, T.seat());
+  assert.ok(v.stacks.every((stack) => stack.every((d) => d === null)));
+  assert.ok(v.discs.every((d) => d === null));
+  // Una tele en el aparato de alguien sentado tampoco juega por esa persona
+  const A2 = w.phone("A2", "A"); await ready(A2, "skull", "Ana");
+  A2.a.openTable(code, { tv: true });
+  assert.equal(A2.seat(), -1);
+  // Salir de la tele deja el aparato como cualquier otro
+  T.a.leave();
+  assert.equal(T.st.tv, false);
+});
+
+test("ctx.display: tele, teléfono de una mesa con tele, o la mesa completa", () => {
+  const withTv = { config: { tv: true } }, without = { config: {} };
+  assert.equal(displayFor({ game: skull, table: withTv, seat: -1, tv: true }), "tv");
+  assert.equal(displayFor({ game: skull, table: withTv, seat: 1 }), "phone");
+  assert.equal(displayFor({ game: skull, table: withTv, seat: -1 }), "full"); // quien solo mira en su teléfono
+  assert.equal(displayFor({ game: skull, table: without, seat: 1 }), "full");
+  assert.equal(displayFor({ game: skull, table: withTv, seat: 0, practice: true }), "full");
+  assert.equal(displayFor({ game: domino, table: withTv, seat: -1, tv: true }), "full"); // juego sin tele
 });

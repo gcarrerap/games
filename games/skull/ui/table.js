@@ -1,5 +1,6 @@
 // La mesa de Skull: los tapetes de todos, la apuesta al centro, tus discos y tus botones. El botón "Reglas" queda
-// siempre a la vista. Dibuja con ctx.view y juega con ctx.act(). Lo único propio de esta pantalla es el número que
+// siempre a la vista. Con la tele como tablero (ctx.display) se parte en dos: la tele muestra los tapetes y la apuesta
+// a todos, y el teléfono solo tu tapete, tu mano y tus botones. Dibuja con ctx.view y juega con ctx.act(). Lo único propio de esta pantalla es el número que
 // estás por apostar (`ui.bid`), que se reinicia en cuanto cambia la mesa.
 import { nameOf, inHand, onMat, flipTargets, legalActions, FLOWER, SKULL } from "../engine/index.js";
 import { discSVG, discName } from "./disc.js";
@@ -7,6 +8,7 @@ import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
 import { rulesHelp } from "./rules.js";
 import { renderTutorial, openTutorial, tutorialSeen } from "./tutorial.js";
+import { fullscreenButton, wireFullscreen } from "../../../platform/ui/tv.js";
 
 const PLAYING = ["place", "build", "bid", "flip", "discard"];
 
@@ -33,12 +35,12 @@ function renderMenu(ctx, st) {
 const me = (st, s, seat) => (s === seat && nameOf(st, s) !== "Tú" ? " (tú)" : "");
 
 // Lo que se volteó en el reto, en orden
-function revealsHTML(st) {
+function revealsHTML(st, size = 30) {
   if (!st.reveals.length) return "";
-  return `<div class="reveals">${st.reveals.map((r) => `<span class="rv" title="${esc(nameOf(st, r.seat))}">${discSVG(r.disc, 30)}<small>${esc(nameOf(st, r.seat))}</small></span>`).join("")}</div>`;
+  return `<div class="reveals">${st.reveals.map((r) => `<span class="rv" title="${esc(nameOf(st, r.seat))}">${discSVG(r.disc, size)}<small>${esc(nameOf(st, r.seat))}</small></span>`).join("")}</div>`;
 }
 
-function renderResult(ctx, st, seat) {
+function renderResult(ctx, st, seat, { tv = false } = {}) {
   closeOverlay();
   const o = st.outcome, over = st.phase === "over";
   const ch = nameOf(st, o.challenger), mine = o.challenger === seat;
@@ -58,11 +60,12 @@ function renderResult(ctx, st, seat) {
     <p>${line}</p>
     ${revealsHTML(st)}
     <div class="standings">${standings}</div>
-    ${seat >= 0 ? (over ? `<button class="primary big-cta" id="again">Revancha</button>` : `<button class="primary big-cta" id="next">Siguiente ronda</button>`) : ""}
-    <button class="ghost" id="exit">Salir</button>`, { closable: false });
+    ${tv ? `<p class="hint center">${over ? "La revancha se pide desde un teléfono." : "La siguiente ronda se pide desde un teléfono."}</p>`
+      : seat >= 0 ? (over ? `<button class="primary big-cta" id="again">Revancha</button>` : `<button class="primary big-cta" id="next">Siguiente ronda</button>`) : ""}
+    ${tv ? "" : `<button class="ghost" id="exit">Salir</button>`}`, { closable: false });
   $("#next", ctx.modal)?.addEventListener("click", () => ctx.act({ type: "next" }));
   $("#again", ctx.modal)?.addEventListener("click", () => ctx.again());
-  $("#exit", ctx.modal).onclick = () => ctx.leave();
+  $("#exit", ctx.modal)?.addEventListener("click", () => ctx.leave());
 }
 
 function statusText(st, seat) {
@@ -102,7 +105,10 @@ function matHTML(stack, flipped, size) {
 
 export function renderTable(app, ctx, ui) {
   const st = ctx.view, seat = ctx.seat;
-  app.className = "game skull";
+  // ctx.display: "full" (lo de siempre), "tv" (la tele: el tablero para todos, sin asiento) o "phone" (mesa con
+  // tele: tu teléfono solo muestra lo tuyo y tus botones; los tapetes de todos se ven en la tele)
+  const display = ctx.display || "full";
+  app.className = `game skull ${display === "full" ? "" : display}`;
   if (st.seq !== ui.seenSeq) { ui.bid = null; ui.seenSeq = st.seq; }
   const playing = PLAYING.includes(st.phase);
   const seated = seat >= 0 && !st.out[seat];
@@ -110,6 +116,9 @@ export function renderTable(app, ctx, ui) {
   const clockOn = playing && st.config.timer !== false;
   const total = onMat(st);
   const targets = st.phase === "flip" && myTurn ? flipTargets(st) : [];
+  // En la tele se ve a quién puede voltear el retador, aunque nadie toque la tele
+  const shown = st.phase === "flip" && display === "tv" ? flipTargets(st) : targets;
+  const big = display === "tv";
 
   const board = st.names.map((_, s) => {
     const out = st.out[s];
@@ -120,17 +129,18 @@ export function renderTable(app, ctx, ui) {
       st.challenger === s && (st.phase === "flip" || st.phase === "discard") ? "retador" : "",
       out ? "fuera" : "",
     ].filter(Boolean);
-    const can = targets.includes(s) && s !== seat;
+    const mark = shown.includes(s) && (display === "tv" || s !== seat);
+    const can = targets.includes(s) && s !== seat && display !== "tv";
     const placed = st.phase === "place" && !out && st.stacks[s].length > 0;
     const discs = st.discTotals[s];
-    return `<div class="prow ${playing && (st.phase === "place" ? !out && !st.stacks[s].length : st.turn === s) ? "turn" : ""} ${s === seat ? "mine" : ""} ${out ? "out" : ""} ${can ? "target" : ""}">
+    return `<div class="prow ${playing && (st.phase === "place" ? !out && !st.stacks[s].length : st.turn === s) ? "turn" : ""} ${s === seat ? "mine" : ""} ${out ? "out" : ""} ${mark ? "target" : ""}">
       <div class="phead">
         <span class="pname">${esc(nameOf(st, s))}${s === seat && nameOf(st, s) !== "Tú" ? " <small>(tú)</small>" : ""}</span>
         ${st.wins[s] ? `<span class="wins" aria-label="${st.wins[s]} reto ganado">${"🏆".repeat(st.wins[s])}</span>` : ""}
         ${out ? "" : `<span class="dcount" aria-label="${discs} discos">${Array.from({ length: discs }, () => "<i></i>").join("")}</span>`}
         ${placed ? `<span class="ready">listo</span>` : ""}
       </div>
-      ${out ? "" : `<div class="mat">${matHTML(st.stacks[s], st.flipped[s], 26)}${can ? `<button class="flipbtn" data-flip="${s}">Voltear</button>` : ""}</div>`}
+      ${out ? "" : `<div class="mat">${matHTML(st.stacks[s], st.flipped[s], big ? 64 : 26)}${can ? `<button class="flipbtn" data-flip="${s}">Voltear</button>` : ""}</div>`}
       ${tags.length ? `<div class="ptags">${tags.join(" · ")}</div>` : ""}
     </div>`;
   }).join("");
@@ -141,7 +151,7 @@ export function renderTable(app, ctx, ui) {
   const canPlace = myTurn && (st.phase === "place" || st.phase === "build");
   const handHTML = seated ? [
     ...Array.from({ length: h.F }, () => FLOWER), ...Array.from({ length: h.S }, () => SKULL),
-  ].map((d) => `<button class="discbtn" data-place="${d}" ${canPlace ? "" : "disabled"} aria-label="Poner ${discName(d)}">${discSVG(d, 50)}</button>`).join("") : "";
+  ].map((d) => `<button class="discbtn" data-place="${d}" ${canPlace ? "" : "disabled"} aria-label="Poner ${discName(d)}">${discSVG(d, display === "phone" ? 64 : 50)}</button>`).join("") : "";
 
   let actions = "";
   const legal = myTurn ? legalActions(st, seat) : [];
@@ -156,38 +166,52 @@ export function renderTable(app, ctx, ui) {
       ${st.phase === "bid" ? `<button id="pass" class="big">Pasar</button>` : ""}`;
   } else if (myTurn && st.phase === "flip" && targets.includes(seat)) {
     actions = `<button id="flipmine" class="primary big">Voltear los míos</button>`;
+  } else if (myTurn && st.phase === "flip" && display === "phone") {
+    // Sin los tapetes a la vista, se escoge por nombre (en la tele se ve quién tiene cuántos)
+    actions = `<div class="fliplist">${targets.filter((x) => x !== seat).map((x) => `<button class="big" data-flip="${x}">Voltear de ${esc(nameOf(st, x))} <small>(${st.stacks[x].length - st.flipped[x]})</small></button>`).join("")}</div>`;
   } else if (myTurn && st.phase === "discard") {
     const own = st.discs[seat];
     actions = `${own.F ? `<button class="big" data-discard="F">Pierdo una flor</button>` : ""}${own.S ? `<button class="big" data-discard="S">Pierdo la calavera</button>` : ""}`;
   }
 
   const hint = canPlace ? `<p class="hint center">Toca un disco para ponerlo boca abajo en tu tapete.</p>`
-    : myTurn && st.phase === "flip" && !targets.includes(seat) ? `<p class="hint center">Toca "Voltear" en el tapete de alguien.</p>` : "";
+    : myTurn && st.phase === "flip" && !targets.includes(seat) ? `<p class="hint center">${display === "phone" ? "Escoge de quién volteas el disco de arriba." : `Toca "Voltear" en el tapete de alguien.`}</p>`
+      : display === "phone" && playing && !myTurn ? `<p class="hint center">Mira la mesa en la tele.</p>` : "";
   const bidInfo = st.bid && (st.phase === "bid" || st.phase === "flip" || st.phase === "discard")
     ? `<div class="bidbox"><span>Apuesta</span><b>${st.bid.n}</b><span>de ${total} · ${esc(nameOf(st, st.bid.seat))}</span></div>`
     : `<div class="bidbox quiet"><span>Discos en la mesa</span><b>${total}</b></div>`;
   const progress = st.phase === "flip" ? `<div class="progress">Volteadas ${st.reveals.length} de ${st.bid.n}</div>` : "";
   const last = lastText(st, seat);
-
-  app.innerHTML = `
-    <header class="gbar">
-      <button class="menubtn" id="menu" aria-label="Menú de la partida" aria-haspopup="dialog"><span></span><span></span><span></span></button>
-      <div class="gtitle">Skull</div>
-      <div class="bar-info">Ronda <b>${st.round}</b></div>
-      <button class="rulesbtn" id="rules" aria-haspopup="dialog">Reglas</button>
-    </header>
-    <section class="board" aria-label="Jugadores">${board}</section>
-    <section class="felt ${st.phase === "flip" || st.phase === "discard" ? "challenge" : ""}">
+  const felt = `<section class="felt ${st.phase === "flip" || st.phase === "discard" ? "challenge" : ""}">
       <div class="status ${myTurn ? "me" : ""}">${esc(statusText(st, seat))}${clockOn ? ` <span id="clock" class="clock"></span>` : ""}</div>
       ${clockOn ? `<div class="timer" aria-hidden="true"><i id="clockbar"></i></div>` : ""}
       ${bidInfo}
       ${progress}
-      ${st.phase === "flip" || st.phase === "discard" ? revealsHTML(st) : ""}
+      ${st.phase === "flip" || st.phase === "discard" ? revealsHTML(st, big ? 56 : 30) : ""}
       ${last ? `<div class="lastev">${esc(last)}</div>` : ""}
-    </section>
-    <section class="me">
+    </section>`;
+
+  if (display === "tv") {
+    app.innerHTML = `
+      <header class="gbar">
+        <div class="gtitle">Skull</div>
+        ${fullscreenButton()}
+        <div class="bar-info">Mesa <b>${esc(ctx.table.code)}</b> · Ronda <b>${st.round}</b></div>
+      </header>
+      <div class="tvlayout">
+        <section class="board" aria-label="Jugadores">${board}</section>
+        ${felt}
+      </div>`;
+    wireFullscreen(app);
+    // En la tele nadie toca nada: el resultado de la ronda se muestra sin botones (se sigue desde un teléfono)
+    if (st.phase === "pause" || st.phase === "over") renderResult(ctx, st, seat, { tv: true });
+    else ctx.modal.innerHTML = "";
+    return;
+  }
+
+  const mine = `<section class="me">
       ${seated ? `<div class="mine-row">
-          <div><div class="lbl">Tu tapete</div><div class="mat big">${matHTML(myStack, st.flipped[seat], 34)}</div></div>
+          <div><div class="lbl">Tu tapete</div><div class="mat big">${matHTML(myStack, st.flipped[seat], display === "phone" ? 44 : 34)}</div></div>
           <div><div class="lbl">En la mano</div><div class="hand">${handHTML || `<span class="empty">nada</span>`}</div></div>
         </div>` : ""}
       ${hint}
@@ -196,6 +220,17 @@ export function renderTable(app, ctx, ui) {
       ${seat < 0 ? `<p class="hint center">Estás mirando la mesa.</p>` : !seated ? `<p class="hint center">Saliste del juego; sigue mirando la mesa.</p>` : ""}
       ${ctx.err ? `<p class="err" role="alert">${esc(ctx.err)}</p>` : ""}
     </section>`;
+
+  app.innerHTML = `
+    <header class="gbar">
+      <button class="menubtn" id="menu" aria-label="Menú de la partida" aria-haspopup="dialog"><span></span><span></span><span></span></button>
+      <div class="gtitle">Skull</div>
+      <div class="bar-info">Ronda <b>${st.round}</b></div>
+      <button class="rulesbtn" id="rules" aria-haspopup="dialog">Reglas</button>
+    </header>
+    ${display === "phone" ? "" : `<section class="board" aria-label="Jugadores">${board}</section>`}
+    ${felt}
+    ${mine}`;
 
   $("#menu", app).onclick = () => openOverlay("gameMenu");
   $("#rules", app).onclick = () => openOverlay("rules");

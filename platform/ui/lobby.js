@@ -18,8 +18,10 @@ function tableRow(t, state, game) {
   const status = t.status === "lobby" ? `${filled}/${t.seats.length} sentados` : t.status === "over" ? "Partida terminada" : `Jugando · partida ${t.round}`;
   const who = t.seats.filter(Boolean).map((x) => esc(x.name) + (x.bot ? " (compu)" : "")).join(", ") || "Sin jugadores";
   const opts = optionLabels(game, t.config).map((x) => " · " + esc(x)).join("");
+  const tv = game.tv && t.config && t.config.tv;
   return `<li class="trow"><span class="code">${esc(t.code)}</span>
-    <span class="meta">${esc((mode && (mode.label || mode.id)) || "")}${opts} · ${status}<br>${who}</span>
+    <span class="meta">${esc((mode && (mode.label || mode.id)) || "")}${opts}${tv ? " · con tele" : ""} · ${status}<br>${who}</span>
+    ${tv ? `<button data-tv="${esc(t.code)}" class="ghost" aria-label="Abrir la mesa ${esc(t.code)} en la tele">Tele</button>` : ""}
     <button data-open="${esc(t.code)}" class="${mine ? "primary" : "ghost"}">${mine ? "Volver" : "Entrar"}</button></li>`;
 }
 
@@ -53,6 +55,9 @@ export function renderLobby(app, { state, actions }) {
       ${(game.options || []).map((o) => `<span class="field-label">${esc(o.label)}</span>
       <div class="seg col" role="group" aria-label="${esc(o.label)}">${o.choices.map((c) => `<button data-opt="${esc(o.id)}" data-val="${esc(c.id)}" aria-pressed="${cfg.options[o.id] === c.id}">${esc(c.label)}</button>`).join("")}</div>
       ${(() => { const c = o.choices.find((x) => x.id === cfg.options[o.id]); return c && c.hint ? `<p class="hint">${esc(c.hint)}</p>` : ""; })()}`).join("")}
+      ${game.tv ? `<span class="field-label">Pantalla de la mesa en línea</span>
+      <div class="seg col" role="group" aria-label="Pantalla"><button data-tvopt="0" aria-pressed="${!cfg.tv}">Cada quien en su teléfono</button><button data-tvopt="1" aria-pressed="${cfg.tv}">La tele como tablero</button></div>
+      ${cfg.tv ? `<p class="hint">Una tele (o compu) muestra la mesa a todos y sin asiento; cada quien usa su teléfono solo para lo suyo y para tirar cuando le toca.</p>` : ""}` : ""}
       <p class="err" role="alert">${esc(state.err)}</p>
       <button class="primary big-cta" id="create" ${online ? "" : "disabled"}>Crear mesa en línea</button>
       <p class="hint">Los asientos libres se pueden llenar con la compu.</p>
@@ -74,6 +79,8 @@ export function renderLobby(app, { state, actions }) {
   $("#gout")?.addEventListener("click", () => actions.googleOut());
   app.querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => actions.savePractice({ mode: b.dataset.mode }));
   app.querySelectorAll("[data-opt]").forEach((b) => b.onclick = () => actions.savePractice({ options: { ...actions.practiceSettings().options, [b.dataset.opt]: b.dataset.val } }));
+  app.querySelectorAll("[data-tvopt]").forEach((b) => b.onclick = () => actions.savePractice({ tv: b.dataset.tvopt === "1" }));
+  app.querySelectorAll("[data-tv]").forEach((b) => b.onclick = () => { location.hash = `#/${game.id}/${b.dataset.tv}/tele`; });
   app.querySelectorAll("[data-timer]").forEach((b) => b.onclick = () => actions.savePractice({ timer: b.dataset.timer === "1" }));
   app.querySelectorAll("select[data-bot]").forEach((sel) => sel.onchange = () => {
     const bots = actions.practiceSettings().bots; bots[+sel.dataset.bot] = sel.value; actions.savePractice({ bots });

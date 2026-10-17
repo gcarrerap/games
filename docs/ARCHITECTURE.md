@@ -143,6 +143,7 @@ export default {
     heavy: true,                              // decide() puede tardar: va al hilo aparte
   },
   advise(view, seat, { rnd }),
+  tv: true,                                 // la mesa en línea se puede jugar con la tele como tablero (§5)
 
   // --- Interfaz (se carga al abrir el juego) ---
   ui: () => import("./ui/index.js"),        // → { mount(el, ctx), update(ctx), unmount(), tick?(ctx, clock) }
@@ -170,6 +171,7 @@ export default {
   | `advice`, `askAdvice()`, `closeAdvice()` | el consejo, calculado por la plataforma con tu vista |
   | `practice`, `peek()`, `setSeatBot(seat, profile)` | solo en práctica: el estado completo (para "ver manos") y cambiar el bot de un asiento |
   | `prefs` | preferencias del dispositivo para este juego (`juegos.<id>.*`) |
+  | `display` | `"tv"` en la tele de la mesa, `"phone"` en los teléfonos sentados de una mesa con tele, `"full"` en todo lo demás (§5, "La tele como tablero") |
   | `modal`, `refresh()`, `setDragging(on)` | dónde van las ventanas (`platform/ui/sheet.js`), volver a dibujar, no redibujar mientras arrastras |
 
   El juego no toca el store ni las acciones de la plataforma: todo pasa por `ctx`.
@@ -204,6 +206,15 @@ juegos-mesas/{code}
 - **Grabación:** al terminar una partida, cada teléfono sentado intenta guardarla en `juegos-grabaciones` con un id fijo; las reglas solo dejan crearla una vez.
 - **Salir** de una mesa te deja sentado; "Levantarme" libera el asiento. Las mesas que nadie toca se borran solas.
 - **Limitaciones conocidas:** el estado completo (manos de todos) vive en Firestore, así que alguien con herramientas podría verlo; y si nadie de la mesa tiene el juego abierto, la compu no mueve. Un servidor propio (Cloud Functions, o FastAPI con WebSockets) resolvería las dos cosas. Como las reglas son puras y el contrato es el mismo, ese cambio quedaría contenido en `platform/services/` y `platform/app/`. Queda como decisión aparte.
+
+### La tele como tablero
+
+Un juego que declara `tv: true` ofrece al crear la mesa en línea **"La tele como tablero"** (`config.tv`). Una tele, o cualquier aparato grande, abre la mesa con `#/<juego>/<CÓDIGO>/tele` (en el lobby, el botón **Tele** de la mesa) y muestra la mesa a todos; cada quien usa su teléfono solo para lo suyo y para tirar cuando le toca.
+
+- **La tele solo mira.** No tiene asiento aunque en ese aparato se haya sentado alguien (`mySeat()` es -1), así que no juega, no mueve a la compu, no resuelve el reloj, no graba y no entra a la llamada. Ve lo mismo que quien mira sin jugar: `view(state, -1)`, sin nada oculto.
+- **Lo que pone la plataforma** (`platform/ui/tv.js`): la espera mientras se sientan (el código grande, quién está, cómo entrar desde el teléfono), la clase `html.tv` para agrandar las ventanas, pantalla completa y mantener la pantalla encendida (Wake Lock). Los teléfonos de una mesa con tele ven en la pantalla de asientos cómo abrirla.
+- **Lo que pone cada juego:** su mesa con `ctx.display`. En `"tv"`, todo lo público, grande y sin botones de juego (las pausas y la revancha se piden desde un teléfono). En `"phone"`, solo lo de ese asiento: su mano, sus botones y lo mínimo para decidir (por ejemplo, en Skull, de quién voltear se escoge por nombre). `"full"` es la mesa de siempre; un juego que no declara `tv` nunca recibe otra cosa.
+- **Para agregarla a otro juego:** `tv: true` en su manifiesto y los dos dibujos en su interfaz. Lo que la tele no debe ver lo decide `view` como siempre.
 
 ### Convivir con Noli, La Pata y myDomino
 
@@ -261,6 +272,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 9 ✅ | Panal (juego de colmena para 2): tablero hexagonal sin límites, compu con tres niveles (la difícil mira la respuesta del rival, en el hilo aparte), consejo, mesa que se acomoda a la pantalla, bichos dibujados en SVG y un banco de imágenes (`games/panal/assets/`) que los reemplaza cuando existe. No tocó `platform/` ni `modules/`. |
 | 10 ✅ | Skull (faroleo con flores y una calavera): reglas, compu con tres estilos y mesa con botón de reglas. Primer juego en que varios asientos actúan a la vez (todos ponen su primer disco al mismo tiempo). No tocó `platform/` ni `modules/`. |
 | 11 ✅ | Damas chinas: tablero de estrella (coordenadas hexagonales), pasos y saltos encadenados, regla contra el bloqueo, compu con tres estilos y mesa en SVG que gira para que tu punta quede abajo. Sin azar; no tocó `platform/` ni `modules/`. |
+| 12 ✅ | La tele como tablero (§5): opción de la mesa en línea, ruta `/tele`, `ctx.display`, pantalla de espera, Wake Lock. Skull es el primero que la usa: la tele con los tapetes de todos y el teléfono solo con lo tuyo. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 
