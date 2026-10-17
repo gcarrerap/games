@@ -24,7 +24,8 @@ games/skull/
 ├── engine/       # reglas (puro)
 ├── ai/           # la compu: prudente, normal y atrevida (puro)
 ├── ui/           # la mesa: tapetes, la apuesta, tus discos, botones y la ventana de reglas
-└── styles/       # paño y discos
+├── assets/       # banco de imágenes de los discos (catrinas); ver assets/README.md
+└── styles/       # paño y discos (colores del dibujo SVG de respaldo)
 ```
 
 **Acciones:** `place` (`disc`: `"F"` flor o `"S"` calavera), `bid` (`n`), `pass`, `flip` (`seat`: tu tapete primero), `discard` (`disc`: qué pierdes si te topaste con tu calavera) y `next` (siguiente ronda).
@@ -36,3 +37,5 @@ games/skull/
 **La compu:** cree poder voltear todos los suyos si no puso la calavera (o los que quedaron encima de ella) más una parte de los ajenos según su estilo, con más confianza en quien apostó. Pone la calavera de vez en cuando (más la atrevida) y con ella puesta a veces apuesta bajo o sube de farol para que otro se haga retador. Al voltear, empieza por quienes apostaron. Al perder, conserva la calavera mientras le quede más de una flor.
 
 **Al vencerse el reloj:** pone una flor (o la calavera si no le quedan), pasa en la apuesta (o apuesta 1 si tiene que abrirla), voltea el primer tapete que se pueda y pierde una flor si tiene.
+
+**Discos:** imágenes con temática de catrinas de Petra (`assets/`, elegidas en el #26). Sin banco, la mesa dibuja los discos en SVG (`ui/disc.js`).

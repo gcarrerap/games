@@ -1,4 +1,9 @@
-// Dibujo de los discos (SVG): flor, calavera y boca abajo. Los colores vienen de styles/table.css.
+// Dibujo de los discos: flor, calavera y boca abajo.
+//
+// Banco de imágenes: si `assets/bank.js` trae la imagen de una cara (flower, skull, back), se usa esa (un <image>);
+// si no, el dibujo SVG de aquí, con los colores de styles/table.css. Ver assets/README.md.
+import { BANK } from "../assets/bank.js";
+
 const petals = [0, 72, 144, 216, 288].map((a) => {
   const r = (a - 90) * Math.PI / 180;
   return `<circle cx="${(20 + 6.5 * Math.cos(r)).toFixed(2)}" cy="${(20 + 6.5 * Math.sin(r)).toFixed(2)}" r="5" class="petal"/>`;
@@ -14,9 +19,17 @@ const FACES = {
   back: `<circle cx="20" cy="20" r="18" class="dface back"/><circle cx="20" cy="20" r="11" class="ring"/><circle cx="20" cy="20" r="4" class="ring"/>`,
 };
 
+// La llave del banco de cada cara
+export const BANK_KEY = { F: "flower", S: "skull", back: "back" };
+
+function face(key) {
+  const img = BANK[BANK_KEY[key]];
+  return img ? `<image href="${img.href}" x="0" y="0" width="40" height="40" preserveAspectRatio="xMidYMid meet"/>` : FACES[key];
+}
+
 // disc: "F", "S" o null (boca abajo)
 export function discSVG(disc, size = 40) {
-  return `<svg class="disc" viewBox="0 0 40 40" width="${size}" height="${size}" aria-hidden="true">${FACES[disc || "back"]}</svg>`;
+  return `<svg class="disc" viewBox="0 0 40 40" width="${size}" height="${size}" aria-hidden="true">${face(disc || "back")}</svg>`;
 }
 
 export const discName = (d) => (d === "S" ? "calavera" : d === "F" ? "flor" : "disco boca abajo");
