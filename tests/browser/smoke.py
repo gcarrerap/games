@@ -4,8 +4,8 @@ consola:
   2. La Pata en práctica: varios turnos (robar y descartar), el registro y el consejo; los estilos del dominó se
      quitan al cambiar de juego.
   3. Piojos en práctica: tirar y plantarse varios turnos contra la compu; solo sus estilos quedan cargados.
-  3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar y
-     pasar a la siguiente mano.
+  3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar (el paño
+     se pone rojo con el aviso de última vuelta) y pasar a la siguiente mano.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
      el consejo y abrir el menú. En línea: la regla escogida se ve en la pantalla de asientos.
   5. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
@@ -141,8 +141,11 @@ with sync_playwright() as p:
     viuda_rules = "Flor imperial" in page.inner_text(".sheet[data-sheet='rules']"); shot("12-viuda-reglas")
     page.click("#rulesclose"); page.wait_for_timeout(200)
     viuda_acts = viuda_hands = 0
+    viuda_alert = False
     for _ in range(300):
-        if (viuda_hands >= 1 and viuda_acts >= 3) or viuda_hands >= 5 or page.query_selector(".sheet #again"): break
+        if not viuda_alert and page.query_selector(".felt.lastround .knockalert"):
+            viuda_alert = True; shot("13b-viuda-tocaron")
+        if (viuda_hands >= 1 and viuda_acts >= 3 and viuda_alert) or viuda_hands >= 5 or page.query_selector(".sheet #again"): break
         if page.query_selector(".sheet #next"):
             if viuda_hands == 0: shot("13-viuda-manos")
             if tap(".sheet #next"): viuda_hands += 1
@@ -236,6 +239,7 @@ if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {pioj
 if not viuda_rules: problems.append("La Viuda: el botón Reglas no mostró las reglas")
 if viuda_acts < 3: problems.append(f"La Viuda: solo se jugaron {viuda_acts} turnos")
 if viuda_hands < 1: problems.append("La Viuda: no terminó ninguna mano")
+if not viuda_alert: problems.append("La Viuda: al tocar no apareció el aviso de última vuelta")
 if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not online_finished: problems.append("en línea: la mano no terminó")

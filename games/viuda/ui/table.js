@@ -69,14 +69,24 @@ function statusText(st, seat) {
   if (st.phase === "over") return st.winner === null ? "Empate" : `Ganó ${nameOf(st, st.winner)}`;
   if (st.phase === "pause") return "Se muestran las manos";
   const mine = st.turn === seat;
-  if (st.phase === "blind") return mine ? "Te toca: ¿tomas la viuda a ciegas o pasas?" : `${nameOf(st, st.turn)} decide si toma la viuda`;
+  if (st.phase === "blind") return mine ? "Te toca: toma la viuda a ciegas, pasa o toca" : `${nameOf(st, st.turn)} decide si toma la viuda`;
   if (st.phase === "open") return mine ? "Te toca: cambia una, cambia las 5 o toca" : `Turno de ${nameOf(st, st.turn)}`;
-  return mine ? `${nameOf(st, st.knocker)} tocó: tu último turno` : `${nameOf(st, st.knocker)} tocó · turno de ${nameOf(st, st.turn)}`;
+  return mine ? "Tu último intento" : `Último intento de ${nameOf(st, st.turn)}`;
+}
+
+// Aviso de que alguien tocó: su nombre destacado y que ya es la última vuelta
+function knockAlert(st, seat, fresh) {
+  if (st.phase !== "last") return "";
+  const me = st.knocker === seat;
+  const who = me ? "Tocaste" : `<b class="knocker">${esc(nameOf(st, st.knocker))}</b> tocó`;
+  const sub = me ? "Los demás tienen un último intento" : st.turn === seat ? "Última vuelta" : "Última vuelta: cada quien tiene un último intento";
+  return `<div class="knockalert ${fresh ? "flash" : ""}" role="alert"><span class="kicon" aria-hidden="true">✋</span><div><div class="ktitle">${who}</div><div class="ksub">${sub}</div></div></div>`;
 }
 
 function lastText(st, seat) {
   const l = st.last;
   if (!l || st.phase === "pause" || st.phase === "over") return "";
+  if (l.kind === "knock") return ""; // ya lo dice el aviso de última vuelta
   const who = l.seat === seat ? "Tú" : nameOf(st, l.seat);
   const me = l.seat === seat;
   let verb;
@@ -101,19 +111,24 @@ export function renderTable(app, ctx, ui) {
     const tags = [
       !out && st.dealer === s ? "reparte" : "",
       !out && st.cut && st.cut.seat === s && st.cut.took ? "partió con comodín" : "",
-      playing && st.knocker === s ? "tocó" : "",
       st.viuda === s && !out ? "tiene la viuda" : "",
       out ? "fuera" : "",
     ].filter(Boolean);
-    return `<div class="prow ${playing && st.turn === s ? "turn" : ""} ${s === seat ? "mine" : ""} ${out ? "out" : ""}">
+    const knocked = st.phase === "last" && st.knocker === s;
+    return `<div class="prow ${playing && st.turn === s ? "turn" : ""} ${s === seat ? "mine" : ""} ${out ? "out" : ""} ${knocked ? "knocked" : ""}">
       <span class="pname">${esc(nameOf(st, s))}${s === seat && nameOf(st, s) !== "Tú" ? " <small>(tú)</small>" : ""}</span>
+      ${knocked ? `<span class="kbadge">TOCÓ</span>` : ""}
       ${out ? "" : chipsHTML(st.chips[s], st.viuda === s)}
       ${tags.length ? `<span class="ptags">${tags.join(" · ")}</span>` : ""}
     </div>`;
   }).join("");
 
-  // La viuda: tapada en la primera ronda; abierta, se puede escoger una carta para cambiar
-  const canSwap = myTurn && st.phase !== "blind";
+  // La viuda: tapada hasta que alguien la toma; abierta, se puede escoger una carta para cambiar
+  const canSwap = myTurn && st.widowOpen;
+  // El aviso de que tocaron parpadea solo la primera vez que se ve
+  const knockKey = st.phase === "last" ? `${st.hand}:${st.knocker}` : null;
+  const freshKnock = !!knockKey && ui.knockSeen !== knockKey;
+  ui.knockSeen = knockKey;
   const widow = st.widow
     ? st.widow.map((c) => `<button class="cardbtn ${ui.take === c ? "sel" : ""} ${isWild(c, st) ? "wildc" : ""}" data-take="${c}" ${canSwap ? "" : "disabled"} aria-pressed="${ui.take === c}" aria-label="${esc(cardName(c))} de la viuda">${cardSVG(c, CW, CH)}</button>`).join("")
     : Array.from({ length: st.widowCount }, () => `<span class="cardback">${backSVG(CW, CH)}</span>`).join("");
@@ -122,13 +137,14 @@ export function renderTable(app, ctx, ui) {
   const handHTML = hand.map((c) => `<button class="cardbtn ${ui.give === c ? "sel" : ""} ${isWild(c, st) ? "wildc" : ""}" data-give="${c}" ${canSwap ? "" : "disabled"} aria-pressed="${ui.give === c}" aria-label="${esc(cardName(c))}${isWild(c, st) ? ", comodín" : ""}">${cardSVG(c, CW, CH)}</button>`).join("");
 
   let actions = "";
-  if (myTurn && st.phase === "blind") {
-    actions = `<button id="all" class="primary big">Tomar la viuda</button><button id="pass" class="big">Pasar</button>`;
+  if (myTurn && !st.widowOpen) {
+    actions = `<button id="all" class="primary big">Tomar la viuda</button><button id="pass" class="big">Pasar</button>
+      ${st.phase === "blind" ? `<button id="knock" class="big knockbtn">Tocar</button>` : ""}`;
   } else if (myTurn) {
     const ready = ui.give && ui.take;
     actions = `<button id="swap" class="primary big" ${ready ? "" : "disabled"}>${ready ? `Cambiar ${cardName(ui.give)} por ${cardName(ui.take)}` : "Cambiar una"}</button>
       <button id="all" class="big">Cambiar las 5</button>
-      ${st.phase === "open" ? `<button id="knock" class="big">Tocar</button>` : `<button id="pass" class="big">Pasar</button>`}`;
+      ${st.phase === "open" ? `<button id="knock" class="big knockbtn">Tocar</button>` : `<button id="pass" class="big">Pasar</button>`}`;
   }
   const hint = canSwap && !(ui.give && ui.take) ? `<p class="hint center">Para cambiar una, toca una carta tuya y una de la viuda.</p>` : "";
   const last = lastText(st, seat);
@@ -141,10 +157,11 @@ export function renderTable(app, ctx, ui) {
       <button class="rulesbtn" id="rules" aria-haspopup="dialog">Reglas</button>
     </header>
     <section class="board" aria-label="Jugadores">${board}</section>
-    <section class="felt">
+    <section class="felt ${st.phase === "last" ? "lastround" : ""}">
+      ${knockAlert(st, seat, freshKnock)}
       <div class="status ${myTurn ? "me" : ""}">${esc(statusText(st, seat))}${clockOn ? ` <span id="clock" class="clock"></span>` : ""}</div>
       ${clockOn ? `<div class="timer" aria-hidden="true"><i id="clockbar"></i></div>` : ""}
-      <div class="widowlbl">La viuda${st.widow ? "" : " (tapada)"}</div>
+      <div class="widowlbl">La viuda${st.widowOpen ? "" : " (tapada)"}</div>
       <div class="widow">${widow}</div>
       ${last ? `<div class="lastev">${esc(last)}</div>` : ""}
     </section>
