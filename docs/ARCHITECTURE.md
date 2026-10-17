@@ -196,15 +196,14 @@ juegos-mesas/{code}
 
 ### Convivir con Noli, La Pata y myDomino
 
-Cuatro apps viven en el mismo dominio (`gcarrerap.github.io`) y en el mismo proyecto de Firebase (`dominomx`). Para que ninguna pise a otra:
+Cuatro apps viven en el mismo dominio (`gcarrerap.github.io`). Desde el 2026-10-17 este sitio tiene su propio proyecto de Firebase (`gcarrerap-games`); las otras tres siguen en `dominomx`. Lo que sí comparten es lo que va por dominio. Para que ninguna pise a otra:
 
 | Recurso | Noli | La Pata | myDomino | Este sitio |
 |---|---|---|---|---|
-| Colecciones de Firestore | `noli_perfiles`, `noli_vinculos`, `noli_salas` | `pata_mesas`, `pata_rondas`, `pata_llamadas` | `mesas`, `manos` | `juegos-mesas`, `juegos-grabaciones`, `juegos-llamadas` |
 | Claves de `localStorage` (compartido por dominio) | `noli.*` | `pata.*` | `dom.*` | `juegos.*` y `juegos.<juego>.*` |
 | Caché del service worker (compartido por dominio) | `noli-v1` | `mypata-v1` | `mydomino-v1` | `juegos-v1` |
 
-**Reglas de Firestore:** el proyecto tiene un solo archivo de reglas y publicar reemplaza *todas*. `firestore.rules` de este repositorio lleva los bloques de las cuatro apps (tomados de lo publicado el 2026-10-16, más `'brincar'` en el control remoto de Noli, que su código ya usa). `tests/platform/rules.test.js` falla si falta una colección de cualquiera de ellas. Si cambian las reglas de otra app, hay que copiarlas aquí antes de publicar desde aquí, y agregar el bloque de este sitio en la suya antes de publicar desde allá.
+**Reglas de Firestore:** como el proyecto es solo de este sitio, `firestore.rules` lleva solo sus colecciones, y `tests/platform/rules.test.js` falla si falta una o si aparece otra. Publicarlo ya no afecta a Noli, La Pata ni myDomino.
 
 **Cachés:** los cachés del navegador también son por dominio. El service worker de este sitio solo borra cachés que empiezan con `juegos-`. Los de Noli, La Pata y myDomino, al activarse, borran *todos* los que no son el suyo (incluido el de este sitio y los de las otras): cada app le quita a las demás su copia para jugar sin conexión. Se arregla en cada uno de esos repositorios con el mismo cambio de una línea que tiene `sw.js` aquí.
 

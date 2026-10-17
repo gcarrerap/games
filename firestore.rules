@@ -1,101 +1,10 @@
 rules_version = '2';
-// Reglas de Firestore del proyecto dominomx, que comparten CUATRO apps: Juegos de la Familia (este repositorio,
-// gcarrerap/games), Noli (gcarrerap/noli), La Pata (gcarrerap/myPata) y el dominó (gcarrerap/myDomino).
-// Firestore tiene UN solo archivo de reglas por proyecto: lo que se publique reemplaza todo. Por eso este archivo
-// lleva los bloques de las cuatro apps, y publicar el de cualquiera de ellas sin los demás deja sin acceso a las otras.
-//
-// Los bloques de Noli, La Pata y el dominó son los que estaban publicados el 2026-10-16, con una diferencia: las
-// acciones del control remoto de Noli incluyen 'brincar', que ya está en noli/firestore.rules (#25) y que el código
-// de Noli envía, pero que todavía no se había publicado. Si cambian en sus repositorios, hay que copiarlos aquí (y
-// agregar el bloque de Juegos allá) antes de volver a publicar. tests/platform/rules.test.js revisa que no falte
-// ninguna colección.
+// Reglas de Firestore del proyecto gcarrerap-games, que es solo de este sitio (gcarrerap/games).
+// Firestore tiene UN solo archivo de reglas por proyecto: publicar este archivo reemplaza todo lo publicado.
+// Se publica desde la consola (Firestore → Reglas, pegar el archivo completo) o con
+// `firebase deploy --only firestore:rules`. tests/platform/rules.test.js revisa que estén todas las colecciones.
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ---- Noli (gcarrerap/noli, #7) ----
-    // Perfil: su id es aleatorio de 24 caracteres y funciona como llave. Se puede leer con get (sabiendo el id),
-    // nunca listar, así que nadie descubre perfiles ajenos.
-    match /noli_perfiles/{perfil} {
-      allow get, create: if request.auth != null && perfil.size() >= 20;
-      allow list, update, delete: if false;
-      // Progreso por juego: { json (texto), actualizado (ms), dispositivo }
-      match /juegos/{juego} {
-        allow read: if request.auth != null && perfil.size() >= 20;
-        allow write: if request.auth != null && perfil.size() >= 20
-          && request.resource.data.json is string
-          && request.resource.data.json.size() < 200000
-          && request.resource.data.actualizado is number;
-      }
-    }
-    // Códigos para vincular un dispositivo: 6 dígitos, duran 10 minutos. Se leen con get (no se pueden listar);
-    // el dispositivo que ya tiene el perfil solo puede escribirle el perfil una vez.
-    match /noli_vinculos/{codigo} {
-      allow get, delete: if request.auth != null;
-      allow list: if false;
-      allow create: if request.auth != null && codigo.matches('^[0-9]{6}$')
-        && request.resource.data.perfil == null
-        && request.resource.data.expira is number;
-      // Crear de nuevo un código vencido (la TV pidió uno que coincidió con otro viejo)
-      allow update: if request.auth != null && (
-        (resource.data.perfil == null && request.resource.data.perfil is string
-          && request.resource.data.perfil.size() >= 20
-          && request.resource.data.expira == resource.data.expira
-          && request.time.toMillis() < resource.data.expira)
-        || (resource.data.expira < request.time.toMillis() && request.resource.data.perfil == null));
-    }
-    // ---- Noli: salas del control remoto (gcarrerap/noli, #3) ----
-    // La TV abre la sala (su usuario anónimo queda en "tv") y la renueva cada minuto; el teléfono se une
-    // escribiendo "control". Otra TV solo puede tomar el código cuando la sala ya se venció (campo "vence").
-    match /noli_salas/{codigo} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null
-        && codigo.matches('^[0-9]{4}$')
-        && request.resource.data.codigo == codigo
-        && request.resource.data.keys().hasOnly(['codigo', 'tv', 'sesion', 'creada', 'vence', 'tvVisto', 'control'])
-        && ((resource == null && request.resource.data.tv == request.auth.uid)
-          || request.resource.data.tv == resource.data.tv
-          || (request.resource.data.tv == request.auth.uid && resource.data.vence < request.time.toMillis()));
-      allow delete: if request.auth != null && resource.data.tv == request.auth.uid;
-      // Mensajes para conectar el teléfono con la TV por WebRTC (quien los recibe los borra)
-      match /senales/{id} {
-        allow read, write: if request.auth != null;
-      }
-      // Respaldo cuando WebRTC no conecta: una acción del control por documento (la TV las borra al recibirlas)
-      match /acciones/{id} {
-        allow read, delete: if request.auth != null;
-        allow create: if request.auth != null
-          && request.resource.data.accion in ['arriba', 'abajo', 'izquierda', 'derecha', 'ok', 'atras', 'brincar'];
-      }
-    }
-    // ---- La Pata ----
-    // Mesas en línea: cualquier jugador con sesión (los invitados entran de forma anónima)
-    match /pata_mesas/{mesa} {
-      allow read, write: if request.auth != null;
-    }
-    // Rondas grabadas: los teléfonos solo pueden CREAR. Como el id de cada ronda es fijo, si dos teléfonos graban
-    // la misma ronda, el segundo intento es una actualización y se rechaza: nunca hay duplicados.
-    // Nadie las lee, cambia ni borra desde el juego; se leen con scripts/export-partidas.mjs (cuenta de servicio).
-    match /pata_rondas/{ronda} {
-      allow create: if request.auth != null
-        && request.resource.data.json is string
-        && request.resource.data.json.size() < 400000;
-      allow read, update, delete: if false;
-    }
-    // Llamadas de voz y video: quién está en la llamada de cada mesa (peers) y los mensajes para conectarse
-    // (signals). El audio y el video no pasan por Firestore, van directo entre teléfonos.
-    match /pata_llamadas/{mesa}/{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    // ---- Dominó de la Familia (myDomino), mismo proyecto ----
-    match /mesas/{mesa} {
-      allow read, write: if request.auth != null;
-    }
-    match /manos/{mano} {
-      allow create: if request.auth != null
-        && request.resource.data.json is string
-        && request.resource.data.json.size() < 200000;
-      allow read, update, delete: if false;
-    }
-    // ---- Juegos de la Familia (gcarrerap/games) ----
     // Mesas de todos los juegos (platform/services/tables-repo.js). Cada una dice de qué juego es.
     match /juegos-mesas/{code} {
       allow read, delete: if request.auth != null;

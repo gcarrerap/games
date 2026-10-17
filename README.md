@@ -93,9 +93,16 @@ La guía completa está en [docs/ADDING-A-GAME.md](docs/ADDING-A-GAME.md).
 
 ## Firebase
 
-Las mesas en línea y las cuentas usan el proyecto de Firebase `dominomx` (configuración en `platform/config.js`), que comparten Noli, La Pata y myDomino. Este sitio usa sus propias colecciones (`juegos-mesas`, `juegos-grabaciones`). Detalle en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5.
+Las mesas en línea y las cuentas usan el proyecto de Firebase **`gcarrerap-games`**, que es solo de este sitio (configuración en `platform/config.js`). Hasta el 2026-10-17 compartía `dominomx` con Noli, La Pata y myDomino. Colecciones: `juegos-mesas`, `juegos-grabaciones`, `juegos-llamadas`. Detalle en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5.
 
-Las reglas están en `firestore.rules` e **incluyen las de las cuatro apps**: el proyecto tiene un solo archivo de reglas y publicar reemplaza todas. Se publican desde la consola de Firebase (Firestore → Reglas, pegar el archivo completo) o con `firebase deploy --only firestore:rules`.
+En la consola el proyecto tiene activados Authentication (Google y Anónimo, con `gcarrerap.github.io` en dominios autorizados) y Firestore.
+
+Las reglas están en `firestore.rules`. Publicar reemplaza todas las del proyecto. Se publican desde la consola de Firebase (Firestore → Reglas, pegar el archivo completo) o con `firebase deploy --only firestore:rules`.
+
+**La `apiKey` de `platform/config.js` no es un secreto.** El sitio no tiene paso de compilación, así que va en el repositorio, y de todos modos el navegador la descarga. GitHub puede marcarla como secreto expuesto; se cierra la alerta como "falso positivo". Lo que la protege:
+
+- las reglas de Firestore;
+- la restricción de la llave en Google Cloud Console → APIs & Services → Credentials → "Browser key (auto created by Firebase)" → Application restrictions: Websites, con `https://gcarrerap.github.io/*`, `https://gcarrerap-games.firebaseapp.com/*` (lo usa el inicio de sesión con Google) y `http://localhost/*` para probar.
 
 ## Publicar
 
