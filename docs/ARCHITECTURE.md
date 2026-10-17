@@ -110,6 +110,7 @@ Qué hay hoy en myDomino y a dónde va.
 | Fichas, jugadas, puntos, modos, cadena, heurísticas, salida, criterios | `engine/`, `ai/`, `ui/svg/` | `games/domino/` | Se quedan |
 | Banco de imágenes: una imagen por llave con respaldo a un dibujo propio | (nuevo) Panal `assets/bank.js` + `ui/art.js` | se queda en Panal | Candidato a `modules/` cuando un segundo juego use imágenes generadas (por ejemplo, uno estilo Dixit) |
 | Casillas hexagonales: vecinos, colmena unida, puntos de corte | (nuevo) Panal `engine/hex.js` | se queda en Panal | Candidato si llega otro juego de tablero hexagonal |
+| Tutorial con lecciones jugables: posición armada, tarea, revisión y "Muéstrame" | (nuevo) Panal `ui/lessons.js`, `ui/tutorial.js` | se queda en Panal | Candidato a `modules/` cuando un segundo juego tenga tutorial: la forma de una lección (posición + tarea + revisión con las reglas del juego) parece común; el dibujo es de cada juego |
 
 ## 4. El contrato de juego
 

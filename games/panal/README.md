@@ -22,7 +22,8 @@ games/panal/
 ├── index.js      # Panal conforme al contrato: setup, legalActions, apply, view, la compu, el reloj, el consejo
 ├── engine/       # reglas (puro). hex.js: casillas "q,r" en coordenadas axiales, colmena unida, puntos de corte
 ├── ai/           # la compu: fácil, normal y difícil (puro)
-├── ui/           # la mesa: colmena que se acomoda a la pantalla, reservas, consejo, reglas; art.js dibuja los bichos
+├── ui/           # la mesa (table.js), la colmena y las reservas (board.js), los bichos (art.js), las reglas (rules.js)
+│                 # y el tutorial: tutorial.js (la ventana) y lessons.js (las lecciones, puras y probadas)
 ├── assets/       # banco de imágenes (bank.js) que reemplaza a los dibujos cuando se llena; ver assets/README.md
 └── styles/       # mesa de madera y fichas
 ```
@@ -37,6 +38,13 @@ pueden mover (las que no unen dos partes de la colmena; la hormiga y el mayate v
 reina rival. Fácil y Normal miran una jugada adelante con más o menos dudas (`modules/choice`); Difícil mira además la
 mejor respuesta del rival a sus 12 mejores jugadas. Siempre cierra una jugada que gana. El consejo es lo que haría
 la difícil. Al vencerse el reloj se juega lo que haría la normal.
+
+**Tutorial:** el botón **Aprender** de la mesa (y "Aprender paso a paso" en las reglas) abre 11 lecciones cortas. En
+cada una hay una colmena chica armada a mano y una tarea: rodear a la reina, poner un bicho, la reina en la 4.ª ficha,
+cómo se mueve cada bicho, colmena única y caber por un hueco; la última da consejos para empezar. Se juega con las
+reglas de verdad: si tocas una ficha que no se puede mover, dice por qué. "Muéstrame" marca la jugada. Cada lección
+tiene su solución, y `tests/games/panal/lessons.test.js` revisa que se pueda cumplir con las reglas actuales. El
+botón Aprender llama la atención hasta que se abre una vez (preferencia `juegos.panal.tutorial`).
 
 **Arte:** los bichos son dibujos SVG propios (`ui/art.js`). Las imágenes del banco (`assets/`) los reemplazan uno
 por uno cuando existen.
