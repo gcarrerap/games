@@ -19,6 +19,7 @@ El sitio tiene tres tipos de piezas:
 | La Viuda | `games/viuda/` | 2–8 | Póker de 5 cartas con la viuda. Práctica contra la compu y mesas en línea |
 | Panal | `games/panal/` | 2 | Juego de colmena con bichos hexagonales. Práctica contra la compu y mesas en línea |
 | Skull | `games/skull/` | 3–6 | Faroleo con flores y una calavera. Práctica contra la compu y mesas en línea |
+| Damas chinas | `games/damas-chinas/` | 2, 3, 4 o 6 | Canicas en la estrella. Práctica contra la compu y mesas en línea |
 
 ## Cómo está hecho
 
@@ -58,7 +59,8 @@ games/
 │   ├── continental/      # misma forma
 │   ├── viuda/            # misma forma
 │   ├── panal/            # misma forma, más assets/ (banco de imágenes)
-│   └── skull/            # misma forma
+│   ├── skull/            # misma forma
+│   └── damas-chinas/     # misma forma
 ├── tests/
 │   ├── architecture.test.js # las reglas de dependencia se cumplen (revisa los imports)
 │   ├── contract.test.js  # todos los juegos cumplen el contrato
