@@ -14,6 +14,7 @@ El sitio tiene tres tipos de piezas:
 |---|---|---|---|
 | Dominó | `games/domino/` | 2–4 | Práctica contra la compu y mesas en línea con la familia |
 | La Pata | `games/pata/` | 2–6 | Práctica contra la compu y mesas en línea |
+| Piojos | `games/piojos/` | 2–6 | Dados de póker. Práctica contra la compu y mesas en línea |
 
 ## Cómo está hecho
 
@@ -47,7 +48,8 @@ games/
 │   │   ├── ai/           # la compu y el consejo (puro)
 │   │   ├── ui/           # la mesa del juego
 │   │   └── styles/
-│   └── pata/             # misma forma
+│   ├── pata/             # misma forma
+│   └── piojos/           # misma forma
 ├── tests/
 │   ├── architecture.test.js # las reglas de dependencia se cumplen (revisa los imports)
 │   ├── contract.test.js  # todos los juegos cumplen el contrato

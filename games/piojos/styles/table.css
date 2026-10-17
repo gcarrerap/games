@@ -1,0 +1,92 @@
+/* Mesa de Piojos: marcador con la meta, el paño con los dados y los botones. Mismo estilo que el dominó y La Pata
+   (el paño y los colores de platform/styles/tokens.css). */
+:root{
+  --felt:#1f5c49; --felt-2:#184c3c; --felt-fg:#eaf2ec; --felt-muted:#a9c4b7;
+  --die:#fbf7ec; --die-edge:#cfc6b0; --die-ink:#2a2a2a; --louse:#f3d67a; --louse-edge:#b9812a; --louse-ink:#5a3a07;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --felt:#164232; --felt-2:#103428; --felt-fg:#e8f1ec; --felt-muted:#8fb2a2;
+  --die:#efe7d3; --die-edge:#a99e84; --louse:#f0d07a; --louse-edge:#e0a843;
+}}
+:root[data-theme="dark"]{
+  --felt:#164232; --felt-2:#103428; --felt-fg:#e8f1ec; --felt-muted:#8fb2a2;
+  --die:#efe7d3; --die-edge:#a99e84; --louse:#f0d07a; --louse-edge:#e0a843;
+}
+
+.game.piojos{height:100%;max-width:560px;margin:0 auto;padding-inline:8px;padding-block:6px;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;overflow:hidden}
+.gbar{display:flex;align-items:center;gap:10px;min-height:40px}
+.menubtn{width:40px;height:40px;min-height:40px;padding:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;flex:none}
+.menubtn span{display:block;width:18px;height:2px;background:var(--fg);border-radius:1px}
+.gtitle{flex:1;font-family:var(--display);font-size:20px}
+.bar-info{font-size:13px;color:var(--muted);white-space:nowrap}
+.bar-info b{color:var(--fg);font-variant-numeric:tabular-nums}
+
+/* Marcador: cada jugador con su avance hacia la meta; lo del turno en curso, en tono claro */
+.board{display:flex;flex-direction:column;gap:4px;flex:none;max-height:34%;overflow:auto}
+.prow{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 6px;column-gap:8px;row-gap:3px;align-items:center;
+  padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.prow.turn{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.pname{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pname small{font-weight:600;color:var(--muted)}
+.pscore{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pscore b{font-family:var(--display);font-weight:400;font-size:18px}
+.pscore em{font-style:normal;font-weight:800;color:var(--accent);font-size:13px}
+.pbar{grid-column:1/-1;display:flex;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--ok);transition:width .3s}
+.pbar i.pend{background:var(--accent);opacity:.55}
+.prow.mine .pbar i:first-child{background:var(--accent)}
+.prow.mine .pbar i.pend{background:var(--gold)}
+
+/* Paño */
+.felt{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px 8px;
+  background:radial-gradient(ellipse at 50% 45%,var(--felt),var(--felt-2));border-radius:16px;color:var(--felt-fg);box-shadow:inset 0 0 0 2px rgba(0,0,0,.12)}
+.felt .status{font-weight:800;font-size:15px;text-align:center;min-height:1.4em}
+.felt .status.me{color:var(--gold)}
+.clock{font-variant-numeric:tabular-nums;color:var(--felt-muted);font-weight:700}
+.clock.low{color:var(--warn)!important}
+.timer{width:70%;height:4px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden;margin-top:-8px}
+.timer i{display:block;height:100%;width:100%;background:var(--gold);transition:width .25s linear}
+.timer i.low{background:var(--warn)}
+
+.roll{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.roll.idle{opacity:.35}
+svg.die{display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+.die-body{fill:var(--die);stroke:var(--die-edge);stroke-width:1.5}
+.die-face{fill:var(--die-ink);font-family:var(--display);font-weight:400}
+svg.die.louse .die-body{fill:var(--louse);stroke:var(--louse-edge);stroke-width:2.5}
+svg.die.louse .die-face{fill:var(--louse-ink)}
+svg.die.dim{opacity:.45;filter:none}
+svg.die.blank .die-body{fill:rgba(255,255,255,.08);stroke:rgba(255,255,255,.35);stroke-dasharray:4 3}
+.roll.rolling svg.die{animation:tumble .45s cubic-bezier(.3,1.4,.6,1) both}
+.roll.rolling svg.die:nth-child(2){animation-delay:.04s}
+.roll.rolling svg.die:nth-child(3){animation-delay:.08s}
+.roll.rolling svg.die:nth-child(4){animation-delay:.12s}
+.roll.rolling svg.die:nth-child(5){animation-delay:.16s}
+@keyframes tumble{0%{transform:translateY(-18px) rotate(-90deg) scale(.7)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.roll.rolling svg.die{animation:none}}
+
+.turnpts{display:flex;flex-direction:column;align-items:center;line-height:1}
+.turnpts .lbl,.apart .lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--felt-muted)}
+.turnpts b{font-family:var(--display);font-weight:400;font-size:40px;color:var(--gold);font-variant-numeric:tabular-nums;margin-top:4px}
+.apart{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center}
+.apart .lbl{margin-right:4px}
+
+.lastev{display:flex;flex-direction:column;align-items:center;gap:6px;font-weight:800;font-size:14px;text-align:center;padding:8px 12px;border-radius:10px;background:rgba(0,0,0,.2)}
+.lastev.bust span{color:#ffb4a5}
+.lastev.bank span{color:var(--gold)}
+.lastroll{display:flex;gap:4px}
+.lastroll svg.die{filter:none}
+
+/* Tus botones */
+.me{display:flex;flex-direction:column;gap:6px;flex:none;padding-bottom:4px}
+.me .risk{margin:0;text-align:center;font-size:13px;color:var(--muted)}
+.me .actions{display:flex;gap:8px}
+.me .actions button{flex:1;min-width:0;min-height:52px;font-size:16px;font-weight:800}
+.me .err{text-align:center}
+
+/* Ventanas */
+.res{display:flex;flex-direction:column;gap:6px}
+.resrow{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:15px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--line);padding-bottom:6px}
+.resrow.win b{color:var(--accent)}
+.log{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.rules p{margin:6px 0;font-size:14px;line-height:1.45}
