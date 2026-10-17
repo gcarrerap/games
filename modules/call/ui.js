@@ -14,6 +14,7 @@
 import { unlockAudio, keepAudioAlive, attachPeer, detachPeer, attachLocal, detachAll, setOutput, getOutput, setDeaf, isDeaf, talking, audioContext,
   isIOS, setSilenced } from "./ui/audio.js";
 import { maybeProbe, resetNearProbe, lastResults } from "./ui/probe.js";
+import { nextFeatured } from "./layout.js";
 import { loadStyles } from "../../platform/ui/styles.js";
 import { esc } from "../../platform/ui/dom.js";
 
@@ -45,20 +46,21 @@ const names = (peers) => peers.map((p) => p.name || "Alguien").join(", ");
 const isPhone = () => !!globalThis.matchMedia?.("(pointer:coarse)").matches;
 
 let root = null, key = "", meter = null;
+let featured = null, heard = {}; // quién va en grande en "solo videos" (layout.js) y quién sonaba en la última medida
 const tiles = new Map(); // id → { el, video, audio, stream }
 
 // Dibuja (o quita) la llamada. show: si la mesa abierta admite llamada (en línea, con conexión).
 export function renderCall(controller, show) {
   ctl = controller;
   if (!(show && controller && controller.state.code && callSupported())) {
-    if (root) { root.remove(); root = null; key = ""; tiles.clear(); }
+    if (root) { root.remove(); root = null; key = ""; tiles.clear(); featured = null; }
     stopAudio(); ring(false); return;
   }
   if (!root) {
     loadStyles("call", [CSS]);
     root = document.createElement("aside");
     root.id = "call"; root.className = "call"; root.setAttribute("aria-label", "Llamada");
-    root.innerHTML = `<div class="call-tiles"></div><div class="call-ctl"></div><p class="call-note" role="status"></p><p class="call-err" role="alert"></p>`;
+    root.innerHTML = `<div class="call-tiles"><div class="call-thumbs"></div></div><div class="call-ctl"></div><p class="call-note" role="status"></p><p class="call-err" role="alert"></p>`;
     document.body.appendChild(root);
   }
   const c = ctl.state, on = c.status === "on";
@@ -127,13 +129,21 @@ function renderControls(c) {
   on("callexpand", () => { unlockAudio(); ctl.setCollapsed(false); });
 }
 
-// Un cuadrito por persona. El audio va en su propio <audio> (lo maneja call-audio.js) y el video siempre en
+// Un cuadrito por persona. En "solo videos" con alguien más, como en WhatsApp: la otra persona (o quien está
+// hablando, si son varios) ocupa la pantalla y los demás van en miniaturas abajo; tu cuadrito, a la derecha. El audio va en su propio <audio> (lo maneja call-audio.js) y el video siempre en
 // silencio. En la vista "solo el juego" los cuadritos se ocultan pero siguen sonando.
 function renderTiles(c) {
   const box = root.querySelector(".call-tiles");
   const want = c.status === "on" ? [...c.peers.map((p) => ({ ...p, stream: ctl.streamOf(p.id), self: false })),
     ...(c.video || c.view === "videos" ? [{ id: "__me", name: "Tú", video: c.video, audio: c.audio, stream: ctl.localStream(), self: true }] : [])] : [];
   const ids = new Set(want.map((p) => p.id));
+  // Solo videos: uno en grande (la otra persona, o quien habla) y los demás en miniaturas abajo, tú a la derecha
+  const stage = c.view === "videos" && want.length > 1;
+  featured = nextFeatured(featured, { peers: c.peers.map((p) => p.id), talking: heard, now: Date.now() });
+  const big = stage ? featured.id : null;
+  const thumbs = box.querySelector(".call-thumbs");
+  box.classList.toggle("stage", stage);
+  box.classList.toggle("none", !want.length);
   for (const [id, t] of tiles) if (!ids.has(id)) { t.el.remove(); tiles.delete(id); detachPeer(id); }
   for (const p of want) {
     let t = tiles.get(p.id);
@@ -145,7 +155,8 @@ function renderTiles(c) {
       t = { el, video: el.querySelector("video"), audio: el.querySelector("audio"), stream: null };
       tiles.set(p.id, t);
     }
-    box.appendChild(t.el); // en orden
+    place(t, p.id === big || !stage ? box : thumbs); // en orden
+    t.el.classList.toggle("featured", p.id === big);
     if (t.stream !== p.stream) {
       t.stream = p.stream;
       t.video.srcObject = p.stream || null;
@@ -162,8 +173,18 @@ function renderTiles(c) {
     t.el.querySelector(".call-init").textContent = (p.name || "?").trim().charAt(0).toUpperCase();
     t.el.querySelector(".call-nm").textContent = (p.name || "Alguien") + (p.audio === false ? " · 🔇" : "") + (live ? "" : " · conectando");
   }
+  const me = tiles.get("__me");
+  if (stage && me && thumbs.firstChild !== me.el) { thumbs.prepend(me.el); resume(me); } // tú, abajo a la derecha
   if (c.status === "on") attachLocal(ctl.localStream());
 }
+
+// Pone el cuadrito en su lugar (al final, para respetar el orden). Mover un <video> puede pausarlo: se reanuda.
+function place(t, parent) {
+  const moved = t.el.parentNode !== parent;
+  if (moved || parent.lastChild !== t.el) parent.appendChild(t.el);
+  if (moved) resume(t);
+}
+const resume = (t) => { for (const m of [t.video, t.audio]) if (m?.srcObject && m.paused) m.play?.().catch(() => {}); };
 
 // Aviso al detectar a alguien junto a ti, con "Oír de todos modos" (deja de silenciarlos a todos los del aviso)
 let noteKey = "";
@@ -182,9 +203,13 @@ function startAudio() {
   if (meter) return;
   meter = setInterval(() => {
     if (!root) return;
-    const lv = talking();
+    const lv = heard = talking();
     let any = false;
     for (const [id, t] of tiles) { const on = !!lv[id]; t.el.classList.toggle("talking", on); any = any || on; }
+    // Quien habla pasa a grande (con calma, ver layout.js)
+    const c = ctl.state, before = featured?.id;
+    featured = nextFeatured(featured, { peers: c.peers.map((p) => p.id), talking: lv, now: Date.now() });
+    if (featured.id !== before && c.view === "videos") renderTiles(c);
     root.querySelector("#callmute")?.classList.toggle("talking", !!lv.__me && ctl.state.audio);
     root.querySelector("#callexpand")?.classList.toggle("talking", any);
   }, 150);

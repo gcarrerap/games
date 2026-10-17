@@ -7,6 +7,7 @@ Llamadas de voz y video en una mesa en línea, para **cualquier** juego. De La P
 | `index.js` | API pública (puro, sin red ni DOM). |
 | `session.js` | La conexión: quién está, ofertas y respuestas, candidatos ICE, micrófono, cámara, colgar. |
 | `controller.js` | El estado de la llamada de la mesa abierta: timbre, vista, salida de audio, teléfonos juntos, preferencias. |
+| `layout.js` | Quién va en grande en "solo videos": la otra persona en una llamada de dos (tú en un cuadrito en la esquina, como en WhatsApp) o quien habla si son varios, sin brincar con cada ruidito (puro). |
 | `near.js` | Detección de teléfonos juntos: la melodía de cada teléfono y cómo encontrarla en el audio que llega (puro). |
 | `ui.js` | La barra de la llamada (fuera de `#app`, para que los `<video>` y `<audio>` no se recreen con cada jugada). |
 | `ui/audio.js`, `ui/probe.js`, `ui/call.css` | Sonido (Web Audio, altavoz/auricular, quién habla), la prueba de cercanía y los estilos. |
@@ -18,4 +19,4 @@ Llamadas de voz y video en una mesa en línea, para **cualquier** juego. De La P
 
 **La usa:** la plataforma (`platform/app/session.js`): al abrir cualquier mesa en línea empieza a escuchar su llamada y al salir cuelga. En práctica no hay llamada.
 
-**Pruebas:** `tests/modules/call/` (dos y tres teléfonos con un WebRTC de mentira, timbre, sonido, teléfonos juntos, y la plataforma abriendo y cerrando la llamada de cada mesa). Lo que no se puede probar aquí: micrófonos y bocinas de verdad, y redes reales.
+**Pruebas:** `tests/modules/call/` (quién va en grande, dos y tres teléfonos con un WebRTC de mentira, timbre, sonido, teléfonos juntos, y la plataforma abriendo y cerrando la llamada de cada mesa). Lo que no se puede probar aquí: micrófonos y bocinas de verdad, y redes reales.

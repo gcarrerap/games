@@ -4,3 +4,4 @@
 export { createCallSession, STUN, VIDEO_MAX_BITRATE, AUDIO_CONSTRAINTS, VIDEO_CONSTRAINTS } from "./session.js";
 export { createCallController, RING_MS, CALL_VIEWS } from "./controller.js";
 export { NOTES, NOTE_MS, GAP_MS, MIN_LAG_MS, MAX_LAG_MS, chimeFor, toneSnr, detectChime, silencedPeers, LISTEN_MS } from "./near.js";
+export { nextFeatured, TALK_MS, HOLD_MS } from "./layout.js";
