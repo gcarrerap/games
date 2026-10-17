@@ -27,7 +27,7 @@ Este documento explica cómo se divide el sitio, qué comparte cada juego y qué
 |---|---|---|---|
 | **`platform/`** | La casa: lo que todo juego recibe sin pedirlo. | El sitio; los juegos solo a través del contrato y `ctx`. | Entrar, portal y lobby, mesas en línea, asientos, la compu en asientos libres, reloj de turno, limpieza, actualizaciones, estilos base. |
 | **`modules/<nombre>/`** | Una capacidad que un juego **escoge** usar. Independiente, con API pública. | Cualquier juego que la importe (y la plataforma si le sirve). | Azar con semilla, escoger con dudas, registro de lo que cada quien puede tener, simulaciones Monte Carlo, perfiles de la compu, notas, acomodar la mano. |
-| **`games/<id>/`** | Un juego. Cumple el contrato. | La plataforma, por medio de `games/registry.js`. | Dominó, La Pata, Piojos, Continental. |
+| **`games/<id>/`** | Un juego. Cumple el contrato. | La plataforma, por medio de `games/registry.js`. | Dominó, La Pata, Piojos, Continental, La Viuda. |
 
 **Plataforma o módulo:** si *todo* juego lo necesita para existir en el sitio, es plataforma; si un juego puede vivir sin eso, es módulo.
 
@@ -253,6 +253,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 6b ✅ | La mesa de La Pata (`games/pata/ui/`), registrada en el portal. Cada juego carga sus estilos al montar su mesa y los quita al desmontarla (`platform/ui/styles.js`). `ctx.act` dice si la jugada se pudo. Revisado con las dos mesas a la vista: acomodar la mano (el dominó arrastra fichas; La Pata ordena por número o palo y aparta bajadas), notas (solo el dominó) y el consejo (cada juego explica a su manera; lo común, pedirlo con la vista del asiento, ya lo pone la plataforma) se quedan en cada juego. |
 | 6c ✅ | Llamadas de voz y video de La Pata como `modules/call`, para cualquier mesa en línea de cualquier juego. Señalización en `platform/services/call-signaling.js` (`juegos-llamadas`). |
 | 7 ✅ | Piojos (dados de póker): reglas, compu con tres estilos y mesa. Primer juego escrito desde cero sobre la plataforma: no tocó `platform/` ni `modules/`. |
+| 8 ✅ | La Viuda (póker de 5 cartas con la viuda): reglas con comodín creciente y fichas, compu con tres estilos, mesa con botón de reglas. Usa `modules/cards` (barajas, revolver y dibujo de cartas). |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 
