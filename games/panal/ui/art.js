@@ -98,7 +98,7 @@ const DRAW = {
 // El bicho para poner dentro de una ficha (radio ~36 alrededor de (0, 0))
 export function bugArt(kind) {
   const img = BANK[kind];
-  if (img && img.href) return `<image href="${img.href}" x="-38" y="-38" width="76" height="76" preserveAspectRatio="xMidYMid meet"/>`;
+  if (img && img.href) return `<image class="bugimg" href="${img.href}" x="-38" y="-38" width="76" height="76" preserveAspectRatio="xMidYMid meet"/>`;
   return DRAW[kind] ? DRAW[kind]() : "";
 }
 
