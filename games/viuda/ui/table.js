@@ -47,7 +47,12 @@ function showdownHTML(st, seat) {
       ${notes ? `<div class="sdnote">${notes}</div>` : ""}
     </div>`;
   }).join("");
-  return `<p class="hint">${sd.reason === "pass" ? "Todos pasaron con la viuda tapada." : ""} Comodín: ${sd.wild ? rankLabel(sd.wild) : "ninguno"}.</p><div class="sd">${rows}</div>`;
+  const w = sd.widow;
+  const widowRow = w ? `<div class="sdrow widowrow">
+      <div class="sdhead"><b>La viuda${w.wasOpen ? "" : " (nadie la tomó)"}</b><span>${esc(w.label)}</span></div>
+      <div class="sdcards">${w.cards.map((c) => `<span class="${isWild(c, st) ? "wildc" : ""}" aria-label="${esc(cardName(c))}">${cardSVG(c, 34, 48)}</span>`).join("")}</div>
+    </div>` : "";
+  return `<p class="hint">${sd.reason === "pass" ? "Todos pasaron con la viuda tapada." : ""} Comodín: ${sd.wild ? rankLabel(sd.wild) : "ninguno"}.</p><div class="sd">${rows}${widowRow}</div>`;
 }
 
 function renderResult(ctx, st, seat) {
@@ -161,7 +166,7 @@ export function renderTable(app, ctx, ui) {
       ${knockAlert(st, seat, freshKnock)}
       <div class="status ${myTurn ? "me" : ""}">${esc(statusText(st, seat))}${clockOn ? ` <span id="clock" class="clock"></span>` : ""}</div>
       ${clockOn ? `<div class="timer" aria-hidden="true"><i id="clockbar"></i></div>` : ""}
-      <div class="widowlbl">La viuda${st.widowOpen ? "" : " (tapada)"}</div>
+      <div class="widowlbl">La viuda${st.widow ? "" : " (tapada)"}</div>
       <div class="widow">${widow}</div>
       ${last ? `<div class="lastev">${esc(last)}</div>` : ""}
     </section>

@@ -235,3 +235,12 @@ test("la compu toma la viuda a ciegas con una mano mala y toca con una buena", (
   assert.deepEqual(decide(game.view(full, 0), 0, "normal"), { type: "pass" });
   assert.equal(decide(game.view(st, 1), 1, "normal"), null);
 });
+
+test("al final se destapa la viuda con su jugada, aunque nadie la haya tomado", () => {
+  let st = rig(fresh(), ["2S 3S 4S 5S 7H", "AH AS 4H 5H 7D", "KD KS 4D 5D 7C"], "AD AC QD KH KC", { turn: 1 });
+  assert.equal(game.view(st, 1).widow, null);
+  for (const s of [1, 2, 0]) st = apply(st, s, { type: "pass" }, ctx);
+  assert.equal(st.phase, "pause");
+  assert.deepEqual(st.showdown.widow, { cards: H("AD AC QD KH KC"), label: "Dos pares: As y K", wasOpen: false });
+  assert.deepEqual(game.view(st, 1).widow, H("AD AC QD KH KC"), "en la mesa también se ve");
+});

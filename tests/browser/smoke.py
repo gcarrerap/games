@@ -142,12 +142,15 @@ with sync_playwright() as p:
     page.click("#rulesclose"); page.wait_for_timeout(200)
     viuda_acts = viuda_hands = 0
     viuda_alert = False
+    viuda_widow_shown = False
     for _ in range(300):
         if not viuda_alert and page.query_selector(".felt.lastround .knockalert"):
             viuda_alert = True; shot("13b-viuda-tocaron")
         if (viuda_hands >= 1 and viuda_acts >= 3 and viuda_alert) or viuda_hands >= 5 or page.query_selector(".sheet #again"): break
         if page.query_selector(".sheet #next"):
-            if viuda_hands == 0: shot("13-viuda-manos")
+            if viuda_hands == 0:
+                shot("13-viuda-manos")
+                viuda_widow_shown = bool(page.query_selector(".sheet .sdrow.widowrow .sdcards svg"))
             if tap(".sheet #next"): viuda_hands += 1
         elif page.query_selector("#all") and page.query_selector("#pass") and not page.query_selector("#swap"):
             if tap("#all" if viuda_hands else "#pass"): viuda_acts += 1   # a ciegas: pasa la primera mano, luego toma
@@ -239,6 +242,7 @@ if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {pioj
 if not viuda_rules: problems.append("La Viuda: el botón Reglas no mostró las reglas")
 if viuda_acts < 3: problems.append(f"La Viuda: solo se jugaron {viuda_acts} turnos")
 if viuda_hands < 1: problems.append("La Viuda: no terminó ninguna mano")
+if viuda_hands and not viuda_widow_shown: problems.append("La Viuda: al final no se ven las cartas de la viuda")
 if not viuda_alert: problems.append("La Viuda: al tocar no apareció el aviso de última vuelta")
 if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
