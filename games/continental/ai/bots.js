@@ -58,7 +58,9 @@ export function chooseDiscard(v, seat, lv, rnd = () => 0.5) {
     // Los comodines se guardan, salvo los que ya no caben en la bajada (se va primero el 2: regala menos)
     const wildKeep = extraWilds ? (c[0] === "2" ? 2 : 8) : 1000;
     const rest = without(hand, c);
-    let keep = usefulness(c, rest, k) * 3 + (isWild(c) ? wildKeep : 0) - cardPoints(c) / 4;
+    // (con comodines de sobra, un comodín más no ayuda: solo cuenta wildKeep)
+    let keep = (isWild(c) && extraWilds ? 0 : usefulness(c, rest, k) * 3) + (isWild(c) ? wildKeep : 0) - cardPoints(c) / 4;
+    if (extraWilds && !isWild(c)) keep += 15; // con comodines de sobra, las naturales valen más
     if (lv === 3 && !isWild(c)) keep += distance(rest, k) * 30; // si sin ella me faltan más, la guardo
     if (wanted.some((w) => !isWild(c) && (rankOf(w) === rankOf(c) || suitOf(w) === suitOf(c)))) keep += 6;
     return -keep;
@@ -71,7 +73,7 @@ export function chooseDiscard(v, seat, lv, rnd = () => 0.5) {
 export function botMove(v, seat, lvl, rnd = () => 0.5) {
   const lv = level(lvl), h = v.hand;
   if (v.status !== "playing" || !h) return null;
-  if (seat !== h.turn) {
+  if (h.phase === "offer" || seat !== h.turn) {
     if (!canBuy(v, seat)) return null;
     const w = wantsTop(v, seat, lv, true);
     return lv >= 2 && w.yes ? { type: "buy", why: w.why } : { type: "pass" };

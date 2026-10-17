@@ -20,9 +20,10 @@ puntos.
   cualquier juego y cambiar un comodín por la carta natural de su lugar; descartar. Quien se queda sin cartas cierra
   (puede cerrar acomodando, sin descartar).
 - **Comprar** (regla que se escoge al crear la mesa: `config.buy`): con castigo hasta 3 por ronda (`limit`, la de
-  siempre), con castigo sin límite (`free`) o no se compra (`none`). Mientras quien sigue no ha robado, los demás
-  pueden pedir el descarte; si él lo toma, nadie lo compra; si roba del mazo, se lo lleva el primero que lo pidió en el
-  orden de la mesa, con una carta del mazo de castigo. Quien ya se bajó no compra.
+  siempre), con castigo sin límite (`free`) o no se compra (`none`). Es por turnos, en el orden de la mesa: primero
+  decide quien tiene el turno (toma el descarte o roba del mazo); si roba del mazo, se le pregunta al siguiente, y si
+  no lo quiere, al siguiente, y así. El primero que diga que sí se lo lleva con una carta del mazo de castigo. No se le
+  pregunta a quien lo descartó, a quien ya se bajó ni a quien llegó al límite.
 - **Puntos de lo que queda en la mano:** joker 50, 2 y As 20, 10 y figuras 10, las demás su número.
 - 2 barajas con jokers (108 cartas) hasta con 4 jugadores; 3 barajas (162) con 5 o 6.
 
@@ -36,10 +37,9 @@ games/continental/
 └── styles/       # el paño (las cartas vienen de modules/cards)
 ```
 
-**Comprar fuera de turno y el contrato:** mientras quien sigue no ha robado, `currentSeats` regresa
-`[quien tiene el turno, ...quienes pueden comprar]`. Así la plataforma le pregunta a la compu de esos asientos (`buy` o
-`pass`) y la persona ve el botón de comprar. Cuando alguien más podría comprar, la compu en turno espera un poco más
-antes de robar para que las personas alcancen a pedirlo. El reloj siempre es de quien tiene el turno.
+**Comprar y el contrato:** mientras se ofrece el descarte la ronda está en la fase `"offer"` y `currentSeats` es el
+asiento al que se le pregunta: la compu contesta `buy` o `pass`, la persona ve "¿Compras…?" con Comprar / No lo
+quiero, y quien tiene el turno espera. Con reloj, cada quien tiene 20 s para decidir; si se le acaba, no compra.
 
 **Vista:** se ocultan como `"?"` las manos ajenas, el mazo, lo que otros robaron del mazo y la carta de castigo de una
 compra ajena. La compu decide con esa vista; `tests/games/continental/ai.test.js` comprueba en los tres niveles que

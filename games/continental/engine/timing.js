@@ -4,7 +4,7 @@ import { isWild, cardPoints } from "./cards.js";
 import { apply } from "./moves.js";
 import { pushLog, nameOf } from "./table.js";
 
-export const limitMs = () => RULES.turnMs;
+export const limitMs = (st) => (st && st.hand && st.hand.phase === "offer" ? RULES.offerMs : RULES.turnMs);
 
 // La carta que descarta el reloj: la natural que más puntos cuesta (nunca un comodín si hay otra)
 export function autoDiscard(hand) {
@@ -14,6 +14,11 @@ export function autoDiscard(hand) {
 
 export function autoMove(st, env = {}) {
   if (!st || st.status !== "playing") return st;
+  // A quien no contestó si compra: no compra
+  if (st.hand.phase === "offer") {
+    const s = apply(st, st.hand.offer.asking, { type: "pass" }, env);
+    return { ...s, log: pushLog(s.log, `Se acabó el tiempo de ${nameOf(st, st.hand.offer.asking)} para decidir.`) };
+  }
   const seat = st.hand.turn;
   let s = st;
   if (s.hand.phase === "draw") s = apply(s, seat, { type: "draw" }, env);

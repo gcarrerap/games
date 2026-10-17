@@ -5,11 +5,11 @@
 //   { type: "next" }      repartir la siguiente ronda (cualquier asiento, entre rondas)
 //   { type: "timeout" }   se acabó el tiempo: el reloj roba si hace falta y descarta
 //
-// Comprar fuera de turno: mientras quien sigue no ha robado, currentSeats incluye (después de él) a quienes pueden
-// comprar el descarte. Así la plataforma le pregunta a la compu de esos asientos (buy o pass) y la persona ve el botón
-// de comprar. El reloj siempre es de quien tiene el turno (el primero de la lista).
+// Comprar es por turnos: cuando quien tiene el turno roba del mazo, se le pregunta a cada quien en el orden de la mesa
+// (fase "offer"). currentSeats es entonces el asiento al que se le está preguntando: la compu contesta buy o pass, la
+// persona ve "¿Lo compras?", y el reloj (si hay) es suyo, más corto.
 import manifest from "./manifest.js";
-import { RULES, buyMode, validConfig, newGame, deal, apply as applyMove, legalActions as moves, autoMove, buyers } from "./engine/index.js";
+import { buyMode, validConfig, newGame, deal, apply as applyMove, legalActions as moves, autoMove, limitMs } from "./engine/index.js";
 import { botMove, advise, LEVELS } from "./ai/index.js";
 
 const timerOn = (st) => st.config.timer !== false;
@@ -26,7 +26,7 @@ function setup(config, { rnd }) {
 function currentSeats(st) {
   if (st.status !== "playing") return [];
   const h = st.hand;
-  return h.phase === "draw" ? [h.turn, ...buyers(st)] : [h.turn];
+  return h.phase === "offer" ? [h.offer.asking] : [h.turn];
 }
 
 function legalActions(st, seat) {
@@ -41,7 +41,7 @@ function apply(st, seat, action, ctx) {
       return deal(st, ctx.rnd);
     case "timeout":
       if (st.status !== "playing" || !timerOn(st)) throw new Error("Esta mesa no tiene reloj");
-      if (st.hand.turn !== seat) throw new Error("No es el turno de ese asiento");
+      if (currentSeats(st)[0] !== seat) throw new Error("No es el turno de ese asiento");
       return autoMove(st, ctx);
     default:
       return applyMove(st, seat, action, ctx);
@@ -79,13 +79,12 @@ function result(st) {
 }
 
 const timing = {
-  turnMs: (st) => (st.status === "playing" && timerOn(st) ? RULES.turnMs : null),
+  turnMs: (st) => (st.status === "playing" && timerOn(st) ? limitMs(st) : null),
   autoAction: () => ({ type: "timeout" }),
 };
 
-// Pausas de la compu. Cuando alguien más podría comprar el descarte, quien tiene el turno espera un poco más antes de
-// robar, para que las personas alcancen a pedirlo.
-const BOT_DELAY = { answer: 350, draw: 800, drawWithBuyers: 1800, play: 650 };
+// Pausas de la compu antes de cada acción
+const BOT_DELAY = { answer: 700, draw: 800, play: 650 };
 const bots = {
   profiles: [1, 2, 3].map((n) => ({ id: String(n), name: LEVELS[n] })),
   decide(v, seat, profile, { rnd }) {
@@ -97,8 +96,8 @@ const bots = {
   thinkMs(v, seat) {
     if (v.status !== "playing") return 0;
     const h = v.hand;
-    if (seat !== h.turn) return BOT_DELAY.answer;
-    if (h.phase === "draw") return buyers(v).length ? BOT_DELAY.drawWithBuyers : BOT_DELAY.draw;
+    if (h.phase === "offer") return BOT_DELAY.answer;
+    if (h.phase === "draw") return BOT_DELAY.draw;
     return BOT_DELAY.play;
   },
   heavy: false,

@@ -194,7 +194,7 @@ test("opciones del juego (game.options): se escogen en el lobby, llegan a la par
   assert.deepEqual(h.a.practiceSettings().options, {});
 });
 
-test("continental: la compu compra y juega; tú puedes comprar fuera de turno", async () => {
+test("continental: la compu compra y juega; te preguntan si compras cuando te toca", async () => {
   const h = harness();
   await h.a.openGame("continental");
   h.a.startPractice({ ...h.a.practiceSettings(), mode: "3", timer: false, options: { buy: "limit" } });

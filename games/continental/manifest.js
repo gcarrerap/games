@@ -8,7 +8,7 @@ export default {
   options: [{
     id: "buy", label: "Comprar del pozo", default: "limit",
     choices: [
-      { id: "limit", label: "Con castigo, hasta 3", hint: "Te llevas el descarte y una del mazo de castigo. Hasta 3 compras por ronda; quien sigue tiene preferencia." },
+      { id: "limit", label: "Con castigo, hasta 3", hint: "Te llevas el descarte y una del mazo de castigo. Hasta 3 compras por ronda. Se ofrece por turnos, en el orden de la mesa." },
       { id: "free", label: "Con castigo, sin límite", hint: "Te llevas el descarte y una del mazo de castigo, todas las veces que quieras." },
       { id: "none", label: "No se compra", hint: "Solo quien tiene el turno puede tomar el descarte." },
     ],

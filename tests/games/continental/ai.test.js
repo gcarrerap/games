@@ -28,7 +28,7 @@ test("distancia al contrato: 0 si ya se baja; cuenta los comodines", () => {
 });
 
 test("la compu se baja con lo que encontró y la bajada es válida", () => {
-  let st = game.setup({ n: 2, timer: false }, { rnd: seededRandom(1), now: 0 });
+  let st = game.setup({ n: 2, timer: false, buy: "none" }, { rnd: seededRandom(1), now: 0 });
   const s = st.hand.turn;
   st.hand.hands[s] = ["7H0", "7S0", "7C0", "9D0", "9S0", "XR0"];
   st = game.apply(st, s, { type: "draw" }, { rnd: seededRandom(2), now: 0 });
