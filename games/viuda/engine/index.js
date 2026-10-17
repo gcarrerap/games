@@ -224,7 +224,9 @@ export function showdown(st, reason) {
     left = eliminated.slice();
     eliminated.length = 0;
   }
-  const sd = { reason, rows: rows.map(({ key, ...r }) => r), losers, viuda: gotViuda, eliminated, knocker: st.knocker, wild: st.wild };
+  // La viuda también se destapa al final, con su jugada (solo para verla; no juega)
+  const widow = { cards: st.widow.slice(), label: describe(evaluate(st.widow, st.wild)), wasOpen: !!st.widowOpen };
+  const sd = { reason, rows: rows.map(({ key, ...r }) => r), losers, viuda: gotViuda, eliminated, knocker: st.knocker, wild: st.wild, widow };
   const base = { ...st, chips, out, viuda, showdown: sd, turn: -1, left: 0 };
   if (left.length === 1) {
     return { ...base, phase: "over", winner: left[0], log: pushLog(log, `¡${nameOf(st, left[0])} ganó la partida!`) };

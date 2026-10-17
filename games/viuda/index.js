@@ -16,13 +16,13 @@ function setup(config, { now, rnd }) {
 
 const timerOn = (st) => st.config.timer !== false;
 
-// Cada quien ve su mano; de los demás, cuántas cartas tienen. La viuda tapada no se ve. Al mostrar las manos, todo
-// queda en showdown.
+// Cada quien ve su mano; de los demás, cuántas cartas tienen. La viuda tapada no se ve hasta que termina la mano.
+// Al mostrar las manos, todo (también la viuda) queda en showdown.
 function view(st, seat) {
   return {
     ...st,
     hands: st.hands.map((h, s) => (s === seat ? h.slice() : h.length)),
-    widow: st.widowOpen ? st.widow.slice() : null,
+    widow: st.widowOpen || st.phase === "pause" || st.phase === "over" ? st.widow.slice() : null,
     widowCount: st.widow.length,
   };
 }
