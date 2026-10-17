@@ -53,6 +53,9 @@
 .panal .tile.p1,.tilesvg .tile.p1{fill:var(--t1);stroke:var(--t1-edge);stroke-width:3;stroke-linejoin:round}
 .panal .tile-in.p0,.tilesvg .tile-in.p0{fill:var(--t0-in);stroke:none}
 .panal .tile-in.p1,.tilesvg .tile-in.p1{fill:var(--t1-in);stroke:none}
+/* Sobre la ficha oscura, las imágenes del banco llevan un borde claro para que los bichos cafés y las patas oscuras
+   no se pierdan (sobre todo a 26 px, en la reserva del rival) */
+.tile-in.p1 ~ g .bugimg{filter:drop-shadow(0 0 1.6px rgba(255,241,214,.9)) drop-shadow(0 0 .8px rgba(255,241,214,.9))}
 
 /* La mesa con la colmena */
 .panal .felt{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:8px 6px 6px;
