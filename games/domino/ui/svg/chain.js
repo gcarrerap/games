@@ -98,7 +98,8 @@ export function layoutChainAt(board, origin, W, s, shift) {
 // Dibuja la cadena en el espacio W×H. vertical = crece hacia arriba y abajo; si no, hacia los lados.
 // "budget" = espacio transversal que puede ocupar (para no tapar a los jugadores de los lados).
 // Escoge la ficha más grande con la que cabe todo y devuelve también el rectángulo que ocupa.
-export function chainSVG(board, origin, W, H, vertical, budget) {
+// mark = índice en board de la ficha que se debe resaltar (la última que se tiró), o null.
+export function chainSVG(board, origin, W, H, vertical, budget, mark = null) {
   const along = vertical ? H : W, across = vertical ? W : H, room = Math.min(across, budget || across);
   // la ficha más grande que quepa; si con ella alguna mula queda en una vuelta, prueba hasta 4 tamaños más chicos
   let pick = null, firstFit = null;
@@ -120,6 +121,14 @@ export function chainSVG(board, origin, W, H, vertical, budget) {
   const tiles = rects.map((r) => vertical
     ? tileG(r.y + off, r.x, r.h, r.w, r.v1, r.v2, s)
     : tileG(r.x, r.y + off, r.w, r.h, r.v1, r.v2, s)).join("");
+  // rects va en este orden: la salida, el brazo derecho hacia afuera y luego el izquierdo hacia afuera
+  const nR = board.length - 1 - origin;
+  const boardIdx = (k) => (k === 0 ? origin : k <= nR ? origin + k : origin - (k - nR));
+  const mk = mark === null || mark === undefined ? -1 : rects.findIndex((_, k) => boardIdx(k) === mark);
+  const ring = mk < 0 ? "" : (() => {
+    const r = rects[mk], q = vertical ? { x: r.y + off, y: r.x, w: r.h, h: r.w } : { x: r.x, y: r.y + off, w: r.w, h: r.h };
+    return `<rect class="lasttile" x="${q.x - 1.5}" y="${q.y - 1.5}" width="${q.w + 3}" height="${q.h + 3}" rx="${s * .2}" fill="none"/>`;
+  })();
   const box = vertical ? { left: y0 + off, right: y1 + off, top: x0, bottom: x1 } : { left: x0, right: x1, top: y0 + off, bottom: y1 + off };
-  return { svg: `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cadena de ${board.length} fichas">${tiles}</svg>`, box };
+  return { svg: `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cadena de ${board.length} fichas">${tiles}${ring}</svg>`, box };
 }

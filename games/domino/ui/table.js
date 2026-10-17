@@ -11,6 +11,7 @@ import { renderResult } from "./components/result.js";
 import { renderAdvice } from "./components/advice.js";
 import { renderTracker } from "./components/tracker.js";
 
+const RESULT_DELAY_MS = 2500; // cuánto se ve la mesa al terminar la mano antes de que suba el resultado
 export const timerOn = (st) => st.config.timer !== false;
 export const turnKeyOf = (ctx) => (ctx.table.status === "playing" ? `${ctx.table.round}:${ctx.table.turn}` : null);
 
@@ -90,6 +91,23 @@ export function renderTable(app, ctx, ui) {
     else if (myTurn && sel && selSides.length > 1) statusTxt += " · ¿de qué lado?";
   }
 
+  // La última ficha que se tiró se resalta en la mesa. Al terminar la mano, la mesa se queda a la vista un momento
+  // antes de que suba el resultado, y desde el resultado se puede volver a verla.
+  const lastPlay = (h.history || []).filter((e) => e.a === "play").pop() || null;
+  const lastIdx = !lastPlay || !h.board.length ? null : lastPlay.side === "L" ? 0 : lastPlay.side === "R" ? h.board.length - 1 : Math.min(h.left || 0, h.board.length - 1);
+  const ended = st.status === "handover" || st.status === "gameover";
+  const resKey = ended ? `result-${ctx.table.round}-${st.handNo}-${st.status}` : null;
+  if (resKey !== (ui.res ? ui.res.key : null)) {
+    ui.res = resKey ? { key: resKey, show: false } : null;
+    if (resKey) setTimeout(() => { if (ui.res && ui.res.key === resKey && !ui.res.seen) { ui.res.show = ui.res.seen = true; ctx.refresh(); } }, RESULT_DELAY_MS);
+  }
+  const showResult = ended && ui.res.show;
+  if (ended) {
+    const r = st.result;
+    if (r.type === "domino") statusTxt = `${nameOf(st, r.seat)} dominó${lastPlay ? ` con la ${lastPlay.tile}` : ""}`;
+    else statusTxt = `Juego cerrado${lastPlay ? ` · la última fue ${lastPlay.tile} de ${nameOf(st, lastPlay.s)}` : ""}`;
+  }
+
   const emptyMsg = !h.board.length && st.status === "playing" ? (() => {
     const who = h.turn !== null ? nameOf(st, h.turn) : h.openers.map((s) => nameOf(st, s)).join(" o ");
     return `<div class="empty">Sale ${esc(who)}${h.firstReq ? ` con la ${h.firstReq === "6-6" ? "mula de 6" : "ficha " + h.firstReq}` : ""}</div>`;
@@ -127,6 +145,7 @@ export function renderTable(app, ctx, ui) {
         <button id="pass" ${canPass(st, seat) ? "" : "disabled"}>Pasar</button>
         <button id="advice" class="ghost-felt" ${myTurn && legal.length ? "" : "disabled"}>Consejo</button>
         <button id="rot" class="ghost-felt ${ui.rotMode ? "on" : ""}" aria-pressed="${ui.rotMode}">${ui.rotMode ? "Listo" : "Girar"}</button></div>` : ""}
+      ${ended && !showResult ? `<button class="primary big-cta" id="seeres">Ver resultado</button>` : ""}
       ${ui.rotMode ? `<p class="rothint">Toca una ficha para girarla. Arrastra para acomodarla.</p>` : ""}
       ${ctx.err ? `<p class="err">${esc(ctx.err)}</p>` : ""}
     </section>`;
@@ -134,7 +153,7 @@ export function renderTable(app, ctx, ui) {
   if (h.board.length) {
     const bd = $("#board", app), W = Math.max(120, bd.clientWidth), H = Math.max(120, bd.clientHeight);
     const origin = Math.min(h.left || 0, h.board.length - 1);
-    $("#chain", app).innerHTML = chainSVG(h.board, origin, W, H, vertical).svg;
+    $("#chain", app).innerHTML = chainSVG(h.board, origin, W, H, vertical, undefined, lastIdx).svg;
     $("#ends", app).innerHTML = `Puntas <b>${le}</b> y <b>${re}</b>`;
   }
 
@@ -186,13 +205,14 @@ export function renderTable(app, ctx, ui) {
   $("#pass", app)?.addEventListener("click", () => ctx.act({ type: "pass" }));
   $("#advice", app)?.addEventListener("click", () => { closeOverlay(); ctx.askAdvice(); });
   $("#rot", app)?.addEventListener("click", () => { ui.rotMode = !ui.rotMode; ctx.refresh(); });
+  $("#seeres", app)?.addEventListener("click", () => { ui.res.show = ui.res.seen = true; ctx.refresh(); });
   $("#menu", app).onclick = () => openOverlay("gameMenu");
   app.querySelectorAll("[data-track]").forEach((b) => b.onclick = () => openOverlay("track", { seat: +b.dataset.track, sel: null }));
 
   // Una sola ventana a la vez, en este orden: menú de la partida, resultado de la mano, consejo, registro
   const ov = overlay();
   if (ov && ov.id === "gameMenu") renderGameMenu(ctx, ui, st, seat);
-  else if (st.status === "handover" || st.status === "gameover") renderResult(ctx, st, seat);
+  else if (showResult) renderResult(ctx, st, seat, () => { ui.res.show = false; ui.res.seen = true; ctx.refresh(); });
   else if (ctx.advice) renderAdvice(ctx, st, seat);
   else if (ov && ov.id === "track") renderTracker(ctx, ui, st, seat, ov.data);
   else ctx.modal.innerHTML = "";

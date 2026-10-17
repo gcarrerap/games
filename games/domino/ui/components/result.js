@@ -5,7 +5,8 @@ import { renderSheet, closeOverlay } from "../../../../platform/ui/sheet.js";
 import { scoreLabels, teamColor } from "../labels.js";
 import { tileSVG } from "../svg/tile.js";
 
-export function renderResult(ctx, st, seat) {
+// onPeek: esconde el resultado para ver cómo quedó la mesa (la última ficha va resaltada)
+export function renderResult(ctx, st, seat, onPeek) {
   closeOverlay(); // el registro o el menú se cierran solos
   const r = st.result, c = st.config, labels = scoreLabels(st), m = ctx.modal;
   const title = r.type === "domino" ? `${nameOf(st, r.seat)} dominó` : "Juego cerrado";
@@ -21,8 +22,10 @@ export function renderResult(ctx, st, seat) {
     <div class="res">${rows}</div>
     <h2>Puntos en contra</h2><div class="res">${adds}</div>
     ${seat >= 0 ? (over ? `<button class="primary big-cta" id="again">Revancha</button>` : `<button class="primary big-cta" id="next">Siguiente mano</button>`) : ""}
+    ${onPeek ? `<button class="ghost" id="peek">Ver la mesa</button>` : ""}
     <button class="ghost" id="exit">Salir</button>`, { closable: false });
   $("#next", m)?.addEventListener("click", () => ctx.act({ type: "next" }));
   $("#again", m)?.addEventListener("click", () => ctx.again());
+  $("#peek", m)?.addEventListener("click", onPeek);
   $("#exit", m).onclick = () => ctx.leave();
 }
