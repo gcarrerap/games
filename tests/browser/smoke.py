@@ -8,7 +8,7 @@ consola:
      marcadas; solo sus estilos quedan cargados.
   3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar (el paño
      se pone rojo con el aviso de última vuelta) y pasar a la siguiente mano.
-  3c. Skull en práctica: el botón "Reglas"; poner discos, apostar, voltear y pasar a la siguiente ronda.
+  3c. Skull en práctica: el botón "Reglas"; el tutorial desde el aviso de la primera ronda, de principio a fin; poner discos, apostar, voltear y pasar a la siguiente ronda.
   3d. Damas chinas en práctica (3 jugadores): el botón "Reglas"; escoger una canica, ver a dónde puede ir y moverla
      varias veces contra la compu.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
@@ -206,6 +206,18 @@ with sync_playwright() as p:
     page.click("#rules"); page.wait_for_selector(".sheet[data-sheet='rules'] .rules")
     skull_rules = "retador" in page.inner_text(".sheet[data-sheet='rules']")
     page.click("#rulesclose"); page.wait_for_timeout(200)
+    # Tutorial: el aviso de la primera ronda lo abre; se contesta cada pregunta (probando opciones) hasta el final
+    skull_tut_steps, skull_tut_done = 0, False
+    if tap("#tutnudge"):
+        page.wait_for_selector(".sheet[data-sheet='tutorial']"); shot("14a-skull-tutorial")
+        for _ in range(60):
+            if tap(".sheet #tutdone"): skull_tut_done = True; break
+            if tap(".sheet #tutnext:not([disabled])"): skull_tut_steps += 1
+            else: tap(".sheet [data-pick][aria-pressed='false']")
+            page.wait_for_timeout(120)
+            if skull_tut_steps == 5: shot("14b-skull-tutorial-reto")
+        page.wait_for_timeout(200)
+    skull_nudge_gone = not page.query_selector("#tutnudge")
     skull_places = skull_bids = skull_flips = skull_rounds = 0
     for _ in range(300):
         if skull_rounds >= 2 or page.query_selector(".sheet #again"): break
@@ -326,6 +338,8 @@ if viuda_hands < 1: problems.append("La Viuda: no terminó ninguna mano")
 if viuda_hands and not viuda_widow_shown: problems.append("La Viuda: al final no se ven las cartas de la viuda")
 if not viuda_alert: problems.append("La Viuda: al tocar no apareció el aviso de última vuelta")
 if not skull_rules: problems.append("Skull: el botón Reglas no mostró las reglas")
+if not skull_tut_done or skull_tut_steps < 9: problems.append(f"Skull: el tutorial no se pudo recorrer ({skull_tut_steps} pasos)")
+if not skull_nudge_gone: problems.append("Skull: el aviso del tutorial sigue después de verlo")
 if skull_places < 2: problems.append(f"Skull: solo se pusieron {skull_places} discos")
 if skull_bids < 1: problems.append("Skull: nunca se pudo apostar")
 if skull_rounds < 1 and not skull_over: problems.append("Skull: no terminó ninguna ronda")
@@ -345,7 +359,7 @@ print(f"Práctica: fichas tiradas {moves}, mano terminada {finished}, atrás →
 print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_styles))}.")
 print(f"Panal: puestos {panal_places}, movidos {panal_moves}, reglas {panal_rules}, tutorial {panal_tut}.")
 print(f"La Viuda: reglas {viuda_rules}, turnos {viuda_acts}, manos {viuda_hands}.")
-print(f"Skull: reglas {skull_rules}, discos {skull_places}, apuestas {skull_bids}, volteos {skull_flips}, rondas {skull_rounds}.")
+print(f"Skull: reglas {skull_rules}, tutorial {skull_tut_steps + skull_tut_done} pasos, discos {skull_places}, apuestas {skull_bids}, volteos {skull_flips}, rondas {skull_rounds}.")
 print(f"Damas chinas: reglas {cc_rules}, jugadas {cc_moves}, estilos cargados {cc_styles}.")
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")

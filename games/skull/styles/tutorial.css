@@ -1,0 +1,54 @@
+/* Tutorial de Skull (ui/tutorial.js). Va aparte de table.css para no mezclarse con el paño y los discos; usa sus
+   mismas variables (--sk-felt*, --sk-challenge*). */
+.sk-tut h4{margin:6px 0 2px;font-size:17px}
+.sk-tut p,.sk-tut li{margin:6px 0;font-size:14px;line-height:1.45}
+.sk-tut ul{padding-left:20px}
+.sk-tut-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sk-tut-count{font-size:12px;font-weight:800;color:var(--muted)}
+.sk-tut-dots{display:flex;gap:4px}
+.sk-tut-dots i{display:block;width:7px;height:7px;border-radius:50%;background:var(--line)}
+.sk-tut-dots i.done{background:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.sk-tut-dots i.on{background:var(--accent)}
+
+/* La mesa de ejemplo */
+.sk-tut-scene{display:flex;flex-direction:column;gap:4px;margin:10px 0;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.sk-tut-row{display:flex;align-items:center;gap:8px;min-height:30px;font-size:14px}
+.sk-tut-row>b{width:46px;flex:none}
+.sk-tut-row.mine>b{color:var(--accent)}
+.sk-tut-row small{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.sk-tut-mat{display:flex;gap:3px;align-items:center}
+.sk-tut-slot{line-height:0;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.sk-tut-slot.up{transform:translateY(-2px)}
+.sk-tut-empty{font-size:12px;color:var(--muted)}
+.sk-tut-felt{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border-radius:10px;color:var(--sk-felt-fg);
+  background:radial-gradient(ellipse at 50% 45%,var(--sk-felt),var(--sk-felt-2))}
+.sk-tut-felt.challenge{background:radial-gradient(ellipse at 50% 45%,var(--sk-challenge),var(--sk-challenge-2))}
+.sk-tut-bid{display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.sk-tut-bid span{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sk-felt-muted)}
+.sk-tut-bid b{font-family:var(--display);font-size:30px}
+.sk-tut-bid.quiet b{font-size:24px;opacity:.85}
+.sk-tut-reveals{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.sk-tut-reveals span{display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1}
+.sk-tut-reveals small{font-size:10px;opacity:.85}
+.sk-tut .sk-tut-note{margin:0;font-size:13px;font-weight:700}
+.sk-tut-hand{display:flex;align-items:center;justify-content:center;gap:6px;padding-top:4px}
+.sk-tut-lbl{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.sk-tut-hand .disc{filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+
+/* La pregunta */
+.sk-tut-quiz{margin:10px 0}
+.sk-tut .sk-tut-q{font-weight:800}
+.sk-tut-opts{display:flex;gap:6px}
+.sk-tut-opts button{flex:1;min-width:0;min-height:48px;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:800;font-size:14px}
+.sk-tut-opts button.picked.good,.sk-tut-opts button.picked.ok{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.sk-tut-opts button.picked.bad{border-color:var(--warn);box-shadow:0 0 0 2px color-mix(in srgb,var(--warn) 30%,transparent)}
+.sk-tut .sk-tut-why{padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.sk-tut .sk-tut-why.bad{background:color-mix(in srgb,var(--warn) 14%,transparent)}
+
+.sk-tut-nav{display:flex;gap:8px;margin-top:12px}
+.sk-tut-nav button{flex:1;min-height:48px;font-weight:800}
+
+/* Aviso en la mesa la primera vez */
+.skull .tutnudge{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--muted)}
+.skull .tutnudge button{min-height:34px;padding:0 12px;font-weight:800;font-size:13px}
+.rules .tutlink{width:100%;margin-bottom:6px;font-weight:800}
