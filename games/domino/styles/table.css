@@ -222,3 +222,8 @@ button.stile{cursor:pointer}
 .seat-menu button{min-height:44px}
 .menu-group{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;background:var(--bg)}
 .seats-foot{display:flex;flex-direction:column;gap:8px}
+/* La última ficha que se tiró */
+.board .lasttile{stroke:var(--accent);stroke-width:2.5;animation:lasttile 1.2s ease-in-out 2}
+@keyframes lasttile{50%{stroke-opacity:.25}}
+@media (prefers-reduced-motion:reduce){.board .lasttile{animation:none}}
+#seeres{align-self:center}
