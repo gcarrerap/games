@@ -52,8 +52,10 @@
 .cc-board{width:100%;height:100%;max-height:100%;display:block;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 
 .cc-board .star{fill:var(--wood);stroke:var(--wood);stroke-width:2.6;stroke-linejoin:round;filter:drop-shadow(0 .25px .5px rgba(0,0,0,.4))}
-.cc-board .tint{fill:var(--c);fill-opacity:.22;stroke:var(--c);stroke-opacity:.22;stroke-width:1.9;stroke-linejoin:round}
-.cc-board .tint.goal{fill-opacity:.1;stroke-opacity:.35;stroke-dasharray:.5 .5;stroke-width:.12}
+/* Las puntas: del color de quien sale de ahí (o va hacia ahí); la que es solo meta, más clara */
+.cc-board .tip{fill:var(--c);stroke:var(--c);stroke-width:2.6;stroke-linejoin:round;opacity:.5}
+.cc-board .tip.goal{opacity:.3}
+.cc-board .star-mask{fill:#fff;stroke:#fff;stroke-width:2.6;stroke-linejoin:round}
 .cc-board .hole{fill:var(--hole);opacity:.75}
 .cc-board .lastpath{fill:none;stroke:var(--c);stroke-width:.26;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:.5 .3}
 .cc-board .lastpath.under{stroke:#fff;stroke-width:.46;stroke-dasharray:none;opacity:.7}
