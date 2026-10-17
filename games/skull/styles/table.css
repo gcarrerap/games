@@ -105,6 +105,44 @@
 .rules ul{padding-left:20px}
 .log{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
 
+/* Mesa con tele: el teléfono solo con lo tuyo (ctx.display === "phone") */
+.game.skull.phone .felt{flex:none;padding:14px 8px}
+.game.skull.phone .me{flex:1;justify-content:center;gap:12px}
+.game.skull.phone .hand{min-height:64px;gap:10px}
+.skull .fliplist{display:flex;flex-direction:column;gap:6px;flex:1}
+.skull .fliplist button{min-height:52px}
+.skull .fliplist small{font-weight:600;opacity:.75}
+
+/* La tele (ctx.display === "tv"): los tapetes de todos a un lado y el paño al otro, todo grande, sin botones */
+.game.skull.tv{max-width:none;height:100vh;padding:2vh 2.5vw;gap:2vh}
+.skull.tv .gbar{min-height:0}
+.skull.tv .gtitle{font-size:clamp(28px,3.4vw,52px)}
+.skull.tv .bar-info{font-size:clamp(16px,1.6vw,26px)}
+.skull.tv .tvlayout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:2vw}
+.skull.tv .board{max-height:none;align-content:flex-start;gap:1.4vh;overflow:hidden;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))}
+.skull.tv .prow{padding:1.4vh 1.2vw;gap:1vh;border-width:2px;border-radius:18px}
+.skull.tv .prow.turn{border-color:var(--accent);box-shadow:inset 0 0 0 3px var(--accent)}
+.skull.tv .prow.target{border-color:var(--gold);box-shadow:inset 0 0 0 3px var(--gold)}
+.skull.tv .pname{font-size:clamp(20px,2.1vw,34px)}
+.skull.tv .wins{font-size:clamp(18px,1.8vw,30px)}
+.skull.tv .dcount{gap:5px}
+.skull.tv .dcount i{width:14px;height:14px}
+.skull.tv .ready,.skull.tv .ptags{font-size:clamp(14px,1.3vw,22px)}
+.skull.tv .mat{gap:8px;min-height:64px}
+.skull.tv .mat .empty{font-size:clamp(14px,1.3vw,22px)}
+.skull.tv .felt{gap:2vh;border-radius:28px}
+.skull.tv .felt .status{font-size:clamp(24px,2.6vw,44px)}
+.skull.tv .timer{height:8px}
+.skull.tv .bidbox span{font-size:clamp(14px,1.3vw,22px)}
+.skull.tv .bidbox b{font-size:clamp(80px,9vw,150px)}
+.skull.tv .bidbox.quiet b{font-size:clamp(60px,6vw,110px)}
+.skull.tv .progress{font-size:clamp(18px,1.8vw,30px)}
+.skull.tv .lastev{font-size:clamp(18px,1.8vw,30px);padding:10px 22px;border-radius:16px}
+.skull.tv .reveals{gap:12px}
+.skull.tv .reveals .rv small{font-size:clamp(12px,1.1vw,18px);max-width:90px}
+@media (max-aspect-ratio:1/1){.skull.tv .tvlayout{grid-template-columns:1fr;grid-template-rows:auto 1fr}}
+html.tv .strow{font-size:inherit;padding:10px 14px}
+
 @media (max-width:380px){
   .skull .bar-info{display:none}
 }

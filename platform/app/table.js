@@ -95,6 +95,14 @@ export function act(game, t, seat, action, now) {
 // un turnKey solo se guarda si la mesa sigue en ese turnKey (otro teléfono pudo adelantarse).
 export const turnKey = (t) => (t && t.status === "playing" ? `${t.round}:${t.turn}` : null);
 
+// Cómo se dibuja la mesa en un aparato (ctx.display): "tv" si es la tele de una mesa en línea, "phone" si la mesa se
+// juega con tele y ese aparato tiene asiento, "full" en todo lo demás (práctica, quien solo mira, juegos sin tele).
+export function displayFor({ game, table, seat, practice = false, tv = false }) {
+  if (!game || !game.tv || practice) return "full";
+  if (tv) return "tv";
+  return table && table.config && table.config.tv && seat >= 0 ? "phone" : "full";
+}
+
 export const mySeat = (t, playerId) => t.seats.findIndex((s) => s && !s.bot && s.id === playerId);
 export const humanSeats = (t) => t.seats.map((s, i) => (s && !s.bot ? i : -1)).filter((i) => i >= 0);
 export const botSeats = (t) => t.seats.map((s, i) => (s && s.bot ? i : -1)).filter((i) => i >= 0);

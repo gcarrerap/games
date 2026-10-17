@@ -53,6 +53,10 @@
  * @property {(config: object, seat: number) => number|null} [teamOf]
  *   El equipo de un asiento con esa configuración (0, 1, …), o null si se juega individual. Lo usa la pantalla
  *   de asientos para mostrar quién va con quién.
+ * @property {boolean} [tv]
+ *   La mesa en línea se puede jugar con la tele como tablero: un aparato sin asiento muestra la mesa a todos y cada
+ *   quien usa su teléfono solo para lo suyo (su mano, sus botones). La interfaz recibe ctx.display: "tv" en la tele,
+ *   "phone" en los teléfonos sentados de esa mesa y "full" en todo lo demás (docs/ARCHITECTURE.md §4).
  * @property {() => Promise<{mount: Function, update: Function, unmount: Function, tick?: Function}>} ui
  *   La mesa del juego. mount(el, ctx) y update(ctx) reciben el ctx de platform/ui/play.js (docs/ARCHITECTURE.md §4).
  */
@@ -88,7 +92,7 @@ export function validateGame(g) {
     if (!Array.isArray(g.options)) errs.push("options: lista de opciones");
     else for (const o of g.options) {
       if (!o || typeof o.id !== "string" || !o.id || typeof o.label !== "string") { errs.push("options: cada opción con id y label"); continue; }
-      if (["n", "timer", "names", "code"].includes(o.id)) errs.push(`options.${o.id}: ese nombre ya lo usa la plataforma`);
+      if (["n", "timer", "names", "code", "tv"].includes(o.id)) errs.push(`options.${o.id}: ese nombre ya lo usa la plataforma`);
       if (!Array.isArray(o.choices) || o.choices.length < 2 || o.choices.some((c) => !c || typeof c.id !== "string" || typeof c.label !== "string")) errs.push(`options.${o.id}: al menos dos choices con id y label`);
       else if (!o.choices.some((c) => c.id === o.default)) errs.push(`options.${o.id}: default no es una de sus choices`);
     }
@@ -96,6 +100,7 @@ export function validateGame(g) {
   if (g.bots && typeof g.bots.decide !== "function") errs.push("bots.decide: falta la función");
   if (g.bots && !Array.isArray(g.bots.profiles)) errs.push("bots.profiles: lista de perfiles");
   if (g.bots && g.bots.thinkMs && typeof g.bots.thinkMs !== "function") errs.push("bots.thinkMs: es una función");
+  if (g.tv !== undefined && typeof g.tv !== "boolean") errs.push("tv: true o false");
   if (g.teamOf && typeof g.teamOf !== "function") errs.push("teamOf: es una función");
   if (g.timing && (typeof g.timing.turnMs !== "function" || typeof g.timing.autoAction !== "function")) errs.push("timing: turnMs y autoAction son funciones");
   return errs;

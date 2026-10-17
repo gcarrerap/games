@@ -41,6 +41,7 @@ export function createSession(deps) {
     db: null, online: auth ? "connecting" : "off", // "connecting" | "on" | "off"
     tables: [], updated: {}, // mesas abiertas del juego (lobby) y cuándo se guardó cada una
     table: null, practice: false, code: null,
+    tv: false, // este aparato es la tele de la mesa: muestra el tablero a todos, no juega (docs/ARCHITECTURE.md §5)
     err: "",
     seen: { key: null, at: 0 }, // cuándo vio este teléfono el turno actual (para el reloj)
     advice: null, // { key, data } — data null mientras se calcula
@@ -61,7 +62,8 @@ export function createSession(deps) {
       : (e && e.message) || "Algo falló, intenta otra vez.");
   const fail = (e) => set({ err: message(e) });
   const isGoogle = () => !!(s.user && !s.user.isAnonymous);
-  const me = () => (s.practice ? 0 : s.table ? seatOf(s.table, s.me.id) : -1);
+  // La tele nunca tiene asiento, aunque en ese aparato se haya sentado alguien: solo mira.
+  const me = () => (s.practice ? 0 : s.tv ? -1 : s.table ? seatOf(s.table, s.me.id) : -1);
 
   // ---------- Conexión y sesión ----------
   async function connect() {
@@ -101,12 +103,12 @@ export function createSession(deps) {
 
   function goPortal() {
     closeTable(); stopList();
-    set({ screen: "portal", gameId: null, game: null, table: null, practice: false, code: null, err: "", advice: null, tables: [] });
+    set({ screen: "portal", gameId: null, game: null, table: null, practice: false, code: null, tv: false, err: "", advice: null, tables: [] });
   }
 
   async function openGame(id) {
     closeTable(); stopList();
-    set({ screen: "lobby", gameId: id, game: null, table: null, practice: false, code: null, loading: true, err: "", advice: null, tables: [] });
+    set({ screen: "lobby", gameId: id, game: null, table: null, practice: false, code: null, tv: false, loading: true, err: "", advice: null, tables: [] });
     try {
       const game = await loadGame(id);
       if (s.gameId !== id) return;
@@ -119,7 +121,7 @@ export function createSession(deps) {
   // para dejar tu lugar está "Levantarme". Las mesas que nadie vuelve a tocar se borran solas (cleanup.js).
   function leave() {
     closeTable();
-    set({ screen: "lobby", table: null, practice: false, code: null, err: "", advice: null });
+    set({ screen: "lobby", table: null, practice: false, code: null, tv: false, err: "", advice: null });
     watchList();
   }
 
@@ -167,7 +169,7 @@ export function createSession(deps) {
     const profiles = game.bots ? game.bots.profiles.map((x) => x.id) : [];
     const def = profiles.includes(saved.defaultBot) ? saved.defaultBot : profiles[Math.min(1, profiles.length - 1)];
     const bots = Array.from({ length: 8 }, (_, i) => (profiles.includes(saved.bots && saved.bots[i]) ? saved.bots[i] : def));
-    return { mode: mode.id, timer: saved.timer !== false, bots, options: optionValues(game, saved.options || {}) };
+    return { mode: mode.id, timer: saved.timer !== false, bots, options: optionValues(game, saved.options || {}), tv: !!game.tv && saved.tv === true };
   }
   function savePractice(patch) {
     gamePrefs(s.game.id).setJSON("practice", { ...practiceSettings(), ...patch });
@@ -176,6 +178,8 @@ export function createSession(deps) {
   const newSeed = () => Math.floor(random() * 2 ** 31).toString(36);
   // Lo que se escoge aparte del modo: el reloj (si el juego tiene) y las opciones del juego (game.options)
   const optionsFor = (game, settings) => ({ ...optionValues(game, settings.options || {}), ...(game.timing ? { timer: settings.timer !== false } : {}) });
+  // En línea, además: si la mesa se juega con la tele como tablero (solo si el juego lo admite, game.tv)
+  const onlineOptionsFor = (game, settings) => ({ ...optionsFor(game, settings), ...(game.tv && settings.tv ? { tv: true } : {}) });
 
   function startPractice(settings = practiceSettings()) {
     const game = s.game; if (!game) return;
@@ -186,7 +190,7 @@ export function createSession(deps) {
       t = sit(t, 0, { id: s.me.id, name: s.me.name || "Tú" });
       for (let i = 1; i < t.seats.length; i++) t = addBot(t, i, { profile: settings.bots[i - 1], name: BOT_NAMES[(i - 1) % BOT_NAMES.length] });
       t = start(game, t, now());
-      set({ screen: "table", table: t, practice: true, code: null, err: "", advice: null });
+      set({ screen: "table", table: t, practice: true, code: null, tv: false, err: "", advice: null });
       afterChange();
     } catch (e) { fail(e); }
   }
@@ -203,7 +207,7 @@ export function createSession(deps) {
         if (!(await s.db.doc(`${TABLES}/${c}`).get()).exists) code = c;
       }
       if (!code) throw new Error("No se pudo crear la mesa, intenta otra vez.");
-      let t = newTable(game, { code, mode: settings.mode, options: optionsFor(game, settings), host: s.me.id, seed: newSeed(), now: now(), version });
+      let t = newTable(game, { code, mode: settings.mode, options: onlineOptionsFor(game, settings), host: s.me.id, seed: newSeed(), now: now(), version });
       t = sit(t, 0, { id: s.me.id, name: s.me.name });
       await saveNewTable(s.db, t);
       return code;
@@ -211,12 +215,14 @@ export function createSession(deps) {
   }
 
   // Abre una mesa en línea y la escucha. Cada cambio guardado (de cualquier teléfono) llega aquí.
-  function openTable(code) {
+  // { tv: true }: este aparato es la tele de la mesa. Solo mira (sin asiento, sin mover a la compu, sin grabar, sin
+  // entrar a la llamada) y el juego dibuja el tablero para que todos lo vean (ctx.display = "tv").
+  function openTable(code, { tv = false } = {}) {
     if (!s.db || !s.game) { set({ err: s.online === "connecting" ? "Conectando…" : "Sin conexión con las mesas en línea." }); return; }
     closeTable(); stopList();
     const gameId = s.game.id;
-    set({ screen: "table", table: null, practice: false, code, err: "", advice: null });
-    if (call && s.db.fs) call.watch(code);
+    set({ screen: "table", table: null, practice: false, code, tv: !!tv, err: "", advice: null });
+    if (call && s.db.fs && !tv) call.watch(code);
     unsubTable = watchTable(s.db, code, (t) => {
       if (s.code !== code) return;
       if (!t) { set({ table: null, err: "Esta mesa ya no existe." }); return; }
@@ -283,7 +289,7 @@ export function createSession(deps) {
   // las demás personas sentadas son respaldo (esperan BACKUP_MS más) por si ese teléfono no está.
   function botRole(t) {
     if (s.practice) return "primary";
-    const mine = seatOf(t, s.me.id); if (mine < 0) return null;
+    const mine = me(); if (mine < 0) return null;
     return humanSeats(t)[0] === mine ? "primary" : "backup";
   }
   function stopBots() { if (botTimer !== null) cancel(botTimer); botTimer = null; botKey = null; }
@@ -340,7 +346,7 @@ export function createSession(deps) {
   function saveGame(t) {
     if (!s.db || !t.rec) return;
     const id = `${t.game}-${t.code}-${t.created}-${t.round}`.replace(/[^A-Za-z0-9_-]/g, "");
-    if (saved.has(id) || (!s.practice && seatOf(t, s.me.id) < 0)) return;
+    if (saved.has(id) || (!s.practice && me() < 0)) return;
     saved.add(id);
     const rec = { ...t.rec, meta: { ...t.rec.meta, mode: s.practice ? "practice" : "online" } };
     saveRecording(s.db, id, rec).catch(() => {}); // ya la guardó otro teléfono, o sin conexión: no pasa nada

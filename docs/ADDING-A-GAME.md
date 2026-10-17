@@ -34,4 +34,6 @@
 
 8. **Mesa.** Escribe `ui/` usando los componentes de `platform/ui/` (ventanas, resultado, reloj) y los colores de `platform/styles/tokens.css`. La mesa solo llama a `ctx.act(action)`.
 
+9. **La tele como tablero (opcional).** Si el juego se presta a que una tele muestre la mesa y cada quien juegue desde su teléfono, pon `tv: true` en el manifiesto y dibuja la mesa según `ctx.display`: `"tv"` (todo lo público, grande, sin botones) y `"phone"` (solo lo de tu asiento y tus botones). Ver ARCHITECTURE.md §5 y `games/skull/ui/table.js`.
+
 Lo que **no** hace falta escribir: entrar, lobby, mesas en línea, asientos, la compu en mesas en línea, reloj, limpieza, actualizaciones. Todo eso lo pone la plataforma.
