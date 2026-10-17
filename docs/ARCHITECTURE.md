@@ -107,6 +107,8 @@ Qué hay hoy en myDomino y a dónde va.
 | Baraja francesa: notación de cartas, barajas con jokers, revolver, dibujo de cartas | La Pata `engine/cards.js`, `ui/svg/card.js` | `modules/cards` | ✅ al llegar el Continental (segundo juego de cartas). Lo que vale cada carta y qué es comodín se queda en cada juego |
 | Reglas que se escogen al crear la mesa (por ejemplo, cómo se compra en el Continental) | (nuevo) | contrato: `options` del juego; el lobby, los asientos y la sesión las muestran y guardan | ✅ genérico: cualquier juego las declara en su manifiesto |
 | Fichas, jugadas, puntos, modos, cadena, heurísticas, salida, criterios | `engine/`, `ai/`, `ui/svg/` | `games/domino/` | Se quedan |
+| Banco de imágenes: una imagen por llave con respaldo a un dibujo propio | (nuevo) Panal `assets/bank.js` + `ui/art.js` | se queda en Panal | Candidato a `modules/` cuando un segundo juego use imágenes generadas (por ejemplo, uno estilo Dixit) |
+| Casillas hexagonales: vecinos, colmena unida, puntos de corte | (nuevo) Panal `engine/hex.js` | se queda en Panal | Candidato si llega otro juego de tablero hexagonal |
 
 ## 4. El contrato de juego
 
@@ -254,6 +256,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 6c ✅ | Llamadas de voz y video de La Pata como `modules/call`, para cualquier mesa en línea de cualquier juego. Señalización en `platform/services/call-signaling.js` (`juegos-llamadas`). |
 | 7 ✅ | Piojos (dados de póker): reglas, compu con tres estilos y mesa. Primer juego escrito desde cero sobre la plataforma: no tocó `platform/` ni `modules/`. |
 | 8 ✅ | La Viuda (póker de 5 cartas con la viuda): reglas con comodín creciente y fichas, compu con tres estilos, mesa con botón de reglas. Usa `modules/cards` (barajas, revolver y dibujo de cartas). |
+| 9 ✅ | Panal (juego de colmena para 2): tablero hexagonal sin límites, compu con tres niveles (la difícil mira la respuesta del rival, en el hilo aparte), consejo, mesa que se acomoda a la pantalla, bichos dibujados en SVG y un banco de imágenes (`games/panal/assets/`) que los reemplaza cuando existe. No tocó `platform/` ni `modules/`. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 

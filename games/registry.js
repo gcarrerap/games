@@ -7,6 +7,7 @@ import pata from "./pata/manifest.js";
 import piojos from "./piojos/manifest.js";
 import continental from "./continental/manifest.js";
 import viuda from "./viuda/manifest.js";
+import panal from "./panal/manifest.js";
 
 export const GAMES = [
   { ...domino, load: () => import("./domino/index.js") },
@@ -14,6 +15,7 @@ export const GAMES = [
   { ...piojos, load: () => import("./piojos/index.js") },
   { ...continental, load: () => import("./continental/index.js") },
   { ...viuda, load: () => import("./viuda/index.js") },
+  { ...panal, load: () => import("./panal/index.js") },
 ];
 
 export const findGame = (id) => GAMES.find((g) => g.id === id) || null;
