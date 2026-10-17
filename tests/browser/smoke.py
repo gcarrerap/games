@@ -8,6 +8,7 @@ consola:
      marcadas; solo sus estilos quedan cargados.
   3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar (el paño
      se pone rojo con el aviso de última vuelta) y pasar a la siguiente mano.
+  3c. Skull en práctica: el botón "Reglas"; poner discos, apostar, voltear y pasar a la siguiente ronda.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
      el consejo y abrir el menú. En línea: la regla escogida se ve en la pantalla de asientos.
   5. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
@@ -187,6 +188,29 @@ with sync_playwright() as p:
         page.wait_for_timeout(300)
     viuda_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
 
+    # ---------- Skull en práctica ----------
+    page.evaluate("location.hash = '#/skull'"); page.wait_for_selector("#practice")
+    page.click("[data-mode='4']"); page.click("[data-timer='0']"); page.click("#practice")
+    page.wait_for_selector(".game.skull", timeout=10000); shot("14-skull")
+    page.click("#rules"); page.wait_for_selector(".sheet[data-sheet='rules'] .rules")
+    skull_rules = "retador" in page.inner_text(".sheet[data-sheet='rules']")
+    page.click("#rulesclose"); page.wait_for_timeout(200)
+    skull_places = skull_bids = skull_flips = skull_rounds = 0
+    for _ in range(300):
+        if skull_rounds >= 2 or page.query_selector(".sheet #again"): break
+        if page.query_selector(".sheet #next"):
+            if skull_rounds == 0: shot("15-skull-ronda")
+            if tap(".sheet #next"): skull_rounds += 1
+        elif tap("[data-place]:not([disabled])"): skull_places += 1
+        elif tap("#flipmine") or tap("[data-flip]"): skull_flips += 1
+        elif tap("[data-discard]"): pass
+        elif page.query_selector("#bid") and (skull_places >= 2 or not page.query_selector("[data-place]:not([disabled])")):
+            if page.query_selector("#pass") and skull_bids >= 2: tap("#pass")
+            elif tap("#bid"): skull_bids += 1
+        page.wait_for_timeout(250)
+    skull_over = bool(page.query_selector(".sheet #again"))
+    skull_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+
     # ---------- Escribir tu nombre sin que se cierre el teclado ----------
     kb = browser.new_page(viewport={"width": 390, "height": 844})
     kb.on("pageerror", lambda e: errors.append(f"pageerror (teclado): {e}"))
@@ -272,6 +296,11 @@ if viuda_acts < 3: problems.append(f"La Viuda: solo se jugaron {viuda_acts} turn
 if viuda_hands < 1: problems.append("La Viuda: no terminó ninguna mano")
 if viuda_hands and not viuda_widow_shown: problems.append("La Viuda: al final no se ven las cartas de la viuda")
 if not viuda_alert: problems.append("La Viuda: al tocar no apareció el aviso de última vuelta")
+if not skull_rules: problems.append("Skull: el botón Reglas no mostró las reglas")
+if skull_places < 2: problems.append(f"Skull: solo se pusieron {skull_places} discos")
+if skull_bids < 1: problems.append("Skull: nunca se pudo apostar")
+if skull_rounds < 1 and not skull_over: problems.append("Skull: no terminó ninguna ronda")
+if set(skull_styles) != {"skull"}: problems.append(f"Skull: estilos cargados {skull_styles}")
 if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not online_finished: problems.append("en línea: la mano no terminó")
@@ -284,6 +313,7 @@ print(f"Práctica: fichas tiradas {moves}, mano terminada {finished}, atrás →
 print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_styles))}.")
 print(f"Panal: puestos {panal_places}, movidos {panal_moves}, reglas {panal_rules}.")
 print(f"La Viuda: reglas {viuda_rules}, turnos {viuda_acts}, manos {viuda_hands}.")
+print(f"Skull: reglas {skull_rules}, discos {skull_places}, apuestas {skull_bids}, volteos {skull_flips}, rondas {skull_rounds}.")
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
