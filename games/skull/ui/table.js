@@ -6,23 +6,27 @@ import { discSVG, discName } from "./disc.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
 import { rulesHelp } from "./rules.js";
+import { renderTutorial, openTutorial, tutorialSeen } from "./tutorial.js";
 
 const PLAYING = ["place", "build", "bid", "flip", "discard"];
 
 function renderRules(ctx) {
-  renderSheet(ctx.modal, "rules", "Reglas de Skull", `${rulesHelp()}
+  renderSheet(ctx.modal, "rules", "Reglas de Skull", `<div class="rules"><button class="tutlink" id="rulestut">¿Primera vez? Ver el tutorial</button></div>${rulesHelp()}
     <button class="primary big-cta" id="rulesclose">Volver al juego</button>`);
   $("#rulesclose", ctx.modal).onclick = closeOverlay;
+  $("#rulestut", ctx.modal).onclick = () => openTutorial(ctx);
 }
 
 function renderMenu(ctx, st) {
   renderSheet(ctx.modal, "gameMenu", ctx.practice ? "Práctica" : "Mesa " + ctx.table.code, `
     <p class="hint">Ronda ${st.round} · ${st.config.n} jugadores</p>
     <details class="help"><summary>Reglas</summary>${rulesHelp()}</details>
+    <button id="menututorial">Tutorial: cómo jugar</button>
     <details class="help"><summary>Jugadas (${st.log.length})</summary><div class="log">${st.log.slice().reverse().map((l) => `<div>${esc(l)}</div>`).join("")}</div></details>
     <button id="back">← Salir</button>
     <button class="primary big-cta" id="menuclose">Volver al juego</button>`);
   $("#menuclose", ctx.modal).onclick = closeOverlay;
+  $("#menututorial", ctx.modal).onclick = () => openTutorial(ctx);
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };
 }
 
@@ -187,6 +191,7 @@ export function renderTable(app, ctx, ui) {
           <div><div class="lbl">En la mano</div><div class="hand">${handHTML || `<span class="empty">nada</span>`}</div></div>
         </div>` : ""}
       ${hint}
+      ${seated && st.round === 1 && !tutorialSeen(ctx) ? `<div class="tutnudge">¿Primera vez jugando Skull? <button id="tutnudge">Ver el tutorial</button></div>` : ""}
       ${actions ? `<div class="actions">${actions}</div>` : ""}
       ${seat < 0 ? `<p class="hint center">Estás mirando la mesa.</p>` : !seated ? `<p class="hint center">Saliste del juego; sigue mirando la mesa.</p>` : ""}
       ${ctx.err ? `<p class="err" role="alert">${esc(ctx.err)}</p>` : ""}
@@ -194,6 +199,7 @@ export function renderTable(app, ctx, ui) {
 
   $("#menu", app).onclick = () => openOverlay("gameMenu");
   $("#rules", app).onclick = () => openOverlay("rules");
+  $("#tutnudge", app)?.addEventListener("click", () => openTutorial(ctx));
   app.querySelectorAll("[data-place]").forEach((b) => b.onclick = () => ctx.act({ type: "place", disc: b.dataset.place }));
   app.querySelectorAll("[data-flip]").forEach((b) => b.onclick = () => ctx.act({ type: "flip", seat: Number(b.dataset.flip) }));
   app.querySelectorAll("[data-discard]").forEach((b) => b.onclick = () => ctx.act({ type: "discard", disc: b.dataset.discard }));
@@ -205,6 +211,7 @@ export function renderTable(app, ctx, ui) {
 
   const ov = overlay();
   if (ov && ov.id === "rules") renderRules(ctx);
+  else if (ov && ov.id === "tutorial") renderTutorial(ctx);
   else if (ov && ov.id === "gameMenu") renderMenu(ctx, st);
   else if (st.phase === "pause" || st.phase === "over") renderResult(ctx, st, seat);
   else ctx.modal.innerHTML = "";

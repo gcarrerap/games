@@ -2,7 +2,7 @@
 import { loadStyles, unloadStyles } from "../../../platform/ui/styles.js";
 import { renderTable, paintClock } from "./table.js";
 
-const STYLES = ["../styles/table.css"].map((x) => new URL(x, import.meta.url).href);
+const STYLES = ["../styles/table.css", "../styles/tutorial.css"].map((x) => new URL(x, import.meta.url).href);
 
 let ui = null;
 
