@@ -11,4 +11,4 @@ Escoger una opción a partir de puntajes, con un poco de duda humana: la mejor s
 
 `escala` es la diferencia típica entre la mejor y la segunda opción para ese jugador (en dominó se mide con torneos), para que "cerca" signifique lo mismo aunque cada perfil puntúe en tamaños distintos.
 
-**Lo usan:** dominó (todos los perfiles de la compu).
+**Lo usan:** dominó (todos los perfiles de la compu), La Pata (votación del descarte) y el Continental (las dudas de la compu fácil).

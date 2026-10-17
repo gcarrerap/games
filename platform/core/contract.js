@@ -19,11 +19,23 @@
  */
 
 /**
+ * Una regla que se escoge al crear la mesa. El lobby la muestra como botones; se recuerda por juego.
+ * @typedef {object} GameOption
+ * @property {string} id                                   Nombre del campo en config.
+ * @property {string} label                                Lo que se muestra arriba de los botones.
+ * @property {{id: string, label: string, hint?: string}[]} choices
+ * @property {string} default                              El id de la opción que se usa si no se escoge.
+ */
+
+/**
  * @typedef {object} GameModule
  * @property {string} id                                   Identificador corto, igual al nombre de la carpeta.
  * @property {string} name                                 Nombre que se muestra.
  * @property {{min: number, max: number}} players          Cuántos asientos admite.
  * @property {object[]} modes                              Configuraciones válidas para setup().
+ * @property {GameOption[]} [options]
+ *   Reglas que se escogen al crear la mesa, aparte del modo (por ejemplo, cómo se compra en el Continental). La
+ *   escogida llega a setup() en config[option.id]; si no viene (pruebas, mesas viejas), el juego usa su default.
  * @property {(config: object, ctx: Ctx) => object} setup
  *   Estado inicial (JSON simple). config = un modo de `modes` + opciones de la mesa (por ejemplo timer) +
  *   `names`: el nombre de cada asiento, que la plataforma agrega al empezar.
@@ -47,6 +59,21 @@
 
 const REQUIRED_FNS = ["setup", "currentSeats", "legalActions", "apply", "view", "isOver", "result", "ui"];
 
+// Las opciones escogidas (o el default de cada una), listas para agregarse a config
+export function optionValues(game, chosen = {}) {
+  const out = {};
+  for (const o of game.options || []) out[o.id] = o.choices.some((c) => c.id === chosen[o.id]) ? chosen[o.id] : o.default;
+  return out;
+}
+
+// "Comprar del pozo: Con castigo, hasta 3" por cada opción de una mesa
+export function optionLabels(game, config = {}) {
+  return (game.options || []).map((o) => {
+    const c = o.choices.find((x) => x.id === (config || {})[o.id]) || o.choices.find((x) => x.id === o.default);
+    return `${o.label}: ${c ? c.label : ""}`;
+  });
+}
+
 /** Revisa que un módulo cumpla el contrato. Devuelve la lista de problemas (vacía si está bien). */
 export function validateGame(g) {
   const errs = [];
@@ -57,6 +84,15 @@ export function validateGame(g) {
   if (!p || !Number.isInteger(p.min) || !Number.isInteger(p.max) || p.min < 1 || p.max < p.min) errs.push("players: {min, max} inválido");
   if (!Array.isArray(g.modes) || g.modes.length === 0) errs.push("modes: al menos una configuración");
   for (const fn of REQUIRED_FNS) if (typeof g[fn] !== "function") errs.push(`${fn}: falta la función`);
+  if (g.options !== undefined) {
+    if (!Array.isArray(g.options)) errs.push("options: lista de opciones");
+    else for (const o of g.options) {
+      if (!o || typeof o.id !== "string" || !o.id || typeof o.label !== "string") { errs.push("options: cada opción con id y label"); continue; }
+      if (["n", "timer", "names", "code"].includes(o.id)) errs.push(`options.${o.id}: ese nombre ya lo usa la plataforma`);
+      if (!Array.isArray(o.choices) || o.choices.length < 2 || o.choices.some((c) => !c || typeof c.id !== "string" || typeof c.label !== "string")) errs.push(`options.${o.id}: al menos dos choices con id y label`);
+      else if (!o.choices.some((c) => c.id === o.default)) errs.push(`options.${o.id}: default no es una de sus choices`);
+    }
+  }
   if (g.bots && typeof g.bots.decide !== "function") errs.push("bots.decide: falta la función");
   if (g.bots && !Array.isArray(g.bots.profiles)) errs.push("bots.profiles: lista de perfiles");
   if (g.bots && g.bots.thinkMs && typeof g.bots.thinkMs !== "function") errs.push("bots.thinkMs: es una función");

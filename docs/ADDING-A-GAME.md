@@ -4,7 +4,7 @@
 
    ```
    games/<id>/
-   ├── manifest.js   # export default { id, name, players: {min, max}, modes }
+   ├── manifest.js   # export default { id, name, players: {min, max}, modes, options? }
    ├── index.js      # export default { ...manifest, setup, legalActions, apply, view, … }
    ├── engine/       # reglas puras: estado entra, estado sale
    ├── ai/           # la compu (opcional), solo con view(state, seat)
@@ -13,6 +13,9 @@
    ```
 
 2. **Revisa `modules/` antes de escribir.** Si un módulo ya hace algo que necesitas (azar con semilla, escoger jugadas de la compu…), úsalo por su `index.js`. Si escribes algo que no sabe nada de tu juego, o que otro juego ya tiene escrito por su lado, conviértelo en módulo (docs/ARCHITECTURE.md §3).
+
+   Si el juego tiene reglas que se escogen al crear la mesa (además del modo), decláralas en `options` del manifiesto
+   (docs/ARCHITECTURE.md §4): la plataforma las muestra, las recuerda y te las pasa en `config`.
 
 3. **Reglas primero.** Escribe `engine/` y sus pruebas en `tests/games/<id>/`. Nada de DOM, `Date.now()` ni `Math.random()`: usa `ctx.now` y `ctx.rnd`.
 

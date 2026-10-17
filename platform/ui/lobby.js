@@ -3,6 +3,7 @@
 // perfiles de la compu (bots.profiles).
 import { BOT_NAMES } from "../app/session.js";
 import { $, esc } from "./dom.js";
+import { optionLabels } from "../core/contract.js";
 
 function account(state, actions) {
   if (state.online === "connecting") return `<p class="hint">Conectando con las mesas en línea…</p>`;
@@ -16,8 +17,9 @@ function tableRow(t, state, game) {
   const filled = t.seats.filter(Boolean).length, mine = t.seats.some((x) => x && !x.bot && x.id === state.me.id);
   const status = t.status === "lobby" ? `${filled}/${t.seats.length} sentados` : t.status === "over" ? "Partida terminada" : `Jugando · partida ${t.round}`;
   const who = t.seats.filter(Boolean).map((x) => esc(x.name) + (x.bot ? " (compu)" : "")).join(", ") || "Sin jugadores";
+  const opts = optionLabels(game, t.config).map((x) => " · " + esc(x)).join("");
   return `<li class="trow"><span class="code">${esc(t.code)}</span>
-    <span class="meta">${esc((mode && (mode.label || mode.id)) || "")} · ${status}<br>${who}</span>
+    <span class="meta">${esc((mode && (mode.label || mode.id)) || "")}${opts} · ${status}<br>${who}</span>
     <button data-open="${esc(t.code)}" class="${mine ? "primary" : "ghost"}">${mine ? "Volver" : "Entrar"}</button></li>`;
 }
 
@@ -48,6 +50,9 @@ export function renderLobby(app, { state, actions }) {
       <div class="seg col" role="group" aria-label="Modo">${game.modes.map((m) => `<button data-mode="${esc(m.id)}" aria-pressed="${m.id === cfg.mode}">${esc(m.label || m.id)}</button>`).join("")}</div>
       ${game.timing ? `<span class="field-label">Tiempo por turno</span>
       <div class="seg" role="group" aria-label="Tiempo por turno"><button data-timer="1" aria-pressed="${cfg.timer}">Con reloj</button><button data-timer="0" aria-pressed="${!cfg.timer}">Sin límite</button></div>` : ""}
+      ${(game.options || []).map((o) => `<span class="field-label">${esc(o.label)}</span>
+      <div class="seg col" role="group" aria-label="${esc(o.label)}">${o.choices.map((c) => `<button data-opt="${esc(o.id)}" data-val="${esc(c.id)}" aria-pressed="${cfg.options[o.id] === c.id}">${esc(c.label)}</button>`).join("")}</div>
+      ${(() => { const c = o.choices.find((x) => x.id === cfg.options[o.id]); return c && c.hint ? `<p class="hint">${esc(c.hint)}</p>` : ""; })()}`).join("")}
       <p class="err" role="alert">${esc(state.err)}</p>
       <button class="primary big-cta" id="create" ${online ? "" : "disabled"}>Crear mesa en línea</button>
       <p class="hint">Los asientos libres se pueden llenar con la compu.</p>
@@ -68,6 +73,7 @@ export function renderLobby(app, { state, actions }) {
   $("#gin")?.addEventListener("click", () => actions.googleIn());
   $("#gout")?.addEventListener("click", () => actions.googleOut());
   app.querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => actions.savePractice({ mode: b.dataset.mode }));
+  app.querySelectorAll("[data-opt]").forEach((b) => b.onclick = () => actions.savePractice({ options: { ...actions.practiceSettings().options, [b.dataset.opt]: b.dataset.val } }));
   app.querySelectorAll("[data-timer]").forEach((b) => b.onclick = () => actions.savePractice({ timer: b.dataset.timer === "1" }));
   app.querySelectorAll("select[data-bot]").forEach((sel) => sel.onchange = () => {
     const bots = actions.practiceSettings().bots; bots[+sel.dataset.bot] = sel.value; actions.savePractice({ bots });

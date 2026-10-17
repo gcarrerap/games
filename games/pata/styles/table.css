@@ -15,9 +15,6 @@
 .seg.lvl button{min-height:34px;padding:5px 10px;font-size:13px}
 .lvtag{align-self:flex-start;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.14);color:var(--felt-fg)}
 .ghost-felt{background:transparent;color:var(--fg);border-color:var(--line)}
-svg.card{display:block}
-.cchip{display:inline-block;font-weight:800;font-size:13px;padding:0 5px;border-radius:5px;background:var(--card-face);color:var(--suit-black);border:1px solid var(--card-edge);line-height:1.5;font-variant-numeric:tabular-nums}
-.cchip.red{color:var(--suit-red)}
 .log{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px;max-height:140px;overflow:auto}
 .sheet .log{max-height:none}
 .sheet .scores{grid-template-columns:1fr 1fr}

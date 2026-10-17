@@ -1,0 +1,13 @@
+/* Cartas (modules/cards): colores de la cara, el reverso y los palos, y la carta chica en texto. */
+:root{
+  --card-face:#fffdf7; --card-edge:#c9c2ae; --suit-red:#c0352b; --suit-black:#1b1b1b; --card-back:#8a2f2a; --card-back-line:#e8c27a;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --card-face:#f3ecdb; --card-edge:#9d937c; --suit-red:#c0352b; --suit-black:#1b1b1b; --card-back:#7a2a26; --card-back-line:#d9b26a;
+}}
+:root[data-theme="dark"]{
+  --card-face:#f3ecdb; --card-edge:#9d937c; --suit-red:#c0352b; --suit-black:#1b1b1b; --card-back:#7a2a26; --card-back-line:#d9b26a;
+}
+svg.card{display:block}
+.cchip{display:inline-block;font-weight:800;font-size:13px;padding:0 5px;border-radius:5px;background:var(--card-face);color:var(--suit-black);border:1px solid var(--card-edge);line-height:1.5;font-variant-numeric:tabular-nums}
+.cchip.red{color:var(--suit-red)}

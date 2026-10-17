@@ -3,7 +3,7 @@
 // tenga su carpeta.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateGame } from "../platform/core/contract.js";
+import { validateGame, optionValues, optionLabels } from "../platform/core/contract.js";
 import { GAMES } from "../games/registry.js";
 import { playGame } from "../modules/tournament/index.js";
 import { replay } from "../modules/recording/index.js";
@@ -36,6 +36,20 @@ test("el validador detecta lo que falta", () => {
   assert.ok(validateGame(sinApply).some((e) => e.startsWith("apply")));
   assert.ok(validateGame({ ...minimal, id: "Mi Juego" }).some((e) => e.startsWith("id")));
   assert.ok(validateGame({ ...minimal, players: { min: 3, max: 2 } }).some((e) => e.startsWith("players")));
+});
+
+test("opciones de un juego: el validador las revisa y se llenan con su default", () => {
+  const opt = { id: "buy", label: "Comprar", default: "a", choices: [{ id: "a", label: "A" }, { id: "b", label: "B" }] };
+  const g = { ...minimal, options: [opt] };
+  assert.deepEqual(validateGame(g), []);
+  assert.ok(validateGame({ ...minimal, options: [{ ...opt, default: "z" }] }).some((e) => e.includes("default")));
+  assert.ok(validateGame({ ...minimal, options: [{ ...opt, choices: [opt.choices[0]] }] }).some((e) => e.includes("choices")));
+  assert.ok(validateGame({ ...minimal, options: [{ ...opt, id: "timer" }] }).some((e) => e.includes("plataforma")));
+  assert.deepEqual(optionValues(g, {}), { buy: "a" });
+  assert.deepEqual(optionValues(g, { buy: "b", otra: 1 }), { buy: "b" });
+  assert.deepEqual(optionValues(minimal, { buy: "b" }), {});
+  assert.deepEqual(optionLabels(g, { buy: "b" }), ["Comprar: B"]);
+  assert.deepEqual(optionLabels(g, undefined), ["Comprar: A"]);
 });
 
 for (const entry of ENTRIES) {

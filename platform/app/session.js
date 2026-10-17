@@ -13,6 +13,7 @@ import {
   newTable, sit, leaveSeat, addBot, removeBot, setBotProfile, start, act, turnKey, botSeats, humanSeats, mySeat as seatOf,
 } from "./table.js";
 import { clockStatus, timeoutAction } from "./clock.js";
+import { optionValues } from "../core/contract.js";
 import { cleanupInactiveTables, CLEANUP_EVERY_MS } from "./cleanup.js";
 import { TABLES, SKIP, watchTableList, watchTable, saveNewTable, updateTable, saveRecording, callSignaling } from "../services/index.js";
 import { createCallController, createCallSession } from "../../modules/call/index.js";
@@ -166,14 +167,15 @@ export function createSession(deps) {
     const profiles = game.bots ? game.bots.profiles.map((x) => x.id) : [];
     const def = profiles.includes(saved.defaultBot) ? saved.defaultBot : profiles[Math.min(1, profiles.length - 1)];
     const bots = Array.from({ length: 8 }, (_, i) => (profiles.includes(saved.bots && saved.bots[i]) ? saved.bots[i] : def));
-    return { mode: mode.id, timer: saved.timer !== false, bots };
+    return { mode: mode.id, timer: saved.timer !== false, bots, options: optionValues(game, saved.options || {}) };
   }
   function savePractice(patch) {
     gamePrefs(s.game.id).setJSON("practice", { ...practiceSettings(), ...patch });
     store.notify();
   }
   const newSeed = () => Math.floor(random() * 2 ** 31).toString(36);
-  const optionsFor = (game, settings) => (game.timing ? { timer: settings.timer !== false } : {});
+  // Lo que se escoge aparte del modo: el reloj (si el juego tiene) y las opciones del juego (game.options)
+  const optionsFor = (game, settings) => ({ ...optionValues(game, settings.options || {}), ...(game.timing ? { timer: settings.timer !== false } : {}) });
 
   function startPractice(settings = practiceSettings()) {
     const game = s.game; if (!game) return;

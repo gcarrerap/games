@@ -2,6 +2,7 @@
 // agregar a la compu y escoger su bot, quitarla, levantarte, compartir el enlace y empezar. Genérico: los modos y
 // los perfiles de la compu salen del juego.
 import { $, esc } from "./dom.js";
+import { optionLabels } from "../core/contract.js";
 
 // Equipos: los dice el juego (game.teamOf); si no, no hay equipos
 const TEAM_COLORS = ["var(--ta)", "var(--tb)", "var(--tc)", "var(--td)"];
@@ -44,7 +45,7 @@ export function renderSeats(app, { state, actions }) {
   app.className = "shell";
   app.innerHTML = `
     <header class="shell-head"><button class="ghost" id="back">← Mesas</button>
-      <div><h1>Mesa ${esc(t.code)}</h1><small>${esc(game.name)} · ${esc((mode && (mode.label || mode.id)) || "")}${t.config.timer === false ? " · sin límite de tiempo" : ""}</small></div></header>
+      <div><h1>Mesa ${esc(t.code)}</h1><small>${esc(game.name)} · ${esc((mode && (mode.label || mode.id)) || "")}${t.config.timer === false ? " · sin límite de tiempo" : ""}${optionLabels(game, t.config).map((x) => " · " + esc(x)).join("")}</small></div></header>
     ${state.me.name ? "" : `<section class="panel"><label class="field-label" for="nm">Tu nombre en la mesa</label><input type="text" id="nm" maxlength="16" placeholder="Ej. Barbara" autocomplete="nickname"></section>`}
     <ul class="seatlist">${t.seats.map(row).join("")}</ul>
     ${teamsHint(game, t) ? `<p class="hint center">${esc(teamsHint(game, t))}</p>` : ""}
