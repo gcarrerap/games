@@ -27,7 +27,7 @@ Este documento explica cómo se divide el sitio, qué comparte cada juego y qué
 |---|---|---|---|
 | **`platform/`** | La casa: lo que todo juego recibe sin pedirlo. | El sitio; los juegos solo a través del contrato y `ctx`. | Entrar, portal y lobby, mesas en línea, asientos, la compu en asientos libres, reloj de turno, limpieza, actualizaciones, estilos base. |
 | **`modules/<nombre>/`** | Una capacidad que un juego **escoge** usar. Independiente, con API pública. | Cualquier juego que la importe (y la plataforma si le sirve). | Azar con semilla, escoger con dudas, registro de lo que cada quien puede tener, simulaciones Monte Carlo, perfiles de la compu, notas, acomodar la mano. |
-| **`games/<id>/`** | Un juego. Cumple el contrato. | La plataforma, por medio de `games/registry.js`. | Dominó, La Pata, Piojos, Continental, La Viuda. |
+| **`games/<id>/`** | Un juego. Cumple el contrato. | La plataforma, por medio de `games/registry.js`. | Dominó, La Pata, Piojos, Continental, La Viuda, Skull. |
 
 **Plataforma o módulo:** si *todo* juego lo necesita para existir en el sitio, es plataforma; si un juego puede vivir sin eso, es módulo.
 
@@ -257,6 +257,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 7 ✅ | Piojos (dados de póker): reglas, compu con tres estilos y mesa. Primer juego escrito desde cero sobre la plataforma: no tocó `platform/` ni `modules/`. |
 | 8 ✅ | La Viuda (póker de 5 cartas con la viuda): reglas con comodín creciente y fichas, compu con tres estilos, mesa con botón de reglas. Usa `modules/cards` (barajas, revolver y dibujo de cartas). |
 | 9 ✅ | Panal (juego de colmena para 2): tablero hexagonal sin límites, compu con tres niveles (la difícil mira la respuesta del rival, en el hilo aparte), consejo, mesa que se acomoda a la pantalla, bichos dibujados en SVG y un banco de imágenes (`games/panal/assets/`) que los reemplaza cuando existe. No tocó `platform/` ni `modules/`. |
+| 10 ✅ | Skull (faroleo con flores y una calavera): reglas, compu con tres estilos y mesa con botón de reglas. Primer juego en que varios asientos actúan a la vez (todos ponen su primer disco al mismo tiempo). No tocó `platform/` ni `modules/`. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 

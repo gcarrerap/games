@@ -18,6 +18,7 @@ El sitio tiene tres tipos de piezas:
 | Continental | `games/continental/` | 2–6 | Práctica contra la compu y mesas en línea; la regla de compra se escoge al crear la mesa |
 | La Viuda | `games/viuda/` | 2–8 | Póker de 5 cartas con la viuda. Práctica contra la compu y mesas en línea |
 | Panal | `games/panal/` | 2 | Juego de colmena con bichos hexagonales. Práctica contra la compu y mesas en línea |
+| Skull | `games/skull/` | 3–6 | Faroleo con flores y una calavera. Práctica contra la compu y mesas en línea |
 
 ## Cómo está hecho
 
@@ -56,7 +57,8 @@ games/
 │   ├── piojos/           # misma forma
 │   ├── continental/      # misma forma
 │   ├── viuda/            # misma forma
-│   └── panal/            # misma forma, más assets/ (banco de imágenes)
+│   ├── panal/            # misma forma, más assets/ (banco de imágenes)
+│   └── skull/            # misma forma
 ├── tests/
 │   ├── architecture.test.js # las reglas de dependencia se cumplen (revisa los imports)
 │   ├── contract.test.js  # todos los juegos cumplen el contrato
