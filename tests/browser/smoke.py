@@ -3,9 +3,10 @@ consola:
   1. Práctica: portal → lobby del dominó → práctica → una mano completa → "atrás" regresa al lobby.
   2. La Pata en práctica: varios turnos (robar y descartar), el registro y el consejo; los estilos del dominó se
      quitan al cambiar de juego.
-  3. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
+  3. Piojos en práctica: tirar y plantarse varios turnos contra la compu; solo sus estilos quedan cargados.
+  4. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
      mientras escribes; el campo no debe perder el foco (el teclado se abría y cerraba sin parar).
-  4. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
+  5. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
      compu, empezar y jugar una mano completa; abrir la mesa por su enlace.
 
 Uso (desde la raíz del repositorio):
@@ -86,6 +87,23 @@ with sync_playwright() as p:
     tap("[data-track='1']"); page.wait_for_selector(".sheet[data-sheet='track-1']"); tap("#trkclose")
     page.wait_for_timeout(200)
 
+    # ---------- Piojos en práctica ----------
+    page.evaluate("location.hash = '#/piojos'"); page.wait_for_selector("#practice")
+    page.click("[data-mode='3']"); page.click("[data-timer='0']"); page.click("#practice")
+    page.wait_for_selector(".game.piojos", timeout=10000); shot("9-piojos")
+    piojos_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+    piojos_rolls = piojos_banks = 0
+    for _ in range(300):
+        if piojos_banks >= 3 or page.query_selector(".sheet #again"): break
+        # Tu turno: tira; si ya llevas 30 o más, plántate
+        bank = page.query_selector("#bank")
+        pts = page.inner_text(".turnpts b") if page.query_selector(".turnpts b") else "0"
+        if bank and int(pts) >= 30:
+            if tap("#bank"): piojos_banks += 1
+        elif tap("#roll"): piojos_rolls += 1
+        page.wait_for_timeout(300)
+    shot("10-piojos-turnos")
+
     # ---------- Escribir tu nombre sin que se cierre el teclado ----------
     kb = browser.new_page(viewport={"width": 390, "height": 844})
     kb.on("pageerror", lambda e: errors.append(f"pageerror (teclado): {e}"))
@@ -144,6 +162,8 @@ problems = []
 if not keyboard_resize_ok: problems.append("al abrir el teclado, el campo del nombre pierde el foco")
 if not list_redraw_ok: problems.append(f"al cambiar la lista de mesas, el campo del nombre pierde el foco (escrito: {typed!r})")
 if pata_turns < 4: problems.append(f"La Pata: solo se jugaron {pata_turns} turnos")
+if piojos_rolls < 3: problems.append(f"Piojos: solo se tiraron {piojos_rolls} veces")
+if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {piojos_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not online_finished: problems.append("en línea: la mano no terminó")
 if online_moves == 0: problems.append("en línea: no se pudo tirar ninguna ficha")
@@ -153,6 +173,7 @@ if not back_to_lobby: problems.append("'atrás' no regresó al lobby")
 problems += errors
 print(f"Práctica: fichas tiradas {moves}, mano terminada {finished}, atrás → lobby {back_to_lobby}.")
 print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_styles))}.")
+print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
 print(f"En línea: mesa {code}, fichas tiradas {online_moves}, mano terminada {online_finished}, en la lista {in_list}, se reabre por enlace {reopened}.")
 if problems:
