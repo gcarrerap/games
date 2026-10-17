@@ -4,6 +4,8 @@ consola:
   2. La Pata en práctica: varios turnos (robar y descartar), el registro y el consejo; los estilos del dominó se
      quitan al cambiar de juego.
   3. Piojos en práctica: tirar y plantarse varios turnos contra la compu; solo sus estilos quedan cargados.
+  3a. Panal en práctica: el botón "Reglas"; poner bichos y moverlos tocando la reserva, la colmena y las casillas
+     marcadas; solo sus estilos quedan cargados.
   3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar (el paño
      se pone rojo con el aviso de última vuelta) y pasar a la siguiente mano.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
@@ -107,6 +109,28 @@ with sync_playwright() as p:
         elif tap("#roll"): piojos_rolls += 1
         page.wait_for_timeout(300)
     shot("10-piojos-turnos")
+
+    # ---------- Panal en práctica ----------
+    page.evaluate("location.hash = '#/panal'"); page.wait_for_selector("#practice")
+    page.click("[data-timer='0']"); page.click("#practice")
+    page.wait_for_selector(".game.panal svg.hive", timeout=10000); shot("10b-panal")
+    panal_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+    tap("#rules"); page.wait_for_selector(".sheet[data-sheet='rules']")
+    panal_rules = "Chapulín" in page.inner_text(".sheet")
+    tap("#rulesclose"); page.wait_for_timeout(200)
+    panal_places = panal_moves = 0
+    for i in range(200):
+        if (panal_places >= 5 and panal_moves >= 2) or page.query_selector(".sheet #again"): break
+        page.wait_for_timeout(250)
+        if not page.query_selector(".tray.mine .handbtn:not([disabled])") and not page.query_selector(".cell.can"): continue
+        movable = page.query_selector_all(".cell.can")
+        moving = panal_places >= 5 and movable
+        if not (tap(".cell.can") if moving else tap(".tray.mine .handbtn:not([disabled])")): continue
+        page.wait_for_timeout(100)
+        if tap("[data-target]"):
+            if moving: panal_moves += 1
+            else: panal_places += 1
+    shot("10c-panal-turnos")
 
     # ---------- El Continental en práctica ----------
     page.evaluate("location.hash = '#/continental'"); page.wait_for_selector("#practice")
@@ -239,6 +263,10 @@ if cont_online_buy: problems.append("Continental en línea: con 'no se compra' a
 if pata_turns < 4: problems.append(f"La Pata: solo se jugaron {pata_turns} turnos")
 if piojos_rolls < 3: problems.append(f"Piojos: solo se tiraron {piojos_rolls} veces")
 if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {piojos_styles}")
+if panal_places < 5: problems.append(f"Panal: solo se pusieron {panal_places} bichos")
+if panal_moves < 1: problems.append("Panal: no se pudo mover ningún bicho")
+if not panal_rules: problems.append("Panal: el botón Reglas no mostró las reglas")
+if panal_styles != ["panal"]: problems.append(f"Panal: estilos cargados {panal_styles}")
 if not viuda_rules: problems.append("La Viuda: el botón Reglas no mostró las reglas")
 if viuda_acts < 3: problems.append(f"La Viuda: solo se jugaron {viuda_acts} turnos")
 if viuda_hands < 1: problems.append("La Viuda: no terminó ninguna mano")
@@ -254,6 +282,7 @@ if not back_to_lobby: problems.append("'atrás' no regresó al lobby")
 problems += errors
 print(f"Práctica: fichas tiradas {moves}, mano terminada {finished}, atrás → lobby {back_to_lobby}.")
 print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_styles))}.")
+print(f"Panal: puestos {panal_places}, movidos {panal_moves}, reglas {panal_rules}.")
 print(f"La Viuda: reglas {viuda_rules}, turnos {viuda_acts}, manos {viuda_hands}.")
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")

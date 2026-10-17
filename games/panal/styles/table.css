@@ -1,0 +1,107 @@
+/* Mesa de Panal: la colmena sobre una mesa de madera clara, las fichas claras y oscuras, y tu reserva abajo.
+   Usa los colores base de platform/styles/tokens.css; aquí solo los de la madera y las fichas. */
+:root{
+  --wood:#d9b97f; --wood-2:#c7a265; --wood-fg:#3a2a14; --wood-muted:#6e5531;
+  --t0:#f7eed8; --t0-in:#fff8e8; --t0-edge:#a8946b;
+  --t1:#3a352f; --t1-in:#4a443c; --t1-edge:#120f0c;
+  --target:#ffcf3f; --sel:#e0661f;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --wood:#5c4529; --wood-2:#47341e; --wood-fg:#f3e6cc; --wood-muted:#c9b38c;
+  --t0:#ece2c9; --t0-in:#f6eedb; --t1:#2c2824; --t1-in:#3a352f; --t1-edge:#000;
+}}
+:root[data-theme="dark"]{
+  --wood:#5c4529; --wood-2:#47341e; --wood-fg:#f3e6cc; --wood-muted:#c9b38c;
+  --t0:#ece2c9; --t0-in:#f6eedb; --t1:#2c2824; --t1-in:#3a352f; --t1-edge:#000;
+}
+
+.game.panal{height:100%;max-width:640px;margin:0 auto;padding-inline:8px;padding-block:6px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;overflow:hidden}
+.panal .gbar{display:flex;align-items:center;gap:10px;min-height:40px}
+.panal .menubtn{width:40px;height:40px;min-height:40px;padding:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;flex:none}
+.panal .menubtn span{display:block;width:18px;height:2px;background:var(--fg);border-radius:1px}
+.panal .gtitle{flex:1;font-family:var(--display);font-size:20px}
+.panal .rulesbtn{min-height:36px;padding:0 12px;font-weight:800;font-size:14px;flex:none}
+
+/* Jugadores: nombre, color y los seis lados de su reina */
+.panal .players{display:flex;flex-direction:column;gap:4px;flex:none}
+.panal .pl{display:flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.panal .pl.turn{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.panal .chip{width:16px;height:18px;flex:none;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+.panal .chip.p0{background:var(--t0-edge)} .panal .chip.p1{background:var(--t1)}
+.panal .pname{flex:1;min-width:0;font-weight:800;font-size:14px;display:flex;flex-direction:column;line-height:1.2;overflow:hidden}
+.panal .pname small{font-weight:600;color:var(--muted)}
+.panal .pinfo{font-size:12px}
+.panal .press{display:flex;gap:2px;flex:none}
+.panal .press i{width:11px;height:12px;background:var(--line);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+.panal .press i.on{background:var(--warn)}
+
+/* Reservas */
+.panal .tray{display:flex;gap:4px;justify-content:center;flex-wrap:nowrap}
+.panal .tray.opp{justify-content:flex-end;gap:2px;margin-top:-2px}
+.panal .handbtn{position:relative;padding:2px;min-height:0;background:transparent;border:2px solid transparent;border-radius:12px;box-shadow:none;line-height:0;flex:0 1 auto}
+.panal .tray.opp .handbtn{border:0;padding:0;cursor:default}
+.panal .handbtn:disabled{opacity:1}
+.panal .tray.mine .handbtn:disabled .tilesvg{opacity:.45;filter:grayscale(.4)}
+.panal .handbtn.empty .tilesvg{opacity:.2!important}
+.panal .handbtn.sel{border-color:var(--sel);background:color-mix(in srgb,var(--sel) 14%,transparent)}
+.panal .handbtn .cnt{position:absolute;right:0;bottom:0;min-width:18px;height:18px;line-height:18px;border-radius:9px;font-size:12px;font-weight:800;
+  background:var(--fg);color:var(--bg);font-variant-numeric:tabular-nums}
+.panal .tray.opp .cnt{min-width:13px;height:13px;line-height:13px;font-size:9px;right:-2px;bottom:-2px}
+
+/* Fichas (también dentro de la reserva y de las reglas) */
+.panal .tile.p0,.tilesvg .tile.p0{fill:var(--t0);stroke:var(--t0-edge);stroke-width:3;stroke-linejoin:round}
+.panal .tile.p1,.tilesvg .tile.p1{fill:var(--t1);stroke:var(--t1-edge);stroke-width:3;stroke-linejoin:round}
+.panal .tile-in.p0,.tilesvg .tile-in.p0{fill:var(--t0-in);stroke:none}
+.panal .tile-in.p1,.tilesvg .tile-in.p1{fill:var(--t1-in);stroke:none}
+
+/* La mesa con la colmena */
+.panal .felt{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:8px 6px 6px;
+  background:radial-gradient(ellipse at 50% 40%,var(--wood),var(--wood-2));border-radius:16px;color:var(--wood-fg);box-shadow:inset 0 0 0 2px rgba(0,0,0,.1)}
+.panal .felt .status{font-weight:800;font-size:15px;text-align:center;min-height:1.4em}
+.panal .felt .status.me{color:#8a3d06}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .panal .felt .status.me{color:var(--gold)}}
+:root[data-theme="dark"] .panal .felt .status.me{color:var(--gold)}
+.panal .clock{font-variant-numeric:tabular-nums;color:var(--wood-muted);font-weight:700}
+.panal .clock.low{color:var(--warn)!important}
+.panal .timer{align-self:center;width:70%;height:4px;border-radius:3px;background:rgba(0,0,0,.12);overflow:hidden}
+.panal .timer i{display:block;height:100%;width:100%;background:var(--accent);transition:width .25s linear}
+.panal .timer i.low{background:var(--warn)}
+
+.panal svg.hive{flex:1;min-height:0;width:100%;display:block;touch-action:manipulation}
+.panal .cell{cursor:default}
+.panal .cell .tile{filter:drop-shadow(0 3px 2px rgba(0,0,0,.3))}
+.panal .cell.can{cursor:pointer}
+.panal .cell .ring{fill:none;stroke:transparent;stroke-width:5;stroke-linejoin:round}
+.panal .cell.can .ring{stroke:color-mix(in srgb,var(--sel) 45%,transparent);stroke-width:3}
+.panal .cell.last .ring{stroke:var(--target);stroke-width:4}
+.panal .cell.sel .ring{stroke:var(--sel);stroke-width:6}
+.panal .cell.adv .ring,.panal .advto{stroke:#2f9fd6;stroke-width:6;fill:none;animation:panal-pulse 1.1s ease-in-out infinite}
+.panal .ghost{fill:none;stroke:rgba(0,0,0,.35);stroke-width:3;stroke-dasharray:8 6}
+.panal .badge circle{fill:var(--sel);stroke:#fff;stroke-width:2.5}
+.panal .badge text{fill:#fff;font:800 15px var(--body);text-anchor:middle}
+.panal .target{cursor:pointer}
+.panal .target polygon{fill:color-mix(in srgb,var(--target) 30%,transparent);stroke:var(--target);stroke-width:3.5;stroke-dasharray:9 6}
+.panal .target.ontop polygon{fill:color-mix(in srgb,var(--target) 22%,transparent);stroke-dasharray:none;stroke-width:5}
+.panal .target circle{fill:var(--target)}
+.panal .target.adv polygon{stroke:#2f9fd6}
+@keyframes panal-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.panal .cell.adv .ring,.panal .advto{animation:none}}
+
+.panal .advbox{position:absolute;left:8px;right:8px;bottom:8px;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border-radius:12px;
+  background:var(--card);color:var(--fg);box-shadow:0 4px 14px rgba(0,0,0,.25);font-size:14px}
+.panal .advbox span{flex:1}
+.panal .advbox button{min-height:36px;padding:0 12px}
+
+/* Tú: tu reserva y tus botones */
+.panal .me{display:flex;flex-direction:column;gap:6px;flex:none;padding-bottom:4px}
+.panal .me .actions{display:flex;gap:8px}
+.panal .me .actions:empty{display:none}
+.panal .me .actions button{flex:1;min-width:0;min-height:44px;font-size:15px;font-weight:800}
+.panal .me .err{text-align:center;margin:0}
+
+/* Ventanas */
+.panal-rules,.rules .bugs{list-style:none;padding:0;margin:6px 0;display:flex;flex-direction:column;gap:8px}
+.rules .bugs li{display:flex;gap:10px;align-items:center;font-size:14px;line-height:1.4}
+.rules .bugs .bugsvg{flex:none;background:var(--t0);border-radius:50%;padding:2px}
+.panal .log,.log{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.rules p{margin:6px 0;font-size:14px;line-height:1.45}
