@@ -13,8 +13,8 @@ sobre el paño y sobre tarjetas claras y oscuras, en color y en gris.
 | `back` | Reverso | `back.webp` | `back-3`: retícula de papel picado morada, borde turquesa | lista · 56.6 KB |
 
 **Por qué estas tres:** a 26 px (el tamaño en los tapetes de los demás) se distinguen al instante y también en gris:
-naranja contra magenta con blanco contra morado parejo, con tres luminosidades distintas. El detalle está en el
-comentario de la elección del #26.
+naranja contra magenta con blanco contra morado parejo, con tres luminosidades distintas. El detalle, con las hojas de
+contacto, los 12 candidatos y sus prompts, está en `docs/disenos/skull-catrinas/`.
 
 **Formato:** WebP con fondo transparente, 512 × 512, el disco es un círculo centrado de radio 240 px que llena la
 imagen. Menos de 60 KB por archivo. Cada disco trae su propio borde oscuro, porque se dibuja sobre el paño morado y
