@@ -4,7 +4,7 @@ consola:
   2. La Pata en práctica: varios turnos (robar y descartar), el registro y el consejo; los estilos del dominó se
      quitan al cambiar de juego.
   3. Piojos en práctica: tirar y plantarse varios turnos contra la compu; solo sus estilos quedan cargados.
-  3a. Panal en práctica: el botón "Reglas"; poner bichos y moverlos tocando la reserva, la colmena y las casillas
+  3a. Panal en práctica: el botón "Reglas"; la primera lección del tutorial ("Aprender"); poner bichos y moverlos tocando la reserva, la colmena y las casillas
      marcadas; solo sus estilos quedan cargados.
   3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar (el paño
      se pone rojo con el aviso de última vuelta) y pasar a la siguiente mano.
@@ -121,6 +121,15 @@ with sync_playwright() as p:
     tap("#rules"); page.wait_for_selector(".sheet[data-sheet='rules']")
     panal_rules = "Chapulín" in page.inner_text(".sheet")
     tap("#rulesclose"); page.wait_for_timeout(200)
+    # El tutorial: la primera lección se cumple con "Muéstrame" y tocando la casilla marcada
+    tap("#learn"); page.wait_for_selector(".sheet[data-sheet='tutorial'] .tut-felt svg.hive")
+    page.wait_for_timeout(300); page.click("#tutshow"); page.wait_for_timeout(200)
+    page.click(".tut .target.adv"); page.wait_for_timeout(200)
+    panal_tut = page.query_selector(".tut-msg.ok") is not None
+    page.click("#tutnext"); page.wait_for_timeout(200)
+    panal_tut = panal_tut and "lección 2" in page.inner_text(".tut-prog").lower()
+    shot("10b2-panal-tutorial")
+    page.click("#sheetclose"); page.wait_for_timeout(200)
     panal_places = panal_moves = 0
     for i in range(200):
         if (panal_places >= 5 and panal_moves >= 2) or page.query_selector(".sheet #again"): break
@@ -309,6 +318,7 @@ if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {pioj
 if panal_places < 5: problems.append(f"Panal: solo se pusieron {panal_places} bichos")
 if panal_moves < 1: problems.append("Panal: no se pudo mover ningún bicho")
 if not panal_rules: problems.append("Panal: el botón Reglas no mostró las reglas")
+if not panal_tut: problems.append("Panal: el tutorial no se pudo cumplir con Muéstrame")
 if panal_styles != ["panal"]: problems.append(f"Panal: estilos cargados {panal_styles}")
 if not viuda_rules: problems.append("La Viuda: el botón Reglas no mostró las reglas")
 if viuda_acts < 3: problems.append(f"La Viuda: solo se jugaron {viuda_acts} turnos")
@@ -333,7 +343,7 @@ if not back_to_lobby: problems.append("'atrás' no regresó al lobby")
 problems += errors
 print(f"Práctica: fichas tiradas {moves}, mano terminada {finished}, atrás → lobby {back_to_lobby}.")
 print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_styles))}.")
-print(f"Panal: puestos {panal_places}, movidos {panal_moves}, reglas {panal_rules}.")
+print(f"Panal: puestos {panal_places}, movidos {panal_moves}, reglas {panal_rules}, tutorial {panal_tut}.")
 print(f"La Viuda: reglas {viuda_rules}, turnos {viuda_acts}, manos {viuda_hands}.")
 print(f"Skull: reglas {skull_rules}, discos {skull_places}, apuestas {skull_bids}, volteos {skull_flips}, rondas {skull_rounds}.")
 print(f"Damas chinas: reglas {cc_rules}, jugadas {cc_moves}, estilos cargados {cc_styles}.")

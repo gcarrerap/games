@@ -3,16 +3,12 @@
 //
 // Para jugar: tocas un bicho de tu reserva o uno tuyo en la colmena, se marcan las casillas a donde puede ir, y
 // tocas una. Lo único propio de esta pantalla es `ui.sel` (lo que tienes escogido) y `ui.seenSeq`.
-import { legalActions, placeableKinds, queenPressure, topOf, NAMES, THE, ONE, KINDS, PIECES, nameOf } from "../engine/index.js";
-import { parse } from "../engine/hex.js";
+import { legalActions, placeableKinds, queenPressure, topOf, THE, ONE, KINDS, nameOf } from "../engine/index.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
-import { bugArt, tileSVG, hexPoints } from "./art.js";
+import { boardSVG, trayHTML, COLOR } from "./board.js";
 import { rulesHelp } from "./rules.js";
-
-const R = 50, SQ3 = Math.sqrt(3);
-const center = (k) => { const [q, r] = parse(k); return [R * SQ3 * (q + r / 2), R * 1.5 * r]; };
-const COLOR = ["claras", "oscuras"];
+import { renderTutorial } from "./tutorial.js";
 
 function describe(st, a) {
   if (!a) return "";
@@ -22,9 +18,18 @@ function describe(st, a) {
 }
 
 function renderRules(ctx) {
-  renderSheet(ctx.modal, "rules", "Reglas de Panal", `${rulesHelp()}
+  renderSheet(ctx.modal, "rules", "Reglas de Panal", `
+    <button class="big-cta" id="rulestut">Aprender paso a paso</button>
+    ${rulesHelp()}
     <button class="primary big-cta" id="rulesclose">Volver al juego</button>`);
   $("#rulesclose", ctx.modal).onclick = closeOverlay;
+  $("#rulestut", ctx.modal).onclick = () => openTutorial(ctx);
+}
+
+// El tutorial: al abrirlo una vez, el botón "Aprender" deja de llamar la atención
+function openTutorial(ctx) {
+  ctx.prefs.set("tutorial", "visto");
+  openOverlay("tutorial");
 }
 
 function renderMenu(ctx, st) {
@@ -67,62 +72,6 @@ function playerHTML(st, s, seat, playing) {
   </div>`;
 }
 
-function boardSVG(st, ui, targets, advice) {
-  const keys = Object.keys(st.cells);
-  const pts = [...keys, ...targets].map(center);
-  if (!pts.length) pts.push([0, 0]);
-  let x0 = Math.min(...pts.map((p) => p[0])), x1 = Math.max(...pts.map((p) => p[0]));
-  let y0 = Math.min(...pts.map((p) => p[1])), y1 = Math.max(...pts.map((p) => p[1]));
-  const pad = R * 1.25, minW = R * SQ3 * 5, minH = R * 5;
-  if (x1 - x0 + 2 * pad < minW) { const c = (x0 + x1) / 2; x0 = c - minW / 2 + pad; x1 = c + minW / 2 - pad; }
-  if (y1 - y0 + 2 * pad < minH) { const c = (y0 + y1) / 2; y0 = c - minH / 2 + pad; y1 = c + minH / 2 - pad; }
-  const vb = [x0 - pad, y0 - pad, x1 - x0 + 2 * pad, y1 - y0 + 2 * pad].map((v) => v.toFixed(1)).join(" ");
-
-  const last = st.last && st.last.type !== "pass" ? st.last : null;
-  const advFrom = advice && advice.from, advTo = advice && advice.to;
-  let html = "";
-  if (last && last.from && !st.cells[last.from]) {
-    const [x, y] = center(last.from);
-    html += `<polygon class="ghost" points="${hexPoints(R * 0.9, x, y)}"/>`;
-  }
-  // Las pilas se dibujan de atrás hacia adelante para que las de abajo no tapen a las de arriba
-  for (const k of keys.slice().sort((a, b) => parse(a)[1] - parse(b)[1] || parse(a)[0] - parse(b)[0])) {
-    const [x, y] = center(k), stack = st.cells[k], t = topOf(st.cells, k), h = stack.length;
-    const sel = ui.sel && ui.sel.from === k;
-    let under = "";
-    for (let i = 0; i < h - 1; i++) under += `<polygon class="tile p${stack[i].p}" points="${hexPoints(R * 0.92, x + 5 * (h - 1 - i), y + 5 * (h - 1 - i))}"/>`;
-    const cls = ["cell", sel ? "sel" : "", last && last.to === k ? "last" : "", advFrom === k || advTo === k ? "adv" : "", ui.movable.has(k) ? "can" : ""].join(" ");
-    html += `<g class="${cls}" data-cell="${k}" role="button" aria-label="${esc(NAMES[t.k])} ${COLOR[t.p]}${h > 1 ? `, pila de ${h}` : ""}">
-      ${under}
-      <polygon class="tile p${t.p}" points="${hexPoints(R * 0.92, x, y)}"/>
-      <polygon class="tile-in p${t.p}" points="${hexPoints(R * 0.78, x, y)}"/>
-      <g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(.98)">${bugArt(t.k)}</g>
-      ${h > 1 ? `<g class="badge"><circle cx="${(x + R * 0.58).toFixed(1)}" cy="${(y - R * 0.58).toFixed(1)}" r="12"/><text x="${(x + R * 0.58).toFixed(1)}" y="${(y - R * 0.58 + 5).toFixed(1)}">${h}</text></g>` : ""}
-      <polygon class="ring" points="${hexPoints(R * 0.95, x, y)}"/>
-    </g>`;
-  }
-  for (const k of targets) {
-    const [x, y] = center(k);
-    const onTop = !!st.cells[k];
-    html += `<g class="target ${onTop ? "ontop" : ""} ${advTo === k ? "adv" : ""}" data-target="${k}" role="button" aria-label="Aquí">
-      <polygon points="${hexPoints(R * (onTop ? 0.95 : 0.86), x, y)}"/>${onTop ? "" : `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7"/>`}</g>`;
-  }
-  if (advTo && !targets.includes(advTo) && !st.cells[advTo]) {
-    const [x, y] = center(advTo);
-    html += `<polygon class="advto" points="${hexPoints(R * 0.86, x, y)}"/>`;
-  }
-  return `<svg class="hive" viewBox="${vb}" preserveAspectRatio="xMidYMid meet" aria-label="La colmena">${html}</svg>`;
-}
-
-function trayHTML(st, s, mine, myTurn, kinds, sel) {
-  return KINDS.map((k) => {
-    const n = st.hand[s][k];
-    const can = mine && myTurn && n > 0 && kinds.includes(k);
-    return `<button class="handbtn ${sel && sel.kind === k ? "sel" : ""} ${n ? "" : "empty"}" data-kind="${k}" ${can ? "" : "disabled"}
-      aria-label="${esc(NAMES[k])}: ${n} de ${PIECES[k]}">${tileSVG(s, k, mine ? 46 : 26)}<span class="cnt">${n}</span></button>`;
-  }).join("");
-}
-
 export function renderTable(app, ctx, ui) {
   const st = ctx.view, seat = ctx.seat;
   app.className = "game panal";
@@ -159,13 +108,14 @@ export function renderTable(app, ctx, ui) {
     <header class="gbar">
       <button class="menubtn" id="menu" aria-label="Menú de la partida" aria-haspopup="dialog"><span></span><span></span><span></span></button>
       <div class="gtitle">Panal</div>
+      <button class="rulesbtn ${ctx.prefs.get("tutorial") ? "" : "fresh"}" id="learn" aria-haspopup="dialog">Aprender</button>
       <button class="rulesbtn" id="rules" aria-haspopup="dialog">Reglas</button>
     </header>
     <section class="players">${playerHTML(st, opp, seat, playing)}<div class="tray opp" aria-label="Reserva de ${esc(nameOf(st, opp))}">${trayHTML(st, opp, false, false, [], null)}</div></section>
     <section class="felt" id="felt">
       <div class="status ${myTurn ? "me" : ""}">${esc(statusTxt)}${clockOn ? ` <span id="clock" class="clock"></span>` : ""}</div>
       ${clockOn ? `<div class="timer" aria-hidden="true"><i id="clockbar"></i></div>` : ""}
-      ${boardSVG(st, ui, targets, advice)}
+      ${boardSVG(st, { sel: ui.sel, movable: ui.movable, targets, advice })}
       ${advBox}
     </section>
     <section class="me">
@@ -182,6 +132,7 @@ export function renderTable(app, ctx, ui) {
   const redraw = () => renderTable(app, ctx, ui);
   $("#menu", app).onclick = () => openOverlay("gameMenu");
   $("#rules", app).onclick = () => openOverlay("rules");
+  $("#learn", app).onclick = () => openTutorial(ctx);
   $("#pass", app)?.addEventListener("click", () => ctx.act({ type: "pass" }));
   $("#advice", app)?.addEventListener("click", () => ctx.askAdvice());
   $("#advclose", app)?.addEventListener("click", () => ctx.closeAdvice());
@@ -208,6 +159,7 @@ export function renderTable(app, ctx, ui) {
   const ov = overlay();
   if (ov && ov.id === "gameMenu") renderMenu(ctx, st);
   else if (ov && ov.id === "rules") renderRules(ctx);
+  else if (ov && ov.id === "tutorial") renderTutorial(ctx);
   else if (st.phase === "over") renderResult(ctx, st, seat);
   else ctx.modal.innerHTML = "";
 }
