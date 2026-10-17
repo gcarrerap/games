@@ -1,12 +1,14 @@
-// Configuración de Firebase. Para usar tu propio proyecto, reemplaza estos valores
-// (ver "Firebase" en el README). Es el mismo proyecto que myDomino; las colecciones son otras (platform/services/).
+// Configuración de Firebase. Proyecto propio de este sitio: gcarrerap-games (antes compartía dominomx con Noli,
+// La Pata y myDomino). Para usar tu propio proyecto, reemplaza estos valores (ver "Firebase" en el README).
+// La apiKey no es secreta: termina en el navegador de todos modos. La protegen las reglas de firestore.rules y la
+// restricción por sitio web en Google Cloud (README).
 window.FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDb1kqzLYwyZ6PdMQrXjlAGeeJhYlzXObM",
-  authDomain: "dominomx.firebaseapp.com",
-  projectId: "dominomx",
-  storageBucket: "dominomx.firebasestorage.app",
-  messagingSenderId: "330194849657",
-  appId: "1:330194849657:web:a7d2e3e77c69d02fad69a8"
+  apiKey: "AIzaSyCzm1KFNCIQANotSk9u4ZHEW5-X9OKD9UQ",
+  authDomain: "gcarrerap-games.firebaseapp.com",
+  projectId: "gcarrerap-games",
+  storageBucket: "gcarrerap-games.firebasestorage.app",
+  messagingSenderId: "864715191838",
+  appId: "1:864715191838:web:ab6bf0023e2134145a200f"
 };
 
 // Servidor TURN para las llamadas de voz y video (opcional). Sin él se usa solo STUN: funciona en la mayoría de las
