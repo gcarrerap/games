@@ -7,11 +7,12 @@
 //   { type: "add", meld, cards, end? }        acomodar cartas en un juego de la mesa (ya bajado)
 //   { type: "swap", meld, card, wild }        poner una carta natural en lugar de un comodín y llevarse el comodín
 //   { type: "discard", card }                 descartar; termina el turno
-// Fuera de turno, mientras quien sigue no ha robado:
-//   { type: "buy" }    pedir el descarte de arriba (si la mesa permite comprar)
-//   { type: "pass" }   no lo quiero (solo para que la compu no vuelva a decidir)
-// Si quien tiene el turno toma el descarte, nadie lo compra. Si roba del mazo, se lo lleva el primero que lo pidió en
-// el orden de la mesa, con una carta del mazo de castigo. Quien ya se bajó no compra.
+// Comprar es por turnos, en el orden de la mesa: primero decide quien tiene el turno (toma el descarte o roba del
+// mazo). Si roba del mazo, se le pregunta al siguiente; si no lo quiere, al siguiente, y así. El primero que diga
+// que sí se lo lleva, con una carta del mazo de castigo; mientras tanto quien tiene el turno espera (fase "offer").
+//   { type: "buy" }    sí lo compro (solo a quien se le está preguntando)
+//   { type: "pass" }   no lo quiero: se le pregunta al siguiente
+// No se le pregunta a quien lo descartó, a quien ya se bajó, ni a quien llegó al límite de compras.
 import { RULES, contractOf, buyLimit } from "./config.js";
 import { cardName, removeCards, shuffle, isWild, handPoints } from "./cards.js";
 import { arrange, addTo, fitsOf, swapIn, swappable } from "./melds.js";
@@ -24,29 +25,46 @@ const fail = (msg) => { throw new Error(msg); };
 // Cartas que todavía se pueden robar (el mazo y el pozo menos la de arriba, que se revuelve si hace falta)
 const available = (h) => h.stock.length + Math.max(0, h.discard.length - 1);
 
-// ¿Puede ese asiento comprar ahora el descarte de arriba?
-export function canBuy(st, seat) {
+// ¿Se le puede ofrecer el descarte a ese asiento? (no es quien tiene el turno ni quien lo tiró, no se ha bajado,
+// le quedan compras y hay carta de castigo)
+function eligible(st, seat) {
   const h = st.hand;
-  if (st.status !== "playing" || !h || h.phase !== "draw" || !h.offer || !topOf(h)) return false;
   if (seat === h.turn || seat === h.discardFrom || h.down[seat]) return false;
   if (h.buys[seat] >= buyLimit(st.config)) return false;
-  if (h.offer.answered.includes(seat)) return false;
-  return available(h) >= 2; // una para quien roba y otra de castigo
+  return available(h) >= 1;
 }
 
-// Quienes todavía pueden pedir el descarte, en el orden de la mesa desde quien tiene el turno
-export function buyers(st) {
+// Los que quedan por decidir, en el orden de la mesa, empezando después de `from`
+function eligibleAfter(st, from) {
   const out = [], n = st.config.n, h = st.hand;
-  if (!h) return out;
-  for (let k = 1; k < n; k++) { const s = (h.turn + k) % n; if (canBuy(st, s)) out.push(s); }
+  for (let k = 1; k < n; k++) { const s = (from + k) % n; if (s === h.turn) break; if (eligible(st, s)) out.push(s); }
   return out;
 }
 
-// Quien se lleva el descarte si quien tiene el turno roba del mazo: el primero que lo pidió en el orden de la mesa
-export function buyWinner(st) {
-  const h = st.hand, n = st.config.n;
-  if (!h.offer || !h.offer.requests.length) return null;
-  return h.offer.requests.slice().sort((a, b) => ((a - h.turn + n) % n) - ((b - h.turn + n) % n))[0];
+// ¿Le están preguntando ahora a ese asiento si compra el descarte?
+export function canBuy(st, seat) {
+  const h = st.hand;
+  return st.status === "playing" && !!h && h.phase === "offer" && !!h.offer && h.offer.asking === seat;
+}
+
+// Quienes siguen en la fila para decidir (el primero es a quien se le está preguntando)
+export function buyers(st) {
+  const h = st.hand;
+  if (st.status !== "playing" || !h || h.phase !== "offer" || !h.offer) return [];
+  return [h.offer.asking, ...eligibleAfter(st, h.offer.asking)];
+}
+
+// Le pregunta al siguiente; si ya no hay a quién, quien tiene el turno sigue jugando
+function askNext(st, from) {
+  const h = st.hand, next = eligibleAfter(st, from)[0];
+  if (next === undefined) {
+    if (h.offer) st.log = pushLog(st.log, `Nadie compró ${cardName(topOf(h))}.`);
+    h.offer = null; h.phase = "play";
+  } else {
+    h.offer = { asking: next, passed: h.offer ? h.offer.passed : [] };
+    h.phase = "offer";
+  }
+  return st;
 }
 
 // Roba una carta del mazo; si se acabó, revuelve el pozo (menos la de arriba). null si ya no hay nada.
@@ -105,10 +123,16 @@ export function apply(st0, seat, action, env = {}) {
   if (st0.status !== "playing" || !st0.hand) fail("No hay ronda en juego.");
   const type = action && action.type;
   if (type === "buy" || type === "pass") {
-    if (!canBuy(st0, seat)) fail(st0.hand.phase === "draw" && st0.hand.down[seat] ? "Ya te bajaste: no puedes comprar." : "No puedes comprar ahora.");
+    if (!canBuy(st0, seat)) fail(st0.hand.down[seat] ? "Ya te bajaste: no puedes comprar." : "No te toca decidir si compras.");
     const st = clone(st0), h = st.hand;
-    h.offer.answered.push(seat);
-    if (type === "buy") { h.offer.requests.push(seat); st.log = pushLog(st.log, `${nameOf(st, seat)} quiere comprar ${cardName(topOf(h))}.`); }
+    if (type === "pass") { h.offer.passed.push(seat); return askNext(st, seat); }
+    const card = h.discard.pop(), penalty = drawStock(st, env.rnd);
+    h.hands[seat].push(card);
+    if (penalty) h.hands[seat].push(penalty);
+    h.buys[seat]++;
+    h.lastBuy = { seat, card, penalty };
+    h.offer = null; h.phase = "play";
+    st.log = pushLog(st.log, `${nameOf(st, seat)} compró ${cardName(card)}${penalty ? " (más una de castigo)" : ""}.`);
     return st;
   }
   if (seat !== st0.hand.turn) fail("No es tu turno.");
@@ -122,20 +146,10 @@ export function apply(st0, seat, action, env = {}) {
       h.hands[seat].push(c);
       h.lastDraw = { seat, from: "stock", cards: [c] };
       h.lastBuy = null;
-      const buyer = buyWinner(st);
-      if (buyer !== null) {
-        const card = h.discard.pop(), penalty = drawStock(st, env.rnd);
-        h.hands[buyer].push(card);
-        if (penalty) h.hands[buyer].push(penalty);
-        h.buys[buyer]++;
-        h.lastBuy = { seat: buyer, card, penalty };
-        st.log = pushLog(st.log, `${nameOf(st, seat)} robó del mazo. ${nameOf(st, buyer)} compró ${cardName(card)}${penalty ? " (más una de castigo)" : ""}.`);
-      } else {
-        st.log = pushLog(st.log, `${nameOf(st, seat)} robó del mazo.`);
-      }
+      st.log = pushLog(st.log, `${nameOf(st, seat)} robó del mazo.`);
       h.offer = null;
-      h.phase = "play";
-      return st;
+      // No quiso el descarte: se le ofrece a los demás, uno por uno
+      return topOf(h) && buyLimit(st.config) > 0 ? askNext(st, seat) : ((h.phase = "play"), st);
     }
     case "take": {
       if (h.phase !== "draw") fail("Ya robaste.");
@@ -150,7 +164,7 @@ export function apply(st0, seat, action, env = {}) {
       return st;
     }
     case "down": {
-      if (h.phase !== "play") fail("Primero roba.");
+      if (h.phase !== "play") fail(h.phase === "offer" ? "Espera a que decidan si compran el descarte." : "Primero roba.");
       if (h.down[seat]) fail("Ya te bajaste.");
       const err = checkDown(st, seat, action.groups); if (err) fail(err);
       for (const g of action.groups) {
@@ -163,7 +177,7 @@ export function apply(st0, seat, action, env = {}) {
       return hand().length ? st : endRound(st, seat);
     }
     case "add": {
-      if (h.phase !== "play") fail("Primero roba.");
+      if (h.phase !== "play") fail(h.phase === "offer" ? "Espera a que decidan si compran el descarte." : "Primero roba.");
       if (!h.down[seat]) fail("Para acomodar cartas primero bájate.");
       const i = h.melds.findIndex((m) => m.id === action.meld); if (i < 0) fail("Ese juego no existe.");
       const cards = Array.isArray(action.cards) ? action.cards : [];
@@ -176,7 +190,7 @@ export function apply(st0, seat, action, env = {}) {
       return hand().length ? st : endRound(st, seat);
     }
     case "swap": {
-      if (h.phase !== "play") fail("Primero roba.");
+      if (h.phase !== "play") fail(h.phase === "offer" ? "Espera a que decidan si compran el descarte." : "Primero roba.");
       if (!h.down[seat]) fail("Para cambiar un comodín primero bájate.");
       const i = h.melds.findIndex((m) => m.id === action.meld); if (i < 0) fail("Ese juego no existe.");
       if (!hand().includes(action.card)) fail("No tienes esa carta.");
@@ -187,7 +201,7 @@ export function apply(st0, seat, action, env = {}) {
       return st;
     }
     case "discard": {
-      if (h.phase !== "play") fail("Primero roba.");
+      if (h.phase !== "play") fail(h.phase === "offer" ? "Espera a que decidan si compran el descarte." : "Primero roba.");
       if (!hand().includes(action.card)) fail("No tienes esa carta.");
       h.hands[seat] = removeCards(hand(), [action.card]);
       h.discard.push(action.card);
@@ -197,7 +211,7 @@ export function apply(st0, seat, action, env = {}) {
       h.turn = nextSeat(st, seat);
       h.phase = "draw";
       h.turns++;
-      h.offer = { requests: [], answered: [] };
+      h.offer = null;
       return st;
     }
     default:
@@ -224,7 +238,8 @@ export function endRound(st, winner) {
 export function legalActions(st, seat) {
   if (st.status !== "playing") return [];
   const h = st.hand;
-  if (seat !== h.turn) return canBuy(st, seat) ? [{ type: "buy" }, { type: "pass" }] : [];
+  if (h.phase === "offer") return canBuy(st, seat) ? [{ type: "buy" }, { type: "pass" }] : [];
+  if (seat !== h.turn) return [];
   if (h.phase === "draw") return [{ type: "draw" }, ...(topOf(h) ? [{ type: "take" }] : [])];
   const out = [], mine = h.hands[seat];
   if (h.down[seat]) {

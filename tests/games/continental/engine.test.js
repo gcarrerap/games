@@ -85,7 +85,7 @@ test("acomodar en las puntas y cambiar un comodín", () => {
 });
 
 test("bajarse: tiene que ser el contrato de la ronda, todo junto", () => {
-  let st = start(2);
+  let st = start(2, { buy: "none" }); // sin ofrecer el descarte, para ir directo a jugar
   const s = st.hand.turn;
   st = rig(st, { hands: { [s]: ["7H0", "7S0", "7C0", "9D0", "9S0", "XR0", "KC0"] } });
   st = act(st, s, { type: "draw" });
@@ -102,7 +102,7 @@ test("bajarse: tiene que ser el contrato de la ronda, todo junto", () => {
 });
 
 test("sin bajarse no se acomoda ni se cambian comodines", () => {
-  let st = start(2);
+  let st = start(2, { buy: "none" }); // sin ofrecer el descarte, para ir directo a jugar
   const s = st.hand.turn;
   st = act(st, s, { type: "draw" });
   st.hand.melds.push({ id: 99, owner: 1 - s, ...arrange(["5H0", "6H0", "7H0", "XR0"]) });
@@ -112,7 +112,7 @@ test("sin bajarse no se acomoda ni se cambian comodines", () => {
 });
 
 test("cerrar: quien se queda sin cartas gana la ronda; los demás pagan lo de su mano", () => {
-  let st = start(2);
+  let st = start(2, { buy: "none" }); // sin ofrecer el descarte, para ir directo a jugar
   const s = st.hand.turn, o = 1 - s;
   st = rig(st, { hands: { [s]: ["7H0", "7S0", "7C0", "9D0", "9S0", "9C0"], [o]: ["XR0", "AH0", "KD0", "5C0", "2S0", "3H0"] } });
   st = act(st, s, { type: "draw" });
@@ -136,55 +136,83 @@ test("puntos de cada carta", () => {
 });
 
 // ---------- Comprar ----------
-test("comprar: quien sigue tiene preferencia; si roba del mazo, se lo lleva el primero que lo pidió", () => {
+test("comprar: por turnos; quien tiene el turno decide primero y luego cada quien en el orden de la mesa", () => {
   let st = start(4);
-  const t = st.hand.turn, a = (t + 1) % 4, b = (t + 2) % 4;
+  const t = st.hand.turn, a = (t + 1) % 4, b = (t + 2) % 4, c = (t + 3) % 4;
   const top = st.hand.discard[0];
-  assert.deepEqual(game.currentSeats(st), [t, ...buyers(st)]);
-  assert.deepEqual(buyers(st), [a, b, (t + 3) % 4]);
-  st = act(st, b, { type: "buy" });
-  st = act(st, a, { type: "buy" });
-  assert.deepEqual(buyers(st), [(t + 3) % 4], "ya contestaron");
-  const before = st.hand.hands[a].length;
+  // Mientras quien tiene el turno no decide, nadie más puede comprar
+  assert.deepEqual(game.currentSeats(st), [t]);
+  assert.throws(() => act(st, b, { type: "buy" }), /No te toca/);
+  // Roba del mazo (no lo quiso): se le pregunta al siguiente, solo a él
   st = act(st, t, { type: "draw" });
-  assert.equal(st.hand.hands[a].length, before + 2, "el descarte y una de castigo");
-  assert.ok(st.hand.hands[a].includes(top));
-  assert.equal(st.hand.buys[a], 1);
-  assert.equal(st.hand.buys[b], 0);
-  assert.equal(st.hand.lastBuy.seat, a);
-  assert.equal(st.hand.offer, null);
-});
-
-test("comprar: si quien sigue toma el descarte, nadie lo compra", () => {
-  let st = start(3);
-  const t = st.hand.turn, a = (t + 1) % 3;
-  st = act(st, a, { type: "buy" });
-  const n = st.hand.hands[a].length;
-  st = act(st, t, { type: "take" });
-  assert.equal(st.hand.hands[a].length, n);
-  assert.equal(st.hand.buys[a], 0);
+  assert.equal(st.hand.phase, "offer");
+  assert.deepEqual(game.currentSeats(st), [a]);
+  assert.deepEqual(buyers(st), [a, b, c]);
+  assert.throws(() => act(st, b, { type: "buy" }), /No te toca/, "el de después no se adelanta");
+  assert.throws(() => act(st, t, { type: "discard", card: st.hand.hands[t][0] }), /Espera/, "quien tiene el turno espera");
+  // a no lo quiere: le toca a b; b lo compra con una de castigo
+  st = act(st, a, { type: "pass" });
+  assert.deepEqual(game.currentSeats(st), [b]);
+  const before = st.hand.hands[b].length;
+  st = act(st, b, { type: "buy" });
+  assert.equal(st.hand.hands[b].length, before + 2, "el descarte y una de castigo");
+  assert.ok(st.hand.hands[b].includes(top));
+  assert.equal(st.hand.buys[b], 1);
+  assert.equal(st.hand.lastBuy.seat, b);
+  // c ya no decide: sigue jugando quien tiene el turno
+  assert.equal(st.hand.phase, "play");
   assert.deepEqual(game.currentSeats(st), [t]);
 });
 
-test("comprar: no compra quien descartó, ni quien ya se bajó, ni quien llegó al límite", () => {
+test("comprar: si nadie lo quiere, quien tiene el turno sigue y el descarte se queda", () => {
+  let st = start(3);
+  const t = st.hand.turn, top = st.hand.discard[0];
+  st = act(st, t, { type: "draw" });
+  st = act(st, (t + 1) % 3, { type: "pass" });
+  st = act(st, (t + 2) % 3, { type: "pass" });
+  assert.equal(st.hand.phase, "play");
+  assert.equal(st.hand.discard[st.hand.discard.length - 1], top);
+  assert.deepEqual(st.hand.buys, [0, 0, 0]);
+});
+
+test("comprar: si quien tiene el turno toma el descarte, no se le ofrece a nadie", () => {
+  let st = start(3);
+  const t = st.hand.turn;
+  st = act(st, t, { type: "take" });
+  assert.equal(st.hand.phase, "play");
+  assert.deepEqual(game.currentSeats(st), [t]);
+});
+
+test("comprar: no se le pregunta a quien descartó, ni a quien ya se bajó, ni a quien llegó al límite", () => {
   let st = start(4);
   const t = st.hand.turn;
   st.hand.discardFrom = (t + 3) % 4;
   st.hand.down[(t + 2) % 4] = true;
   st.hand.buys[(t + 1) % 4] = 3;
-  assert.deepEqual(buyers(st), []);
-  assert.throws(() => act(st, (t + 2) % 4, { type: "buy" }), /bajaste/);
-  // Sin límite, el de 3 compras sí puede
-  const free = start(4, { buy: "free" });
+  st = act(st, t, { type: "draw" });
+  assert.equal(st.hand.phase, "play", "nadie a quien preguntar");
+  // Sin límite, el de 3 compras sí decide
+  let free = start(4, { buy: "free" });
   free.hand.buys[(free.hand.turn + 1) % 4] = 3;
-  assert.ok(buyers(free).includes((free.hand.turn + 1) % 4));
+  free = act(free, free.hand.turn, { type: "draw" });
+  assert.deepEqual(game.currentSeats(free), [(free.hand.turn + 1) % 4]);
 });
 
-test("comprar: con la regla 'no se compra' nadie compra", () => {
-  const st = start(4, { buy: "none" });
+test("comprar: con la regla 'no se compra' no se le pregunta a nadie", () => {
+  let st = start(4, { buy: "none" });
+  st = act(st, st.hand.turn, { type: "draw" });
+  assert.equal(st.hand.phase, "play");
   assert.deepEqual(buyers(st), []);
-  assert.deepEqual(game.currentSeats(st), [st.hand.turn]);
-  assert.throws(() => act(st, (st.hand.turn + 1) % 4, { type: "buy" }));
+});
+
+test("comprar con reloj: quien no contesta a tiempo no compra", () => {
+  let st = game.setup({ n: 3, timer: true }, ctx());
+  const t = st.hand.turn, a = (t + 1) % 3;
+  st = game.apply(st, t, { type: "draw" }, ctx(3));
+  assert.equal(game.timing.turnMs(st), RULES.offerMs);
+  st = game.apply(st, a, game.timing.autoAction(st, a), ctx(4));
+  assert.deepEqual(game.currentSeats(st), [(t + 2) % 3]);
+  assert.equal(st.hand.buys[a], 0);
 });
 
 test("la regla de compra por omisión es con castigo hasta 3, y se guarda en la configuración", () => {
@@ -197,8 +225,8 @@ test("la regla de compra por omisión es con castigo hasta 3, y se guarda en la 
 test("vista: se ocultan manos ajenas, el mazo y lo robado del mazo; se ve el pozo y la compra", () => {
   let st = start(3);
   const t = st.hand.turn, a = (t + 1) % 3;
-  st = act(st, a, { type: "buy" });
   st = act(st, t, { type: "draw" });
+  st = act(st, a, { type: "buy" });
   const v = game.view(st, a);
   assert.deepEqual(v.hand.hands[a], st.hand.hands[a]);
   assert.ok(v.hand.hands[t].every((c) => c === "?"));
@@ -231,7 +259,7 @@ test("una partida completa entre la compu: no se pierde ni se duplica ninguna ca
 });
 
 test("el reloj: roba y descarta por quien se tardó", () => {
-  let st = game.setup({ n: 3, timer: true }, ctx());
+  let st = game.setup({ n: 3, timer: true, buy: "none" }, ctx());
   const t = st.hand.turn, n = st.hand.hands[t].length;
   st = game.apply(st, t, game.timing.autoAction(st, t), ctx(4));
   assert.equal(st.hand.turn, (t + 1) % 3);

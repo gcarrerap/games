@@ -50,9 +50,9 @@ export function rulesHelp() {
     <p><b>Tu turno:</b> roba del mazo o toma el descarte; si ya tienes el contrato, bájate todo junto; ya bajado puedes
       acomodar cartas en cualquier juego de la mesa y cambiar un comodín por la carta que ocupa su lugar. Termina
       descartando una carta. Quien se queda sin cartas cierra la ronda.</p>
-    <p><b>Comprar:</b> mientras quien sigue no ha robado, puedes pedir el descarte. Si él lo toma, nadie lo compra; si
-      roba del mazo, se lo lleva el primero que lo pidió (en el orden de la mesa) con una carta del mazo de castigo.
-      Quien ya se bajó no compra.</p>
+    <p><b>Comprar:</b> el descarte se ofrece por turnos. Primero decide quien tiene el turno: si lo toma, nadie más.
+      Si roba del mazo, se le pregunta al siguiente; si no lo quiere, al siguiente, y así. El primero que diga que sí se
+      lo lleva con una carta del mazo de castigo. No compra quien ya se bajó.</p>
     <p><b>Puntos de lo que queda en la mano:</b> joker 50, 2 y As 20, 10, J, Q y K 10, las demás su número.</p>
   </div>`;
 }

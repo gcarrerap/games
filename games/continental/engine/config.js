@@ -18,6 +18,7 @@ export const RULES = {
   runMin: 4, // cartas mínimas de una escalera (del mismo palo, seguidas; el As va abajo o arriba, sin dar la vuelta)
   maxBuys: 3, // compras por ronda con la regla "limit"
   turnMs: 90000, // tiempo por turno con reloj
+  offerMs: 20000, // tiempo para decidir si compras el descarte (con reloj)
 };
 
 // Cómo se compra el descarte fuera de turno (se escoge al crear la mesa: config.buy)

@@ -4,5 +4,5 @@ export { RANKS, SUITS, rankOf, suitOf, isJoker, isRed, rankName, cardName, cardW
 export { CONTRACTS, RULES, BUY_MODES, DEFAULT_BUY, buyMode, buyLimit, decksFor, validConfig, contractOf, contractLabel } from "./config.js";
 export { arrange, fitsOf, addTo, swapIn, swappable, neededAt, wildCount, hiOf } from "./melds.js";
 export { newGame, deal, nextSeat, nameOf, pushLog } from "./table.js";
-export { apply, check, checkDown, legalActions, canBuy, buyers, buyWinner, topOf, endRound, addAll } from "./moves.js";
+export { apply, check, checkDown, legalActions, canBuy, buyers, topOf, endRound, addAll } from "./moves.js";
 export { limitMs, autoMove, autoDiscard } from "./timing.js";

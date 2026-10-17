@@ -1,7 +1,7 @@
 // La mesa del Continental: marcador, los demás jugadores, los juegos bajados, el mazo y el pozo, tu bajada, tu mano y
 // tus acciones. Dibuja con ctx.view (lo que tu asiento puede ver) y juega con ctx.act().
 // Lo que es solo de esta pantalla vive en `ui`: cartas escogidas, la bajada que vas apartando y el orden de la mano.
-import { RULES, contractOf, nameOf, topOf, canBuy, buyLimit, arrange, fitsOf, swappable, isWild, sortByRank, sortBySuit,
+import { RULES, contractOf, nameOf, topOf, canBuy, buyers, buyLimit, arrange, fitsOf, swappable, isWild, sortByRank, sortBySuit,
   cardName, cardWords } from "../engine/index.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
@@ -36,6 +36,7 @@ export function makeMoves(ctx, ui) {
     draw: () => act({ type: "draw" }),
     take: () => act({ type: "take" }),
     buy: () => act({ type: "buy" }),
+    pass: () => act({ type: "pass" }),
     // Apartar las cartas escogidas como un juego de tu bajada
     stage() {
       const k = contractOf(h.round), groups = staged(ctx, ui), sel = ui.sel.slice();
@@ -116,7 +117,11 @@ export function renderTable(app, ctx, ui) {
   const stagedCards = new Set(stagedNow.flat());
   const top = topOf(h);
   const mayBuy = playing && seat >= 0 && canBuy(st, seat);
-  const asked = playing && h.offer ? h.offer.requests : [];
+  // Comprar: se le pregunta a cada quien en el orden de la mesa
+  const offer = playing && h.phase === "offer" ? h.offer : null;
+  const asking = offer ? offer.asking : null;
+  const queue = offer ? buyers(st).slice(1) : [];
+  const who = (s) => (s === seat ? "tú" : nameOf(st, s));
 
   // Marcador: puntos en contra, el tuyo primero
   const order = [...Array(n).keys()].map((x) => (Math.max(seat, 0) + x) % n);
@@ -128,7 +133,7 @@ export function renderTable(app, ctx, ui) {
   const badge = (s) => {
     const cnt = h.hands[s].length;
     const backs = real ? `<span class="rl-rev">${sortByRank(real.hand.hands[s]).map(cardChip).join("")}</span>` : `<span class="rl-backs">${"<i></i>".repeat(Math.min(cnt, 13))}</span>`;
-    const info = [`${cnt} carta${cnt === 1 ? "" : "s"}`, h.down[s] ? "bajado" : "", lim > 0 && h.buys[s] ? `compró ${h.buys[s]}${lim < Infinity ? `/${lim}` : ""}` : "", asked.includes(s) ? "pide el pozo" : ""].filter(Boolean).join(" · ");
+    const info = [`${cnt} carta${cnt === 1 ? "" : "s"}`, h.down[s] ? "bajado" : "", lim > 0 && h.buys[s] ? `compró ${h.buys[s]}${lim < Infinity ? `/${lim}` : ""}` : "", s === asking ? "decide si compra" : offer && offer.passed.includes(s) ? "no compró" : ""].filter(Boolean).join(" · ");
     return `<div class="rl ${playing && h.turn === s ? "turn" : ""} ${h.down[s] ? "down" : ""}" aria-label="${esc(nameOf(st, s))}: ${esc(info)}">
       <span class="rl-nm">${esc(nameOf(st, s))}${h.dealer === s ? ` <span class="dealer" title="Reparte esta ronda">reparte</span>` : ""}</span>
       ${backs}<span class="rl-info">${esc(info)}</span></div>`;
@@ -140,7 +145,7 @@ export function renderTable(app, ctx, ui) {
       <button class="stack ${drawPhase ? "hot" : ""}" id="stock" ${drawPhase ? "" : "disabled"} aria-label="Mazo: ${h.stock.length} cartas${drawPhase ? ". Robar" : ""}">${backSVG(40, 56)}<span class="cnt">${h.stock.length}</span></button>
       <button class="stack ${(drawPhase || mayBuy) && top ? "hot" : ""}" id="pile" ${(drawPhase || mayBuy) && top ? "" : "disabled"} aria-label="Pozo${top ? `: ${esc(cardWords(top))}` : ", vacío"}${drawPhase ? ". Tomarlo" : mayBuy ? ". Comprarlo" : ""}">
         ${top ? cardSVG(top, 40, 56) : `<span class="emptypile"></span>`}<span class="cnt">${h.discard.length}</span></button>
-      ${asked.length ? `<span class="askers">Lo pide${asked.length > 1 ? "n" : ""}: ${asked.map((s) => (s === seat ? "tú" : esc(nameOf(st, s)))).join(", ")}</span>` : ""}
+      ${offer ? `<span class="askers">¿Lo compra ${esc(who(asking))}?${queue.length ? ` Después: ${queue.map((s) => esc(who(s))).join(", ")}` : ""}</span>` : ""}
     </div>`;
 
   // Qué sigue
@@ -148,7 +153,9 @@ export function renderTable(app, ctx, ui) {
   if (playing) {
     if (drawPhase) statusTxt = top ? `Te toca: roba del mazo o toma ${cardName(top)}` : "Te toca: roba del mazo";
     else if (playPhase) statusTxt = iAmDown ? (sel.length ? "Toca un juego para acomodar, o descarta" : "Acomoda cartas en la mesa o descarta") : stagedNow.length === k.sets + k.runs ? "¡Ya puedes bajarte!" : "Aparta tu bajada o descarta";
-    else statusTxt = `Turno de ${nameOf(st, h.turn)}` + (mayBuy && top ? ` · puedes comprar ${cardName(top)}` : asked.includes(seat) ? ` · pediste ${cardName(top)}` : "");
+    else if (mayBuy) statusTxt = `¿Compras ${cardName(top)}? Te llevas una más de castigo`;
+    else if (offer) statusTxt = `${h.turn === seat ? "Espera: " : ""}${who(asking)} decide si compra ${cardName(top)}`;
+    else statusTxt = `Turno de ${nameOf(st, h.turn)}`;
   }
 
   // Tu bajada en preparación
@@ -173,9 +180,8 @@ export function renderTable(app, ctx, ui) {
     if (drawPhase) actions = `<button id="draw" class="primary">Robar</button><button id="take" ${top ? "" : "disabled"}>${top ? `Tomar ${esc(cardName(top))}` : "Tomar"}</button>`;
     else if (playPhase) actions = `${iAmDown ? "" : `<button id="stagebtn" ${sel.length >= 3 && !complete ? "" : "disabled"}>Apartar</button>`}
       <button id="discardbtn" ${sel.length === 1 ? "" : "disabled"}>Descartar</button>`;
-    else actions = mayBuy && top ? `<button id="buy" class="primary">Comprar ${esc(cardName(top))}</button>`
-      : asked.includes(seat) ? `<button disabled>Pediste ${esc(cardName(top))}</button>` : "";
-    actions += `<button id="advice" class="ghost-felt" ${myTurn ? "" : "disabled"}>Consejo</button>
+    else if (mayBuy) actions = `<button id="buy" class="primary">Comprar ${esc(cardName(top))}</button><button id="pass">No lo quiero</button>`;
+    actions += `<button id="advice" class="ghost-felt" ${myTurn && !offer ? "" : "disabled"}>Consejo</button>
       <button id="sort" class="ghost-felt" aria-label="Ordenar por ${ui.sortBy === "rank" ? "palo" : "número"}">${ui.sortBy === "rank" ? "Por palo" : "Por número"}</button>`;
   }
 
@@ -220,6 +226,7 @@ export function renderTable(app, ctx, ui) {
   $("#pile", app)?.addEventListener("click", () => (drawPhase ? mv.take() : mv.buy()));
   $("#take", app)?.addEventListener("click", mv.take);
   $("#buy", app)?.addEventListener("click", mv.buy);
+  $("#pass", app)?.addEventListener("click", mv.pass);
   $("#stagenow", app)?.addEventListener("click", mv.stage);
   $("#stagebtn", app)?.addEventListener("click", mv.stage);
   $("#downbtn", app)?.addEventListener("click", mv.down);

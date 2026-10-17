@@ -42,11 +42,10 @@ export function deal(st, rnd) {
     stock, discard: [up], discardFrom: null,
     hands, down: Array(n).fill(false), melds: [], nextId: 1,
     buys: Array(n).fill(0),
-    offer: null, // la compra del descarte de arriba: { requests: [asientos], answered: [asientos] }
+    offer: null, // en la fase "offer": { asking: a quién se le pregunta si compra, passed: quienes dijeron que no }
     lastDraw: null, // { seat, from: "stock" | "discard", cards }
     lastBuy: null, // { seat, card, penalty }
   };
-  hand.offer = { requests: [], answered: [] };
   const s = { ...st, status: "playing", roundNo, firstDealer, hand, result: null };
   s.log = pushLog(st.log, `Ronda ${roundNo} de ${RULES.rounds}: ${contractLabel(roundNo)}. Reparte ${nameOf(st, dealer)}; voltea ${cardName(up)}.`);
   return s;
