@@ -9,6 +9,8 @@ consola:
   3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar (el paño
      se pone rojo con el aviso de última vuelta) y pasar a la siguiente mano.
   3c. Skull en práctica: el botón "Reglas"; el tutorial desde el aviso de la primera ronda, de principio a fin; poner discos, apostar, voltear y pasar a la siguiente ronda.
+  3c2. Carrera de Chihuahuas en práctica: el botón "Reglas"; sacudir el tazón, tomar un boleto, poner la aspiradora
+     en una casilla, una apuesta secreta y seguir el consejo; pasar a la siguiente etapa.
   3d. Damas chinas en práctica (3 jugadores): el botón "Reglas"; escoger una canica, ver a dónde puede ir y moverla
      varias veces contra la compu.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
@@ -235,6 +237,38 @@ with sync_playwright() as p:
         page.wait_for_timeout(250)
     skull_over = bool(page.query_selector(".sheet #again"))
     skull_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+    # ---------- Carrera de Chihuahuas en práctica ----------
+    page.evaluate("location.hash = '#/chihuahuas'"); page.wait_for_selector("#practice")
+    page.click("[data-mode='4']"); page.click("[data-timer='0']"); page.click("#practice")
+    page.wait_for_selector(".game.chihuahuas .board .cell", timeout=10000); shot("15c-chihuahuas")
+    tap("#rules"); page.wait_for_timeout(200)
+    ch_rules = "aspiradora" in page.inner_text(".sheet[data-sheet='rules']")
+    tap("#rulesclose"); page.wait_for_timeout(200)
+    ch_dogs = len(page.query_selector_all(".game.chihuahuas .rider")) == 5
+    ch_acts = {"roll": 0, "ticket": 0, "tile": 0, "final": 0, "advice": 0}
+    ch_legs = 0
+    for i in range(400):
+        if ch_legs >= 2 or page.query_selector(".sheet #again"): break
+        if page.query_selector(".sheet #next"):
+            if ch_legs == 0: shot("15d-chihuahuas-etapa")
+            if tap(".sheet #next"): ch_legs += 1
+        elif page.query_selector(".sheet #advdo"):
+            if tap(".sheet #advdo"): ch_acts["advice"] += 1
+        elif page.query_selector("#roll:not([disabled])"):
+            # Una jugada distinta cada turno: tapete, boleto, apuesta secreta, consejo y sacudir el tazón
+            k = sum(ch_acts.values()) % 5
+            if k == 0 and tap("#tilebtn:not([disabled])"):
+                page.wait_for_timeout(150); tap("[data-kind='aspiradora']"); page.wait_for_timeout(150)
+                if tap(".cell.can"): ch_acts["tile"] += 1
+            elif k == 1 and tap("[data-ticket]:not([disabled])"): ch_acts["ticket"] += 1
+            elif k == 2 and tap("#finalbtn:not([disabled])"):
+                page.wait_for_selector(".sheet[data-sheet='final']"); page.wait_for_timeout(150)
+                if tap(".sheet [data-final='winner']:not([disabled])"): ch_acts["final"] += 1
+            elif k == 3 and tap("#advice"): page.wait_for_selector(".sheet[data-sheet='advice']", timeout=10000)
+            elif tap("#roll:not([disabled])"): ch_acts["roll"] += 1
+        page.wait_for_timeout(250)
+    shot("15e-chihuahuas-turnos")
+    ch_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
     # ---------- Damas chinas en práctica ----------
     page.evaluate("location.hash = '#/damas-chinas'"); page.wait_for_selector("#practice")
     page.click("[data-mode='3']"); page.click("[data-timer='0']"); page.click("#practice")
@@ -371,6 +405,11 @@ if skull_places < 2: problems.append(f"Skull: solo se pusieron {skull_places} di
 if skull_bids < 1: problems.append("Skull: nunca se pudo apostar")
 if skull_rounds < 1 and not skull_over: problems.append("Skull: no terminó ninguna ronda")
 if set(skull_styles) != {"skull"}: problems.append(f"Skull: estilos cargados {skull_styles}")
+if not ch_rules: problems.append("Carrera: el botón Reglas no mostró las reglas")
+if not ch_dogs: problems.append("Carrera: no se ven los 5 perros en la pista")
+if min(ch_acts.values()) < 1: problems.append(f"Carrera: faltó alguna jugada {ch_acts}")
+if ch_legs < 1 and not page.query_selector(".sheet #again"): problems.append("Carrera: no terminó ninguna etapa")
+if set(ch_styles) != {"chihuahuas"}: problems.append(f"Carrera: estilos cargados {ch_styles}")
 if not cc_rules: problems.append("Damas chinas: el botón Reglas no mostró las reglas")
 if cc_moves < 5: problems.append(f"Damas chinas: solo se movieron {cc_moves} canicas")
 if cc_styles != ["damas-chinas"]: problems.append(f"Damas chinas: estilos cargados {cc_styles}")
@@ -392,6 +431,7 @@ print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_
 print(f"Panal: puestos {panal_places}, movidos {panal_moves}, reglas {panal_rules}, tutorial {panal_tut}.")
 print(f"La Viuda: reglas {viuda_rules}, turnos {viuda_acts}, manos {viuda_hands}.")
 print(f"Skull: reglas {skull_rules}, tutorial {skull_tut_steps + skull_tut_done} pasos, discos {skull_places}, apuestas {skull_bids}, volteos {skull_flips}, rondas {skull_rounds}.")
+print(f"Carrera: reglas {ch_rules}, perros {ch_dogs}, jugadas {ch_acts}, etapas {ch_legs}.")
 print(f"Damas chinas: reglas {cc_rules}, jugadas {cc_moves}, estilos cargados {cc_styles}.")
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
