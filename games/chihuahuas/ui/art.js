@@ -10,6 +10,8 @@ import { esc } from "../../../platform/ui/dom.js";
 // Todas las llaves que la mesa sabe usar (la prueba del banco no deja meter otras)
 export const KEYS = [
   ...DOGS.map((d) => `dog-${d.id}`), // el perro corriendo, de lado, mirando a la derecha
+  ...DOGS.map((d) => `dog-${d.id}-up`), // corriendo hacia arriba, de espaldas (#49)
+  ...DOGS.map((d) => `dog-${d.id}-down`), // corriendo hacia abajo, de frente (#49)
   ...DOGS.map((d) => `face-${d.id}`), // la cara del perro en un círculo (boletos, dados, cartas)
   "hueso", "aspiradora", // los dos lados del tapete
   "tazon", "croqueta",
@@ -19,6 +21,8 @@ export const KEYS = [
   // La tele (issue #35): los mismos dibujos en alta. Solo los pide la mesa de la tele (`useTv`), así que el teléfono
   // no baja nada de más.
   ...DOGS.map((d) => `dog-${d.id}@tv`),
+  ...DOGS.map((d) => `dog-${d.id}-up@tv`),
+  ...DOGS.map((d) => `dog-${d.id}-down@tv`),
   ...DOGS.map((d) => `face-${d.id}@tv`),
   "fondo-tele", // fondo de la tele, 16:9
   "portada@tv", // pantalla de espera de la tele (manifest.tvCover)
@@ -34,11 +38,26 @@ export const href = (key) => (BANK[key] ? BANK[key].href : null);
 
 const initial = (d) => DOGS[d].name[0];
 
-// El perro corriendo (en la pista)
-export function dogArt(d, cls = "") {
-  const img = pick(`dog-${DOGS[d].id}`);
-  if (img) return `<img class="dogimg ${cls}" src="${esc(img.href)}" alt="${esc(DOGS[d].name)}" draggable="false">`;
-  return `<span class="dogtok ${cls}" data-dog="${DOGS[d].id}" role="img" aria-label="${esc(DOGS[d].name)}"><i>🐕</i><b>${initial(d)}</b></span>`;
+// El perro corriendo (en la pista), mirando hacia `facing` (ver facing.js): derecha y arriba/abajo con su imagen,
+// izquierda la de lado en espejo. Si falta la vista de frente o de espaldas, cae a la de lado.
+export function dogArt(d, facing = "right", cls = "") {
+  const id = DOGS[d].id;
+  const view = (facing === "up" || facing === "down") && pick(`dog-${id}-${facing}`);
+  const img = view || pick(`dog-${id}`);
+  const flip = !view && facing === "left" ? "flip" : "";
+  if (img) return `<img class="dogimg ${flip} ${cls}" src="${esc(img.href)}" alt="${esc(DOGS[d].name)}" draggable="false">`;
+  return `<span class="dogtok ${flip} ${cls}" data-dog="${id}" role="img" aria-label="${esc(DOGS[d].name)}"><i>🐕</i><b>${initial(d)}</b></span>`;
+}
+
+// Las tres vistas encimadas, para la animación: muestra una a la vez cambiando su opacidad (fx.js). La de lado va en
+// el flujo; las de espaldas y de frente, encima, del mismo tamaño (mismo lienzo).
+export function dogViews(d) {
+  const id = DOGS[d].id;
+  const alt = ["up", "down"].map((f) => {
+    const img = pick(`dog-${id}-${f}`);
+    return img ? `<img class="dogimg view view-${f}" src="${esc(img.href)}" alt="" draggable="false">` : "";
+  }).join("");
+  return dogArt(d, "right", "view view-side") + alt;
 }
 
 // La cara del perro en un círculo de su color

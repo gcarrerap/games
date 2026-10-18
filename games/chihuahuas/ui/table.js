@@ -8,6 +8,7 @@
 // jugadores y el tazón para todos, sin botones; "phone" solo lo tuyo (tus botones, boletos, tapete y apuestas) y la
 // casilla del tapete se escoge con una tira de números. "full" es la mesa de siempre.
 import { DOGS, ND, RULES, SHOW, nameOf, dogName, tileSpaces, ranking, positions } from "../engine/index.js";
+import { facingAt } from "./facing.js";
 import { dogArt, faceArt, thingArt, textureVars, href, useTv } from "./art.js";
 import { lastLine, actionText, placeName } from "./text.js";
 import { rulesHelp } from "./rules.js";
@@ -273,11 +274,10 @@ export function renderTable(app, ctx, ui) {
   // La pista
   const cells = [];
   for (let space = 1; space <= RULES.track; space++) {
-    const { r, c, dir } = cellPos(space);
+    const { r, c } = cellPos(space);
     const stack = st.spaces[space];
     const tile = st.tiles.find((t) => t.space === space);
-    const flip = dir === "left" || dir === "down";
-    const dogs = stack.map((d, i) => `<span class="rider ${hop.has(d) ? "hop" : ""} ${hidden.has(d) ? "pending" : ""}" style="--lvl:${i}">${dogArt(d, flip ? "flip" : "")}</span>`).join("");
+    const dogs = stack.map((d, i) => `<span class="rider ${hop.has(d) ? "hop" : ""} ${hidden.has(d) ? "pending" : ""}" style="--lvl:${i}">${dogArt(d, facingAt(space))}</span>`).join("");
     const mark = can.has(space);
     const zap = st.last && ((settled && st.last.landed === space && st.last.tile) || (fresh && !first && st.last.kind === "tile" && st.last.space === space));
     cells.push(`<div class="cell ${space === 1 ? "meta" : ""} ${mark ? "can" : ""} ${zap ? "zap" : ""}" style="grid-row:${r + 1};grid-column:${c + 1}" data-space="${space}" ${mark ? `role="button" tabindex="0" aria-label="Casilla ${space}"` : ""}>
