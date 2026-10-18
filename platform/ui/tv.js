@@ -2,7 +2,7 @@
 // #/<juego>/<CÓDIGO>/tele y muestra la mesa para que todos la vean; cada quien juega desde su teléfono.
 //
 // Aquí está lo que la plataforma pone para cualquier juego que la admite (game.tv): la pantalla de espera mientras
-// la gente se sienta, mantener la pantalla encendida, pantalla completa y el aviso de cómo abrir la tele. La mesa
+// la gente se sienta (con la portada del juego de fondo si trae `tvCover`), mantener la pantalla encendida, pantalla completa y el aviso de cómo abrir la tele. La mesa
 // durante la partida la dibuja cada juego con ctx.display === "tv".
 import { $, esc } from "./dom.js";
 
@@ -18,7 +18,10 @@ export function renderTvSeats(app, { state }) {
   const t = state.table, game = state.game;
   const seats = t.seats.map((x, i) => `<li class="${x ? "taken" : ""}"><span class="tvseatn">${i + 1}</span>${x ? `<b>${esc(x.name)}</b>${x.bot ? ` <small>compu</small>` : ""}` : `<i>libre</i>`}</li>`).join("");
   const missing = t.seats.filter((x) => !x).length;
-  app.className = "tvwait";
+  app.className = `tvwait ${game.tvCover ? "cover" : ""}`;
+  // El juego puede poner su portada de fondo (game.tvCover); un velo encima deja leer el código
+  if (game.tvCover) app.style.setProperty("--tv-cover", `url("${game.tvCover}")`);
+  else app.style.removeProperty("--tv-cover");
   app.innerHTML = `
     <div class="tvhead"><h1>${esc(game.name)}</h1>${fullscreenButton()}</div>
     <div class="tvcode"><small>Mesa</small><b>${esc(t.code)}</b></div>

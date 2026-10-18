@@ -1,7 +1,7 @@
 # Banco de imágenes de la Carrera de Chihuahuas
 
 Aquí viven las ilustraciones de la carrera. Las diseñó **Petra** (issue #33); Claude escogió e integró (issue #34, ver
-[`docs/disenos/chihuahuas/`](../../../docs/disenos/chihuahuas/)); la tele usará las mismas en alta resolución (issue #35). Si una llave está en `bank.js`, la mesa dibuja su imagen; si no,
+[`docs/disenos/chihuahuas/`](../../../docs/disenos/chihuahuas/)); la tele usa las mismas en alta resolución (issue #35, abajo). Si una llave está en `bank.js`, la mesa dibuja su imagen; si no,
 un respaldo provisional de colores y emoji (`ui/art.js`).
 
 Chia y Oreo son los perros de la familia: foto de referencia en
@@ -18,6 +18,16 @@ Chia y Oreo son los perros de la familia: foto de referencia en
 | `infield` | El pasto del centro de la pista | 768 × 768 | 200 KB | lista · 147 KB |
 | `fondo` | Fondo de la página en el teléfono (la mesa le pone un velo para que se lean los botones) | 1080 × 2340 | 300 KB | listo · 123 KB |
 | `portada` | Portada (arriba de las reglas) | 1280 × 720 | 300 KB | lista · por capas (#44), elegida `portada-7` |
+
+**Para la tele** (#35): las mismas, sacadas de los maestros en alta. Solo las pide la mesa de la tele (`ui/art.js`,
+`useTv`); el teléfono nunca las baja.
+
+| Llave | Archivo | Tamaño | Máximo |
+|---|---|---|---|
+| `dog-chia@tv`, … `dog-catrina@tv` | `dog-*-tele.webp`, mismo recorte que los del teléfono | 1024 × 912 | 160 KB |
+| `face-chia@tv`, … `face-catrina@tv` | `face-*-tele.webp` | 512 × 512 | 80 KB |
+| `fondo-tele` | `fondo-tele-1`, el fondo de la mesa en la tele | 3840 × 2160 | 600 KB |
+| `portada@tv` | `portada-tele.webp` (`portada-7`), fondo de la espera de la tele (`manifest.tvCover`) | 1920 × 1080 | 300 KB |
 
 Los maestros que entrega Petra son grandes (2048 px los perros, 3840 × 2160 el fondo de la tele, …); de ellos se sacan
 estos tamaños. Prompts, guía de estilo y formato completo: issue #33.

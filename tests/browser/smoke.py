@@ -19,6 +19,9 @@ consola:
      mientras escribes; el campo no debe perder el foco (el teclado se abría y cerraba sin parar).
   7. Skull con la tele como tablero (al final): crear la mesa con la opción, abrirla como tele desde el lobby (espera
      con el código), empezar desde el teléfono (solo lo suyo), y la tele con los tapetes de todos y sin botones.
+  7b. La Carrera con la tele como tablero (al final): mesa de 8 con la opción; la espera de la tele con la portada;
+     jugar un turno desde el teléfono (solo lo suyo: el tapete se escoge con la tira de números) y la tele con la
+     pista grande, las imágenes en alta, los 8 jugadores sin encimarse (16:9 y cuadrada) y sin botones.
   6. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
      compu, empezar y jugar una mano completa; abrir la mesa por su enlace.
 
@@ -377,6 +380,58 @@ with sync_playwright() as p:
     shot("18-tele-tablero")
     on.evaluate(f"location.hash = '#/skull/{tv_code}'"); on.wait_for_selector(".game.skull.phone")
     tv_left = not on.evaluate("document.documentElement.classList.contains('tv')")
+
+    # La Carrera de Chihuahuas con la tele como tablero: mesa de 8 (7 con la compu)
+    on.evaluate("location.hash = '#/chihuahuas'"); on.wait_for_selector("#create:not([disabled])")
+    on.click("[data-mode='8']"); on.click("[data-timer='0']"); on.click("[data-tvopt='1']"); on.click("#create")
+    on.wait_for_selector(".seatlist")
+    ch_code = on.evaluate("location.hash.split('/')[2]")
+    for i in range(1, 8):
+        on.click(f"[data-addbot='{i}']"); on.wait_for_timeout(80)
+    on.set_viewport_size({"width": 1920, "height": 1080})
+    on.evaluate(f"location.hash = '#/chihuahuas/{ch_code}/tele'"); on.wait_for_selector(".tvwait")
+    ch_tv_wait = bool(on.query_selector(".tvwait.cover")) and ch_code in on.inner_text(".tvcode"); shot("19-carrera-tele-espera")
+    on.set_viewport_size({"width": 390, "height": 844})
+    on.evaluate(f"location.hash = '#/chihuahuas/{ch_code}'"); on.wait_for_selector("#start:not([disabled])")
+    on.click("#start"); on.wait_for_selector(".game.chihuahuas.phone", timeout=10000)
+    ch_phone_only = not on.query_selector(".game.chihuahuas .board, .game.chihuahuas .players") and "tele" in on.inner_text(".tvnote")
+    # Esperar el turno propio (la compu la mueve este mismo teléfono) y poner el tapete con la tira de números
+    on.wait_for_selector(".game.chihuahuas.phone #tilebtn:not([disabled])", timeout=90000)
+    on.click("#tilebtn"); on.wait_for_selector(".spacepick [data-pick]")
+    ch_strip = len(on.query_selector_all(".spacepick [data-pick]")); shot("20-carrera-tele-telefono")
+    picked = on.get_attribute(".spacepick [data-pick]", "data-pick")
+    on.click(".spacepick [data-pick]")
+    on.wait_for_selector(".game.chihuahuas.phone .minebox", timeout=5000); on.wait_for_timeout(400)
+    ch_phone_turn = f"en la {picked}" in on.inner_text(".minebox")
+    # La tele, en 16:9 y en cuadrada
+    def tv_check(w, h, name):
+        on.set_viewport_size({"width": w, "height": h})
+        on.evaluate(f"location.hash = '#/chihuahuas/{ch_code}/tele'"); on.wait_for_selector(".game.chihuahuas.tv .board")
+        on.wait_for_timeout(2500)
+        shot(name)
+        return on.evaluate("""(picked) => {
+          const q = (s) => [...document.querySelectorAll(s)];
+          const r = (el) => el.getBoundingClientRect();
+          const pls = q(".chihuahuas.tv .pl").map(r);
+          const inside = (a) => a.left >= 0 && a.top >= 0 && a.right <= innerWidth + 1 && a.bottom <= innerHeight + 1;
+          const overlap = pls.some((a, i) => pls.some((b, j) => j > i && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1));
+          const board = r(document.querySelector(".chihuahuas.tv .board"));
+          const side = r(document.querySelector(".chihuahuas.tv .side"));
+          const crash = board.left < side.right - 1 && side.left < board.right - 1 && board.top < side.bottom - 1 && side.top < board.bottom - 1;
+          return {
+            players: pls.length, overlap, fits: pls.every(inside) && inside(board) && !crash,
+            buttons: q(".chihuahuas.tv #roll, .chihuahuas.tv [data-ticket], .chihuahuas.tv [data-pick], .chihuahuas.tv #menu, .chihuahuas.tv #bubble").length,
+            big: q(".chihuahuas.tv .board .dogimg").length > 0 && q(".chihuahuas.tv .board .dogimg").every((i) => i.src.includes("-tele.")),
+            tile: !!document.querySelector(`.chihuahuas.tv .cell[data-space="${picked}"] .tile`),
+            tvClass: document.documentElement.classList.contains("tv"),
+            boardPx: Math.round(board.width),
+          };
+        }""", picked)
+    ch_tv = tv_check(1920, 1080, "21-carrera-tele-tablero")
+    ch_tv_sq = tv_check(1080, 1080, "22-carrera-tele-cuadrada")
+    on.set_viewport_size({"width": 390, "height": 844})
+    on.evaluate(f"location.hash = '#/chihuahuas/{ch_code}'"); on.wait_for_selector(".game.chihuahuas.phone")
+    ch_phone_small = not on.evaluate("[...document.images].some((i) => i.src.includes('-tele.'))")
     browser.close()
 
 problems = []
@@ -425,6 +480,16 @@ if not tv_wait: problems.append("Skull con tele: la tele no muestra la espera co
 if not tv_phone: problems.append("Skull con tele: el teléfono muestra los tapetes de todos")
 if not tv_board: problems.append("Skull con tele: la tele no muestra los 3 tapetes sin botones")
 if not tv_left: problems.append("Skull con tele: al volver al teléfono sigue en modo tele")
+if not ch_tv_wait: problems.append("Carrera con tele: la espera no tiene la portada o el código")
+if not ch_phone_only: problems.append("Carrera con tele: el teléfono muestra la pista o los jugadores")
+if not ch_strip: problems.append("Carrera con tele: el teléfono no ofrece casillas para el tapete")
+if not ch_phone_turn: problems.append("Carrera con tele: no se pudo poner el tapete desde el teléfono")
+if not ch_phone_small: problems.append("Carrera con tele: el teléfono bajó imágenes de la tele")
+for label, r in (("16:9", ch_tv), ("cuadrada", ch_tv_sq)):
+    if r["players"] != 8 or r["overlap"] or not r["fits"]: problems.append(f"Carrera con tele ({label}): los 8 jugadores no caben sin encimarse {r}")
+    if r["buttons"]: problems.append(f"Carrera con tele ({label}): la tele tiene botones de juego")
+    if not r["big"] or not r["tvClass"]: problems.append(f"Carrera con tele ({label}): la tele no usa las imágenes en alta {r}")
+    if not r["tile"]: problems.append(f"Carrera con tele ({label}): el tapete puesto desde el teléfono no se ve en la tele")
 if not online_finished: problems.append("en línea: la mano no terminó")
 if online_moves == 0: problems.append("en línea: no se pudo tirar ninguna ficha")
 if not finished: problems.append("la mano no terminó")
@@ -442,6 +507,7 @@ print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
 print(f"Tele: aviso {tv_hint}, espera {tv_wait}, teléfono {tv_phone}, tablero {tv_board}, salir {tv_left}.")
+print(f"Carrera con tele: espera {ch_tv_wait}, teléfono {ch_phone_only}, casillas {ch_strip}, tapete {ch_phone_turn}, tele 16:9 {ch_tv}, cuadrada {ch_tv_sq}.")
 print(f"En línea: mesa {code}, fichas tiradas {online_moves}, mano terminada {online_finished}, en la lista {in_list}, se reabre por enlace {reopened}.")
 if problems:
     print("PROBLEMAS:\n- " + "\n- ".join(problems)); sys.exit(1)

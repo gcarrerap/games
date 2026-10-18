@@ -41,6 +41,7 @@
 details.help .cpu{margin-bottom:12px}
 /* La tele como tablero (platform/ui/tv.js): pantalla de espera mientras se sientan. Todo grande, sin botones de juego. */
 .tvwait{min-height:100vh;box-sizing:border-box;padding:4vh 5vw;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;text-align:center}
+.tvwait.cover{background:linear-gradient(color-mix(in srgb,var(--bg) 78%,transparent),color-mix(in srgb,var(--bg) 88%,transparent)),var(--tv-cover) center/cover no-repeat}
 .tvhead{display:flex;align-items:center;gap:24px;flex-wrap:wrap;justify-content:center}
 .tvhead h1{font-size:clamp(36px,6vw,84px)}
 .tvcode{display:flex;flex-direction:column;align-items:center;line-height:1}

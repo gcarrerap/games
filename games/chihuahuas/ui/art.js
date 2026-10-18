@@ -16,7 +16,18 @@ export const KEYS = [
   "cell", "cell-meta", "infield", // texturas de la pista: casilla, casilla con la meta, el pasto del centro
   "fondo", // fondo de la página en el teléfono
   "portada", // portada del juego
+  // La tele (issue #35): los mismos dibujos en alta. Solo los pide la mesa de la tele (`useTv`), así que el teléfono
+  // no baja nada de más.
+  ...DOGS.map((d) => `dog-${d.id}@tv`),
+  ...DOGS.map((d) => `face-${d.id}@tv`),
+  "fondo-tele", // fondo de la tele, 16:9
+  "portada@tv", // pantalla de espera de la tele (manifest.tvCover)
 ];
+
+// ¿Esta mesa es la tele? Entonces cada dibujo busca primero su versión "@tv"
+let tv = false;
+export function useTv(on) { tv = !!on; }
+const pick = (key) => (tv && BANK[key + "@tv"] ? BANK[key + "@tv"] : BANK[key]);
 
 export const has = (key) => !!BANK[key];
 export const href = (key) => (BANK[key] ? BANK[key].href : null);
@@ -25,15 +36,15 @@ const initial = (d) => DOGS[d].name[0];
 
 // El perro corriendo (en la pista)
 export function dogArt(d, cls = "") {
-  const k = `dog-${DOGS[d].id}`;
-  if (BANK[k]) return `<img class="dogimg ${cls}" src="${esc(BANK[k].href)}" alt="${esc(DOGS[d].name)}" draggable="false">`;
+  const img = pick(`dog-${DOGS[d].id}`);
+  if (img) return `<img class="dogimg ${cls}" src="${esc(img.href)}" alt="${esc(DOGS[d].name)}" draggable="false">`;
   return `<span class="dogtok ${cls}" data-dog="${DOGS[d].id}" role="img" aria-label="${esc(DOGS[d].name)}"><i>🐕</i><b>${initial(d)}</b></span>`;
 }
 
 // La cara del perro en un círculo de su color
 export function faceArt(d, cls = "") {
-  const k = `face-${DOGS[d].id}`;
-  if (BANK[k]) return `<span class="face ${cls}" data-dog="${DOGS[d].id}"><img src="${esc(BANK[k].href)}" alt="${esc(DOGS[d].name)}" draggable="false"></span>`;
+  const img = pick(`face-${DOGS[d].id}`);
+  if (img) return `<span class="face ${cls}" data-dog="${DOGS[d].id}"><img src="${esc(img.href)}" alt="${esc(DOGS[d].name)}" draggable="false"></span>`;
   return `<span class="face ${cls}" data-dog="${DOGS[d].id}" role="img" aria-label="${esc(DOGS[d].name)}"><i>🐶</i></span>`;
 }
 
@@ -47,6 +58,6 @@ export function thingArt(key, cls = "") {
 
 // Las texturas como variables de CSS, para ponerlas en la mesa (las que no existen se quedan con el color de respaldo)
 export function textureVars() {
-  const vars = { cell: "--ch-cell-img", "cell-meta": "--ch-meta-img", infield: "--ch-infield-img", fondo: "--ch-fondo-img" };
+  const vars = { cell: "--ch-cell-img", "cell-meta": "--ch-meta-img", infield: "--ch-infield-img", [tv ? "fondo-tele" : "fondo"]: "--ch-fondo-img" };
   return Object.entries(vars).filter(([k]) => BANK[k]).map(([k, v]) => `${v}:url("${BANK[k].href}")`).join(";");
 }

@@ -45,6 +45,8 @@ test("opciones de un juego: el validador las revisa y se llenan con su default",
   assert.ok(validateGame({ ...minimal, options: [{ ...opt, default: "z" }] }).some((e) => e.includes("default")));
   assert.ok(validateGame({ ...minimal, options: [{ ...opt, choices: [opt.choices[0]] }] }).some((e) => e.includes("choices")));
   assert.ok(validateGame({ ...minimal, options: [{ ...opt, id: "timer" }] }).some((e) => e.includes("plataforma")));
+  assert.deepEqual(validateGame({ ...minimal, tv: true, tvCover: "portada.webp" }), []);
+  assert.ok(validateGame({ ...minimal, tvCover: "portada.webp" }).some((e) => e.startsWith("tvCover")));
   assert.deepEqual(optionValues(g, {}), { buy: "a" });
   assert.deepEqual(optionValues(g, { buy: "b", otra: 1 }), { buy: "b" });
   assert.deepEqual(optionValues(minimal, { buy: "b" }), {});
