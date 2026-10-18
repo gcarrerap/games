@@ -11,8 +11,12 @@ apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botó
 - **La compu** (`ai/`): recorre todas las formas en que pueden salir los dados que quedan en la etapa para saber
   quién acaba primero y segundo, y simula carreras completas para las apuestas finales. Tres estilos: prudente,
   normal y atrevido. El mismo cálculo da el **consejo** ("¿Qué me conviene?").
-- **Mesa** (`ui/`): por ahora solo para teléfono. La pista es un cuadro de 5 × 5 con las 16 casillas alrededor y el
-  tazón en el pasto del centro.
+- **Mesa** (`ui/`): la pista es un cuadro de 5 × 5 con las 16 casillas alrededor y el tazón en el pasto del centro.
+- **La tele como tablero** (#35, `tv: true`): la tele muestra la pista grande, los jugadores (croquetas, boletos,
+  tapete y cuántas apuestas secretas), el tazón y lo que acaba de pasar, sin botones; caben 8 jugadores en 16:9 y en
+  pantallas cuadradas. Cada teléfono queda con lo suyo: sus botones, boletos, tapete, apuestas y croquetas; la casilla
+  del tapete se escoge con una tira de números. La tele usa las imágenes en alta (`@tv`) y la portada de fondo en la
+  espera (`tvCover`); el teléfono nunca las baja.
 - **Imágenes** (`assets/`): banco de imágenes como en Panal y Skull, con las ilustraciones de Petra (#33; elección en
   [`docs/disenos/chihuahuas/`](../../docs/disenos/chihuahuas/)). Si falta una, la mesa usa un respaldo con colores y
   emoji (`ui/art.js`).
@@ -21,7 +25,7 @@ apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botó
 |---|---|
 | `engine/index.js` | Reglas puras: salida, apilar y cargar, tapetes, boletos, fin de etapa, apuestas finales, vista |
 | `ai/index.js` | La compu y el consejo (probabilidades exactas de la etapa y carreras simuladas) |
-| `ui/table.js` | La mesa del teléfono |
-| `ui/art.js` | Imágenes del banco o su respaldo; lista de llaves (`KEYS`) |
+| `ui/table.js` | La mesa: completa, la tele (`ctx.display === "tv"`) y el teléfono de una mesa con tele (`"phone"`) |
+| `ui/art.js` | Imágenes del banco o su respaldo; lista de llaves (`KEYS`); en la tele, las versiones `@tv` |
 | `ui/text.js` | Lo que dice la burbuja después de cada jugada |
 | `assets/` | Banco de imágenes (ver su README) |

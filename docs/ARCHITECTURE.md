@@ -214,7 +214,8 @@ Un juego que declara `tv: true` ofrece al crear la mesa en línea **"La tele com
 - **La tele solo mira.** No tiene asiento aunque en ese aparato se haya sentado alguien (`mySeat()` es -1), así que no juega, no mueve a la compu, no resuelve el reloj, no graba y no entra a la llamada. Ve lo mismo que quien mira sin jugar: `view(state, -1)`, sin nada oculto.
 - **Lo que pone la plataforma** (`platform/ui/tv.js`): la espera mientras se sientan (el código grande, quién está, cómo entrar desde el teléfono), la clase `html.tv` para agrandar las ventanas, pantalla completa y mantener la pantalla encendida (Wake Lock). Los teléfonos de una mesa con tele ven en la pantalla de asientos cómo abrirla.
 - **Lo que pone cada juego:** su mesa con `ctx.display`. En `"tv"`, todo lo público, grande y sin botones de juego (las pausas y la revancha se piden desde un teléfono). En `"phone"`, solo lo de ese asiento: su mano, sus botones y lo mínimo para decidir (por ejemplo, en Skull, de quién voltear se escoge por nombre). `"full"` es la mesa de siempre; un juego que no declara `tv` nunca recibe otra cosa.
-- **Para agregarla a otro juego:** `tv: true` en su manifiesto y los dos dibujos en su interfaz. Lo que la tele no debe ver lo decide `view` como siempre.
+- **Para agregarla a otro juego:** `tv: true` en su manifiesto y los dos dibujos en su interfaz. Lo que la tele no debe ver lo decide `view` como siempre. Opcional: `tvCover`, una imagen 16:9 de fondo para la espera (la Carrera pone su portada).
+- **La tienen:** Skull y la Carrera de Chihuahuas (en el teléfono, la casilla del tapete se escoge por número). Las imágenes grandes que solo usa la tele van en llaves aparte del banco del juego (`@tv` en la Carrera), para que el teléfono no las baje.
 
 ### Convivir con Noli, La Pata y myDomino
 

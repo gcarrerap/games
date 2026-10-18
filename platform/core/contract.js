@@ -57,6 +57,8 @@
  *   La mesa en línea se puede jugar con la tele como tablero: un aparato sin asiento muestra la mesa a todos y cada
  *   quien usa su teléfono solo para lo suyo (su mano, sus botones). La interfaz recibe ctx.display: "tv" en la tele,
  *   "phone" en los teléfonos sentados de esa mesa y "full" en todo lo demás (docs/ARCHITECTURE.md §4).
+ * @property {string} [tvCover]
+ *   Con tv: una imagen (16:9) de fondo para la espera de la tele mientras se sientan (platform/ui/tv.js).
  * @property {() => Promise<{mount: Function, update: Function, unmount: Function, tick?: Function}>} ui
  *   La mesa del juego. mount(el, ctx) y update(ctx) reciben el ctx de platform/ui/play.js (docs/ARCHITECTURE.md §4).
  */
@@ -101,6 +103,7 @@ export function validateGame(g) {
   if (g.bots && !Array.isArray(g.bots.profiles)) errs.push("bots.profiles: lista de perfiles");
   if (g.bots && g.bots.thinkMs && typeof g.bots.thinkMs !== "function") errs.push("bots.thinkMs: es una función");
   if (g.tv !== undefined && typeof g.tv !== "boolean") errs.push("tv: true o false");
+  if (g.tvCover !== undefined && (!g.tv || typeof g.tvCover !== "string")) errs.push("tvCover: la dirección de una imagen, solo con tv: true");
   if (g.teamOf && typeof g.teamOf !== "function") errs.push("teamOf: es una función");
   if (g.timing && (typeof g.timing.turnMs !== "function" || typeof g.timing.autoAction !== "function")) errs.push("timing: turnMs y autoAction son funciones");
   return errs;
