@@ -23,8 +23,8 @@ export const DOGS = [
   { id: "chia", name: "Chia", color: "rojo" },
   { id: "oreo", name: "Oreo", color: "azul" },
   { id: "chocolate", name: "Chocolate", color: "verde" },
-  { id: "nacho", name: "Nacho", color: "amarillo" },
-  { id: "frijol", name: "Frijol", color: "morado" },
+  { id: "gustavo", name: "Gustavo", color: "amarillo" },
+  { id: "catrina", name: "Catrina", color: "morado" },
 ];
 export const ND = DOGS.length;
 

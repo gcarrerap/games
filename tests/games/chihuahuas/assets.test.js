@@ -24,7 +24,7 @@ test("el banco solo tiene llaves conocidas, con archivos que existen y pesan poc
 });
 
 test("hay una llave de perro y una de cara por cada chihuahua", () => {
-  for (const id of ["chia", "oreo", "chocolate", "nacho", "frijol"]) {
+  for (const id of ["chia", "oreo", "chocolate", "gustavo", "catrina"]) {
     assert.ok(KEYS.includes(`dog-${id}`) && KEYS.includes(`face-${id}`), id);
   }
 });
