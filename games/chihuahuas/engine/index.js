@@ -77,7 +77,7 @@ export function moveDog(spaces, dog, n, tiles = []) {
   if (tile && tile.kind === "hueso") { to += 1; sp[to] = [...sp[to], ...unit]; }
   else if (tile) { to -= 1; sp[to] = [...unit, ...sp[to]]; } // aspiradora: se regresa y queda hasta abajo
   else sp[to] = [...sp[to], ...unit];
-  return { spaces: sp, from, to, landed: from + n, tile, carried: unit.slice(1) };
+  return { spaces: sp, from, fromLevel: i, to, landed: from + n, tile, carried: unit.slice(1) };
 }
 
 // Casillas donde un asiento puede poner su tapete (su propio tapete no cuenta: lo está cambiando de lugar)
@@ -92,13 +92,29 @@ export function tileSpaces(st, seat) {
   return out;
 }
 
+// Historial de la carrera para la ventana "Jugadas": cada jugada (lo mismo que `last`) con su etapa, más el fin de
+// cada etapa y el final. Las mesas que empezaron antes de que existiera no lo traen: se arranca vacío.
+const addHist = (st, entry) => [...(st.hist || []), { ...entry, leg: st.leg }];
+
+// Cuánto tarda la mesa en mostrar la última jugada (sale el dado del tazón y el perro avanza casilla por casilla), para
+// que la compu espere a que se vea antes de jugar. La interfaz usa los mismos tiempos (ui/fx.js).
+export const SHOW = { reveal: 1000, step: 380, settle: 450 };
+export function rollSteps(last) {
+  return Math.min(last.landed, RULES.track + 1) - last.from + (last.tile ? 1 : 0);
+}
+export function showMs(last) {
+  if (!last || last.kind !== "roll") return 0;
+  return SHOW.reveal + rollSteps(last) * SHOW.step + SHOW.settle;
+}
+
 export function newGame(config, names, now, rnd) {
   const n = config.n;
   // Salida: en orden al azar, cada perro tira su dado y se pone en la casilla 1, 2 o 3 (encima si ya hay alguien)
   const order = Array.from({ length: ND }, (_, i) => i);
   for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
   const spaces = Array.from({ length: SPACES }, () => []);
-  for (const d of order) spaces[1 + Math.floor(rnd() * 3)].push(d);
+  const start = []; // la tirada de salida de cada perro, en orden
+  for (const d of order) { const n = 1 + Math.floor(rnd() * 3); spaces[n].push(d); start.push({ dog: d, n }); }
   const st = {
     v: 1,
     config: { n, timer: config.timer !== false },
@@ -117,6 +133,7 @@ export function newGame(config, names, now, rnd) {
     summary: null,
     final: null,
     log: [`Salida: ${ranking(spaces).map(dogName).join(", ")}`],
+    hist: [{ kind: "start", leg: 1, start, rank: ranking(spaces) }], // historial para la ventana de jugadas (ver addHist)
   };
   return newLeg(st);
 }
@@ -203,8 +220,8 @@ export function apply(st, seat, a, { rnd }) {
     if (mv.tile) log = pushLog(log, mv.tile.kind === "hueso"
       ? `¡${dogName(dog)} vio el hueso de ${nameOf(st, mv.tile.seat)} y corrió una más!`
       : `¡La aspiradora de ${nameOf(st, mv.tile.seat)} asustó a ${dogName(dog)}!`);
-    const last = { kind: "roll", seat, dog, n, from: mv.from, to: mv.to, landed: mv.landed, carried: mv.carried, tile: mv.tile };
-    const s = { ...st, seq, coins, shakes, dice, rolled, spaces: mv.spaces, last, log };
+    const last = { kind: "roll", seat, dog, n, from: mv.from, fromLevel: mv.fromLevel, to: mv.to, landed: mv.landed, carried: mv.carried, tile: mv.tile };
+    const s = { ...st, seq, coins, shakes, dice, rolled, spaces: mv.spaces, last, log, hist: addHist(st, last) };
     if (finished(mv.spaces)) return endLeg({ ...s, log: pushLog(s.log, `¡${dogName(ranking(mv.spaces)[0])} cruzó la meta!`) }, seat, true);
     if (!dice.length) return endLeg(s, seat, false);
     return { ...s, turn: nextSeat(st, seat) };
@@ -213,21 +230,24 @@ export function apply(st, seat, a, { rnd }) {
   if (a.type === "ticket") {
     const tickets = st.tickets.map((t) => t.slice());
     const value = tickets[a.dog].shift();
+    const last = { kind: "ticket", seat, dog: a.dog, value };
     return { ...st, seq, tickets, bets: [...st.bets, { seat, dog: a.dog, value }], turn: nextSeat(st, seat),
-      last: { kind: "ticket", seat, dog: a.dog, value }, log: pushLog(st.log, `${who} tomó el boleto de ${value} de ${dogName(a.dog)}`) };
+      last, hist: addHist(st, last), log: pushLog(st.log, `${who} tomó el boleto de ${value} de ${dogName(a.dog)}`) };
   }
 
   if (a.type === "tile") {
     const tiles = [...st.tiles.filter((t) => t.seat !== seat), { seat, space: a.space, kind: a.kind }];
-    return { ...st, seq, tiles, turn: nextSeat(st, seat), last: { kind: "tile", seat, space: a.space, tileKind: a.kind },
+    const last = { kind: "tile", seat, space: a.space, tileKind: a.kind };
+    return { ...st, seq, tiles, turn: nextSeat(st, seat), last, hist: addHist(st, last),
       log: pushLog(st.log, `${who} puso ${a.kind === "hueso" ? "un hueso" : "la aspiradora"} en la casilla ${a.space}`) };
   }
 
   // final: la carta se gasta y la apuesta queda boca abajo (la vista esconde el perro)
   const cards = st.cards.map((c, i) => (i === seat ? c.filter((d) => d !== a.dog) : c));
   const key = a.which === "winner" ? "winnerBets" : "loserBets";
+  const last = { kind: "final", seat, which: a.which, dog: a.dog };
   return { ...st, seq, cards, [key]: [...st[key], { seat, dog: a.dog }], turn: nextSeat(st, seat),
-    last: { kind: "final", seat, which: a.which, dog: a.dog },
+    last, hist: addHist(st, last),
     log: pushLog(st.log, `${who} apostó en secreto al ${a.which === "winner" ? "ganador" : "último"}`) };
 }
 
@@ -245,7 +265,8 @@ function endLeg(st, seat, over) {
   });
   let log = pushLog(st.log, `Fin de la etapa ${st.leg}: ${rank.slice(0, 2).map(dogName).join(" y ")} van adelante`);
   const summary = { leg: st.leg, rank, bets: lines, shakes: st.shakes.slice(), delta };
-  const base = { ...st, coins, summary, turn: nextSeat(st, seat) };
+  const legEnd = { kind: "legEnd", rank, bets: lines, delta: delta.slice() };
+  const base = { ...st, coins, summary, turn: nextSeat(st, seat), hist: addHist(st, legEnd) };
   if (!over) return { ...base, phase: "leg", log };
 
   const finals = (bets, dog) => {
@@ -263,7 +284,8 @@ function endLeg(st, seat, over) {
   const champions = coins.map((c, s) => (c === top ? s : -1)).filter((s) => s >= 0);
   log = pushLog(log, `Ganó la carrera ${dogName(rank[0])}; llegó al último ${dogName(rank[ND - 1])}`);
   log = pushLog(log, `${champions.map((s) => nameOf(st, s)).join(" y ")} ${champions.length > 1 ? "empatan" : "gana"} con ${top} croquetas`);
-  return { ...base, coins, phase: "over", turn: -1, final: { rank, winner, loser, champions }, summary: { ...summary, delta }, log };
+  const hist = addHist(base, { kind: "over", rank, winner, loser, champions, coins: coins.slice() });
+  return { ...base, coins, phase: "over", turn: -1, final: { rank, winner, loser, champions }, summary: { ...summary, delta }, log, hist };
 }
 
 // Al vencerse el reloj se sacude el tazón (siempre se puede y siempre da una croqueta)
@@ -278,8 +300,10 @@ export function autoAction(st) {
 export function view(st, seat) {
   if (st.phase === "over") return { ...st, cardCounts: st.cards.map((c) => c.length) };
   const hide = (bets) => bets.map((b) => (b.seat === seat ? { ...b } : { seat: b.seat, dog: null }));
+  const hist = (st.hist || []).map((h) => (h.kind === "final" && h.seat !== seat ? { ...h, dog: null } : h));
   return {
     ...st,
+    hist,
     winnerBets: hide(st.winnerBets),
     loserBets: hide(st.loserBets),
     cards: st.cards.map((c, s) => (s === seat ? c.slice() : null)),
