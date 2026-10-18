@@ -2,7 +2,7 @@
 
 Diseño de Petra (issue #33), elección e integración de Claude (issue #34). Los 50 candidatos (maestros en alta) y sus
 prompts están en la rama `chihuahuas-candidatos` (`games/chihuahuas/assets/candidatos/`, con `prompts.md`); los
-elegidos, ya en tamaño de teléfono, viven en `games/chihuahuas/assets/`. Foto de referencia de Chia y Oreo en
+elegidos, ya en tamaño de teléfono, viven en `games/chihuahuas/assets/`. Fotos de referencia de los perros de la familia (Chia y Oreo; Gustavo y Catrina, que reemplazan a Nacho y Frijol) en
 [`referencia/`](referencia/).
 
 ## Elección
