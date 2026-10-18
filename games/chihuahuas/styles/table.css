@@ -154,8 +154,28 @@
 .sheet .pod.p1 small{font-weight:900;color:var(--fg)}
 .sheet .betlines{display:flex;flex-direction:column;gap:4px;margin:6px 0}
 .sheet .bl{display:flex;align-items:center;gap:8px;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:4px 8px}
-.sheet .bl > span:not(.face){flex:1}
-.sheet .bl.win b{color:var(--ok)} .sheet .bl.lose b{color:var(--warn)}
+.sheet .bl > span:not(.face):not(.fcard){flex:1}
+.sheet .bl .pay.up{color:var(--ok)} .sheet .bl .pay.down{color:var(--warn)}
+.sheet .bl .pay{font-size:16px;min-width:28px;text-align:right}
+.sheet .bl small{color:var(--muted)}
+
+/* Revelar los pagos (ui/table.js, revealPlan): cada pieza aparece a su tiempo (--d, negativo si ya pasó) */
+.sheet .rv{animation:ch-rv-in .45s cubic-bezier(.3,1.5,.5,1) var(--d,0ms) both}
+.sheet .rvout{animation:ch-rv-out .25s ease-in var(--d,0ms) both}
+.sheet .rvline{animation:ch-rv-line .5s ease-out var(--d,0ms) both}
+.sheet .bl.rvline.win{animation-name:ch-rv-line,ch-rv-win;animation-duration:.5s,1.2s;animation-delay:var(--d,0ms),calc(var(--d,0ms) + 350ms)}
+.sheet .fcard{position:relative;display:inline-grid;width:30px;height:30px;flex:none}
+.sheet .fcard>span{grid-area:1/1;display:grid;place-items:center}
+.sheet .fback{width:30px;height:30px;border-radius:50%;background:var(--line);font-size:16px}
+.sheet .swap{display:inline-grid}
+.sheet .swap>b{grid-area:1/1}
+.sheet .champ{margin:10px 0 6px;padding:10px;border-radius:12px;text-align:center;font:900 20px/1.2 var(--display);background:color-mix(in srgb,var(--accent) 18%,var(--card));border:2px solid var(--accent)}
+.sheet .skip{width:100%;margin:4px 0}
+@keyframes ch-rv-in{from{opacity:0;transform:scale(.4) rotateY(90deg);visibility:hidden}to{opacity:1;transform:none;visibility:visible}}
+@keyframes ch-rv-out{from{opacity:1;visibility:visible}to{opacity:0;transform:scale(.6) rotateY(-90deg);visibility:hidden}}
+@keyframes ch-rv-line{from{opacity:.35;transform:translateX(-6px)}to{opacity:1;transform:none}}
+@keyframes ch-rv-win{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}100%{box-shadow:0 0 0 12px transparent}}
+@media (prefers-reduced-motion:reduce){.sheet .rv,.sheet .rvout,.sheet .rvline{animation-duration:1ms}}
 .sheet .standings{display:flex;flex-direction:column;gap:4px;margin:8px 0}
 .sheet .strow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
 .sheet .strow.mine{border-color:var(--accent)}

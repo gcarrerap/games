@@ -13,8 +13,8 @@
 //     o aspiradora (−1, el perro se asusta, se regresa y queda debajo de los que haya). Cada que alguien cae en tu
 //     tapete ganas 1 croqueta. Ni en la casilla 1, ni junto a otro tapete. Se recogen al acabar la etapa.
 //   - Apostar en secreto al ganador o al último de toda la carrera ("final"), con una de tus 5 cartas (una por perro;
-//     cada carta se usa una sola vez). Al final, las apuestas correctas cobran 8, 5, 3, 2, 1, 1… por orden de
-//     llegada; las equivocadas pierden 1.
+//     cada carta se usa una sola vez). Al final, como en el juego original, las apuestas que atinan cobran 8, 5, 3, 2,
+//     1, 1… en el orden en que se hicieron, contando solo las que atinan; las equivocadas pierden 1 y no ocupan lugar.
 // La etapa acaba cuando los cinco perros ya corrieron (fase "leg", una pausa para ver cómo quedó). La carrera acaba
 // cuando un perro cruza la meta: se cobra la etapa, luego las apuestas finales, y gana quien tenga más croquetas.
 // Las croquetas nunca bajan de 0.
@@ -273,9 +273,10 @@ function endLeg(st, seat, over) {
     let k = 0;
     return bets.map((b) => {
       const ok = b.dog === dog;
-      const v = ok ? (RULES.finals[k++] ?? 1) : -RULES.finalMiss;
+      const nth = ok ? k++ : null; // regla original: el orden cuenta solo entre los que atinan
+      const v = ok ? (RULES.finals[nth] ?? 1) : -RULES.finalMiss;
       pay(b.seat, v);
-      return { seat: b.seat, dog: b.dog, ok, got: v };
+      return { seat: b.seat, dog: b.dog, ok, nth, got: v };
     });
   };
   const winner = finals(st.winnerBets, rank[0]);
