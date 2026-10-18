@@ -4,22 +4,22 @@
   --ch-rojo:#e0473b; --ch-azul:#2f7fd8; --ch-verde:#2f9e5a; --ch-amarillo:#f2b51f; --ch-morado:#8a52c9;
   --ch-dirt:#e9c48f; --ch-dirt-2:#d9a96a; --ch-dirt-line:#b9834a;
   --ch-grass:#7cc36a; --ch-grass-2:#4f9a49; --ch-ink:#3a2a1c; --ch-cream:#fff6e6;
-  --ch-sky:#fdf3dc;
+  --ch-sky:#fdf3dc; --ch-veil:rgba(238,241,236,.38);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --ch-dirt:#9c7a4f; --ch-dirt-2:#7f6140; --ch-dirt-line:#5f4630;
-  --ch-grass:#3f7a3a; --ch-grass-2:#2b5a29; --ch-sky:#1b1a14;
+  --ch-grass:#3f7a3a; --ch-grass-2:#2b5a29; --ch-sky:#1b1a14; --ch-veil:rgba(14,22,19,.62);
 }}
 :root[data-theme="dark"]{
   --ch-dirt:#9c7a4f; --ch-dirt-2:#7f6140; --ch-dirt-line:#5f4630;
-  --ch-grass:#3f7a3a; --ch-grass-2:#2b5a29; --ch-sky:#1b1a14;
+  --ch-grass:#3f7a3a; --ch-grass-2:#2b5a29; --ch-sky:#1b1a14; --ch-veil:rgba(14,22,19,.62);
 }
 
 [data-dog=chia]{--dog:var(--ch-rojo)} [data-dog=oreo]{--dog:var(--ch-azul)} [data-dog=chocolate]{--dog:var(--ch-verde)}
 [data-dog=nacho]{--dog:var(--ch-amarillo)} [data-dog=frijol]{--dog:var(--ch-morado)}
 
 .game.chihuahuas{height:100%;max-width:560px;margin:0 auto;padding:6px 8px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;overflow:hidden;
-  background:var(--ch-fondo-img,none) center/cover no-repeat}
+  background:linear-gradient(var(--ch-veil),var(--ch-veil)),var(--ch-fondo-img,none) center/cover no-repeat}
 .chihuahuas .gbar{display:flex;align-items:center;gap:8px;min-height:40px}
 .chihuahuas .menubtn{width:40px;height:40px;min-height:40px;padding:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;flex:none}
 .chihuahuas .menubtn span{display:block;width:18px;height:2px;background:var(--fg);border-radius:1px}
@@ -34,8 +34,8 @@
 .face{display:inline-grid;place-items:center;width:30px;height:30px;min-width:0;align-self:center;aspect-ratio:1;border-radius:50%;background:var(--dog);border:2px solid var(--ch-ink);overflow:hidden;flex:none;box-sizing:border-box}
 .face img{width:100%;height:100%;object-fit:cover}
 .face i{font-style:normal;font-size:17px;line-height:1}
-.face.big{width:46px;height:46px}
-.face.big i{font-size:26px}
+.face.lg{width:46px;height:46px}
+.face.lg i{font-size:26px}
 .face.die{width:24px;height:24px;border-width:1.5px}
 .face.die i{font-size:13px}
 .dogtok{position:relative;display:grid;place-items:center;width:44px;height:30px;border-radius:15px;background:var(--dog);border:2px solid var(--ch-ink);box-sizing:border-box;box-shadow:0 2px 0 rgba(0,0,0,.25)}
@@ -64,7 +64,7 @@
 .chihuahuas .board{flex:none;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:3px;width:100%;max-width:min(100%,calc(100dvh - 330px));aspect-ratio:1;margin:0 auto;
   padding:3px;box-sizing:border-box;border-radius:16px;background:var(--ch-dirt-line);box-shadow:0 3px 0 rgba(0,0,0,.18)}
 .chihuahuas .cell{position:relative;border-radius:9px;background:var(--ch-cell-img,none) center/cover,linear-gradient(160deg,var(--ch-dirt),var(--ch-dirt-2));overflow:visible;min-width:0;min-height:0}
-.chihuahuas .cell .num{position:absolute;left:4px;top:2px;font:700 10px/1 var(--body);color:var(--ch-ink);opacity:.55}
+.chihuahuas .cell .num{position:absolute;left:4px;top:3px;font:800 10px/1 var(--body);color:var(--ch-ink);opacity:.7;text-shadow:0 0 3px rgba(255,246,230,.9)}
 .chihuahuas .cell.meta{background:var(--ch-meta-img,none) center/cover,linear-gradient(160deg,var(--ch-dirt),var(--ch-dirt-2))}
 .chihuahuas .cell.meta::before{content:"";position:absolute;left:0;right:0;top:-3px;height:7px;border-radius:3px;z-index:1;
   background:repeating-conic-gradient(#222 0 25%,#fff 0 50%) 0 0/7px 7px;box-shadow:0 0 0 1px #222}
@@ -76,10 +76,10 @@
 .chihuahuas .tile small{font:900 10px/1 var(--body);color:var(--ch-ink)}
 .chihuahuas .tile.aspiradora small{color:#a8261b}
 .chihuahuas .stack{position:absolute;inset:0;z-index:2}
-.chihuahuas .rider{position:absolute;left:50%;bottom:calc(3px + var(--lvl) * 19%);transform:translateX(-50%);line-height:0}
+.chihuahuas .rider{position:absolute;left:50%;bottom:calc(3px + var(--lvl) * 23%);transform:translateX(-50%);line-height:0}
 .chihuahuas .rider.hop{animation:ch-hop .55s cubic-bezier(.3,1.6,.5,1)}
 .chihuahuas .rider .dogtok{width:clamp(30px,10vw,44px);height:clamp(20px,6.8vw,30px)}
-.chihuahuas .rider .dogimg{width:clamp(40px,13.5vw,62px)}
+.chihuahuas .rider .dogimg{width:clamp(44px,15vw,68px)}
 
 /* El centro: pasto, tazón, dados y la burbuja */
 .chihuahuas .infield{grid-row:2/5;grid-column:2/5;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:6px;position:relative;overflow:hidden;
@@ -96,7 +96,7 @@
 .chihuahuas .finish{position:absolute;top:4px;left:6px;display:flex;align-items:center;gap:2px;font-size:14px}
 
 /* Estado y reloj */
-.chihuahuas .status{text-align:center;font-weight:800;font-size:15px;min-height:1.3em;flex:none}
+.chihuahuas .status{align-self:center;text-align:center;font-weight:800;font-size:15px;min-height:1.3em;flex:none;padding:3px 14px;border-radius:14px;background:color-mix(in srgb,var(--card) 88%,transparent);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 .chihuahuas .status.me{color:var(--accent)}
 .chihuahuas .clock{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:700}
 .chihuahuas .clock.low{color:var(--warn)!important}
@@ -116,7 +116,8 @@
 .chihuahuas .mainacts button .thing{width:26px;height:26px;font-size:20px}
 .chihuahuas .mainacts span{display:flex;flex-direction:column;line-height:1.1;text-align:left}
 .chihuahuas .mainacts small{font-size:11px;font-weight:700;opacity:.8}
-.chihuahuas .advbtn{min-height:34px;font-size:13px;color:var(--muted)}
+.chihuahuas .advbtn{min-height:34px;font-size:13px;color:var(--fg);background:color-mix(in srgb,var(--card) 85%,transparent)}
+.chihuahuas .acts .ghost{background:color-mix(in srgb,var(--card) 85%,transparent)}
 .chihuahuas .tilepick{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .chihuahuas .tilepick button{min-height:52px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px}
 .chihuahuas .tilepick .thing{width:26px;height:26px;font-size:20px}
@@ -135,7 +136,7 @@
 .sheet .pod.p1 small{font-weight:900;color:var(--fg)}
 .sheet .betlines{display:flex;flex-direction:column;gap:4px;margin:6px 0}
 .sheet .bl{display:flex;align-items:center;gap:8px;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:4px 8px}
-.sheet .bl span{flex:1}
+.sheet .bl > span:not(.face){flex:1}
 .sheet .bl.win b{color:var(--ok)} .sheet .bl.lose b{color:var(--warn)}
 .sheet .standings{display:flex;flex-direction:column;gap:4px;margin:8px 0}
 .sheet .strow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:6px 8px}

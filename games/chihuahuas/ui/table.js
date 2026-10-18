@@ -44,7 +44,7 @@ function renderFinal(ctx, st, seat) {
   const pay = (bets) => RULES.finals[bets.length] ?? 1;
   const row = (which) => DOGS.map((_, d) => {
     const ok = cards.includes(d);
-    return `<button class="cardbtn" data-final="${which}" data-dog="${d}" ${ok ? "" : "disabled"} aria-label="${esc(dogName(d))}">${faceArt(d, "big")}<small>${esc(dogName(d))}</small></button>`;
+    return `<button class="cardbtn" data-final="${which}" data-dog="${d}" ${ok ? "" : "disabled"} aria-label="${esc(dogName(d))}">${faceArt(d, "lg")}<small>${esc(dogName(d))}</small></button>`;
   }).join("");
   renderSheet(ctx.modal, "final", "Apuesta secreta", `
     <p class="hint">Nadie ve a qué perro le apuestas hasta el final. Cada carta se usa una sola vez.</p>
@@ -60,7 +60,7 @@ function renderFinal(ctx, st, seat) {
   });
 }
 
-const podium = (rank) => `<div class="podium">${rank.map((d, i) => `<div class="pod p${i + 1}">${faceArt(d, i === 0 ? "big" : "")}<small>${placeName(i)} ${esc(dogName(d))}</small></div>`).join("")}</div>`;
+const podium = (rank) => `<div class="podium">${rank.map((d, i) => `<div class="pod p${i + 1}">${faceArt(d, i === 0 ? "lg" : "")}<small>${placeName(i)} ${esc(dogName(d))}</small></div>`).join("")}</div>`;
 
 function betLines(st, seat, lines, label) {
   if (!lines.length) return "";

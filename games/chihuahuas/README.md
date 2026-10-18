@@ -13,8 +13,9 @@ apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botó
   normal y atrevido. El mismo cálculo da el **consejo** ("¿Qué me conviene?").
 - **Mesa** (`ui/`): por ahora solo para teléfono. La pista es un cuadro de 5 × 5 con las 16 casillas alrededor y el
   tazón en el pasto del centro.
-- **Imágenes** (`assets/`): banco de imágenes como en Panal y Skull, con las ilustraciones de Petra. Mientras no
-  estén, la mesa usa un respaldo provisional con colores y emoji (`ui/art.js`).
+- **Imágenes** (`assets/`): banco de imágenes como en Panal y Skull, con las ilustraciones de Petra (#33; elección en
+  [`docs/disenos/chihuahuas/`](../../docs/disenos/chihuahuas/)). Si falta una, la mesa usa un respaldo con colores y
+  emoji (`ui/art.js`).
 
 | Archivo | Qué hace |
 |---|---|
