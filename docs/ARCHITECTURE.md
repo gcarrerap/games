@@ -273,7 +273,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 10 ✅ | Skull (faroleo con flores y una calavera): reglas, compu con tres estilos y mesa con botón de reglas. Primer juego en que varios asientos actúan a la vez (todos ponen su primer disco al mismo tiempo). No tocó `platform/` ni `modules/`. |
 | 11 ✅ | Damas chinas: tablero de estrella (coordenadas hexagonales), pasos y saltos encadenados, regla contra el bloqueo, compu con tres estilos y mesa en SVG que gira para que tu punta quede abajo. Sin azar; no tocó `platform/` ni `modules/`. |
 | 12 ✅ | La tele como tablero (§5): opción de la mesa en línea, ruta `/tele`, `ctx.display`, pantalla de espera, Wake Lock. Skull es el primero que la usa: la tele con los tapetes de todos y el teléfono solo con lo tuyo. |
-| 13 ✅ | Carrera de Chihuahuas (estilo Camel Up, 2–8): perros que se apilan, boletos de etapa, tapete de hueso o aspiradora y apuestas secretas; compu con probabilidades exactas de la etapa y carreras simuladas, y consejo. Mesa solo para teléfono con respaldo provisional mientras Petra hace las ilustraciones (#33 → #34); la tele va en el #35. No tocó `platform/` ni `modules/`. |
+| 13 ✅ | Carrera de Chihuahuas (estilo Camel Up, 2–8): perros que se apilan, boletos de etapa, tapete de hueso o aspiradora y apuestas secretas; compu con probabilidades exactas de la etapa y carreras simuladas, y consejo. Mesa solo para teléfono con las ilustraciones de Petra (#33, elegidas e integradas en el #34); la tele va en el #35. No tocó `platform/` ni `modules/`. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 
