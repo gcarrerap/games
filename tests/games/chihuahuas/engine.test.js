@@ -7,7 +7,7 @@ import { legOdds, fastMove, toFast, decide, advise, scoreActions } from "../../.
 import game from "../../../games/chihuahuas/index.js";
 import { seededRandom } from "../../../modules/random/index.js";
 
-const C = 0, P = 1, CH = 2, N = 3, F = 4; // chia, oreo, chocolate, nacho, frijol
+const C = 0, P = 1, CH = 2, N = 3, F = 4; // chia, oreo, chocolate, gustavo, catrina
 const ctx = { rnd: seededRandom(1), now: 0 };
 const fresh = (n = 3, seed = 1) => newGame({ n, timer: false }, ["Ana", "Noe", "Gui", "Bar"].slice(0, n), 0, seededRandom(seed));
 const empty = () => Array.from({ length: 21 }, () => []);
@@ -86,8 +86,8 @@ test("boletos de etapa: 5, 3, 2 y luego se acaban", () => {
 
 test("fin de etapa: el boleto del primero paga su valor, el del segundo 1, los demás pierden 1 (sin bajar de 0)", () => {
   let st = { ...fresh(3), spaces: track({ 5: [C], 6: [P], 7: [CH], 8: [N], 9: [F] }), dice: [C], coins: [3, 3, 0] };
-  st = apply(st, 0, { type: "ticket", dog: F }, ctx); // 5 por Frijol
-  st = apply(st, 1, { type: "ticket", dog: N }, ctx); // 5 por Nacho
+  st = apply(st, 0, { type: "ticket", dog: F }, ctx); // 5 por Catrina
+  st = apply(st, 1, { type: "ticket", dog: N }, ctx); // 5 por Gustavo
   st = apply(st, 2, { type: "ticket", dog: C }, ctx); // 5 por Chia
   st = apply(st, 0, { type: "roll" }, { rnd: seq(0, 0), now: 0 }); // Chia corre 1: sigue al último
   assert.equal(st.phase, "leg");
@@ -171,7 +171,7 @@ test("probabilidades de la etapa: suman 1 y son exactas en un caso a mano", () =
 });
 
 test("la compu toma el boleto de 5 cuando un perro es casi seguro primero, y su consejo lo dice", () => {
-  // Frijol muy adelante; solo falta el dado de Chia, que no lo alcanza
+  // Catrina muy adelante; solo falta el dado de Chia, que no lo alcanza
   const st = { ...fresh(3), spaces: track({ 1: [C], 2: [P, CH, N], 8: [F] }), dice: [C] };
   const v = view(st, 0);
   const opts = scoreActions(v, 0, "normal");

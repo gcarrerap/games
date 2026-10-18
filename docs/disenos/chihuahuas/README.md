@@ -74,6 +74,24 @@ parejos.
 - **`portada-1`**: la más chistosa (gnomos, croquetas volando, Nacho con goggles). Va arriba de las reglas, donde no
   hace falta el espacio para título de `portada-2`, cuyo tercio verde liso se ve sin terminar.
 
+## Gustavo y Catrina (#41, #42)
+
+Reemplazan a Nacho y Frijol. Petra hizo cinco tandas (los 42 candidatos y sus prompts están en la rama
+`chihuahuas-candidatos-2`); **Guillermo escogió `gustavo-11` y `catrina-8`**.
+
+![opciones de Gustavo](eleccion/opciones-gustavo.webp)
+
+![opciones de Catrina](eleccion/opciones-catrina.webp)
+
+- **`gustavo-11`**: el viejito gruñón, delgado, cabeza de manzana, canas en las cejas, una oreja medio doblada, boca
+  cerrada. Se distingue de Oreo por ser negro y de pelo corto.
+- **`catrina-8`**: ojos saltones cada uno para su lado y gruñido chueco, cabeza flaca y el tronco de globo con su
+  suéter arcoíris. Ocupa el 62 % del ancho: en la pista es la más chiquita. En el perro corriendo Petra retocó la
+  pupila del ojo cercano; queda una rayita tenue que no se ve en el teléfono.
+
+La portada anterior traía a Nacho y Frijol y salió del juego; la nueva se arma por capas (fondo, cada perro aparte y
+la composición) en el #44.
+
 ## La mesa (390 px: pila con tapetes, escoger casilla, fin de etapa, final)
 
 Claro:
