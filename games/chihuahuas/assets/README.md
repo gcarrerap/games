@@ -17,7 +17,7 @@ Chia y Oreo son los perros de la familia: foto de referencia en
 | `cell`, `cell-meta` | Casilla de tierra y la de salida/meta, vista desde arriba | 256 × 256 | 80 KB | listas · 17 y 15 KB |
 | `infield` | El pasto del centro de la pista | 768 × 768 | 200 KB | lista · 147 KB |
 | `fondo` | Fondo de la página en el teléfono (la mesa le pone un velo para que se lean los botones) | 1080 × 2340 | 300 KB | listo · 123 KB |
-| `portada` | Portada (arriba de las reglas) | 1280 × 720 | 300 KB | pendiente: la anterior traía a Nacho y Frijol; la nueva se arma por capas en el #44 |
+| `portada` | Portada (arriba de las reglas) | 1280 × 720 | 300 KB | lista · por capas (#44), elegida `portada-7` |
 
 Los maestros que entrega Petra son grandes (2048 px los perros, 3840 × 2160 el fondo de la tele, …); de ellos se sacan
 estos tamaños. Prompts, guía de estilo y formato completo: issue #33.
