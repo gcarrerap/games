@@ -2,7 +2,7 @@
 // apuestas finales y la vista. También que la compu calcule bien las probabilidades de la etapa.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { newGame, apply, legalActions, currentSeats, view, autoAction, moveDog, ranking, tileSpaces, positions, RULES, ND } from "../../../games/chihuahuas/engine/index.js";
+import { newGame, apply, legalActions, currentSeats, view, autoAction, moveDog, ranking, tileSpaces, positions, RULES, ND, SHOW, showMs, rollSteps } from "../../../games/chihuahuas/engine/index.js";
 import { legOdds, fastMove, toFast, decide, advise, scoreActions } from "../../../games/chihuahuas/ai/index.js";
 import game from "../../../games/chihuahuas/index.js";
 import { seededRandom } from "../../../modules/random/index.js";
@@ -179,4 +179,35 @@ test("la compu toma el boleto de 5 cuando un perro es casi seguro primero, y su 
   assert.deepEqual(decide(v, 0, "prudente", seededRandom(2)), { type: "ticket", dog: F });
   assert.deepEqual(advise(v, 0).best.action, { type: "ticket", dog: F });
   assert.equal(decide(v, 1, "normal"), null, "no le toca");
+});
+
+test("historial: la salida, cada jugada con su etapa y el fin de etapa; la vista esconde las apuestas secretas ajenas", () => {
+  let st = fresh(3);
+  assert.equal(st.hist[0].kind, "start");
+  assert.equal(st.hist[0].start.length, ND);
+  assert.ok(st.hist[0].start.every((o) => positions(st.spaces)[o.dog].space === o.n), "cada perro arrancó donde dice su tirada");
+  st = { ...st, spaces: track({ 5: [C], 6: [P], 7: [CH], 8: [N], 9: [F] }), dice: [C] };
+  st = apply(st, 0, { type: "final", which: "winner", dog: F }, ctx);
+  st = apply(st, 1, { type: "tile", space: 3, kind: "hueso" }, ctx);
+  st = apply(st, 2, { type: "roll" }, { rnd: seq(0, 0.5), now: 0 });
+  assert.deepEqual(st.hist.map((h) => h.kind), ["start", "final", "tile", "roll", "legEnd"]);
+  assert.ok(st.hist.every((h) => h.leg === 1));
+  const roll = st.hist[3];
+  assert.deepEqual([roll.dog, roll.n, roll.from, roll.to, roll.fromLevel], [C, 2, 5, 7, 0]);
+  assert.equal(view(st, 1).hist[1].dog, null, "Noe no sabe a quién le apostó Ana");
+  assert.equal(view(st, 0).hist[1].dog, F);
+  st = apply(st, 0, { type: "next" }, ctx);
+  st = apply(st, 0, { type: "ticket", dog: N }, ctx);
+  assert.equal(st.hist.at(-1).leg, 2);
+});
+
+test("lo que tarda en verse una tirada: sale el dado y el perro avanza casilla por casilla", () => {
+  assert.equal(showMs(null), 0);
+  assert.equal(showMs({ kind: "ticket" }), 0);
+  const plain = { kind: "roll", from: 3, landed: 5, tile: null };
+  assert.equal(rollSteps(plain), 2);
+  assert.equal(rollSteps({ ...plain, tile: { kind: "hueso" } }), 3);
+  assert.equal(rollSteps({ kind: "roll", from: 15, landed: 18, tile: null }), 2, "hasta la meta");
+  assert.equal(showMs(plain), SHOW.reveal + 2 * SHOW.step + SHOW.settle);
+  assert.equal(game.bots.thinkMs({ last: plain }), 1700 + showMs(plain), "la compu espera a que se vea");
 });

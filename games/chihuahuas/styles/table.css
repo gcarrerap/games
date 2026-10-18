@@ -26,6 +26,7 @@
 .chihuahuas .gtitle{flex:1;font-family:var(--display);font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .chihuahuas .bar-info{font-size:12px;color:var(--muted);white-space:nowrap}
 .chihuahuas .bar-info b{color:var(--fg)}
+.chihuahuas .histbtn{width:38px;min-height:36px;height:36px;padding:0;font-size:18px;flex:none}
 .chihuahuas .rulesbtn{min-height:36px;padding:0 12px;font-weight:800;font-size:14px;flex:none}
 
 /* Imágenes y respaldos */
@@ -36,6 +37,8 @@
 .face i{font-style:normal;font-size:17px;line-height:1}
 .face.lg{width:46px;height:46px}
 .face.lg i{font-size:26px}
+.face.xl{width:66px;height:66px;border-width:3px}
+.face.xl i{font-size:38px}
 .face.die{width:24px;height:24px;border-width:1.5px}
 .face.die i{font-size:13px}
 .dogtok{position:relative;display:grid;place-items:center;width:44px;height:30px;border-radius:15px;background:var(--dog);border:2px solid var(--ch-ink);box-sizing:border-box;box-shadow:0 2px 0 rgba(0,0,0,.25)}
@@ -77,6 +80,7 @@
 .chihuahuas .tile.aspiradora small{color:#a8261b}
 .chihuahuas .stack{position:absolute;inset:0;z-index:2}
 .chihuahuas .rider{position:absolute;left:50%;bottom:calc(3px + var(--lvl) * 23%);transform:translateX(-50%);line-height:0}
+.chihuahuas .rider.pending{visibility:hidden}
 .chihuahuas .rider.hop{animation:ch-hop .55s cubic-bezier(.3,1.6,.5,1)}
 .chihuahuas .rider .dogtok{width:clamp(30px,10vw,44px);height:clamp(20px,6.8vw,30px)}
 .chihuahuas .rider .dogimg{width:clamp(44px,15vw,68px)}
@@ -91,8 +95,22 @@
 .chihuahuas .rolledrow .hint{color:#fff;opacity:.85;font-size:12px}
 .chihuahuas .rolled{position:relative;line-height:0}
 .chihuahuas .rolled b{position:absolute;right:-5px;bottom:-4px;min-width:14px;height:14px;line-height:14px;border-radius:7px;background:var(--ch-cream);color:var(--ch-ink);font-size:11px;text-align:center;border:1.5px solid var(--ch-ink)}
-.chihuahuas .bubble{max-width:96%;background:var(--ch-cream);color:var(--ch-ink);font-weight:800;font-size:12px;line-height:1.25;text-align:center;padding:5px 9px;border-radius:12px;border:2px solid var(--ch-ink);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.chihuahuas .bubble{min-height:0;font-family:inherit;cursor:pointer;max-width:96%;background:var(--ch-cream);color:var(--ch-ink);font-weight:800;font-size:12px;line-height:1.25;text-align:center;padding:5px 9px;border-radius:12px;border:2px solid var(--ch-ink);box-shadow:0 2px 0 rgba(0,0,0,.25)}
 .chihuahuas .bubble.pop{animation:ch-pop .35s ease-out}
+.chihuahuas .bubble .more{font-size:11px;opacity:.6}
+
+/* Animaciones (ui/fx.js): el tazón se sacude, sale el dado con su número y la pila corre por la pista */
+.chihuahuas .board{position:relative}
+.chihuahuas .fxlayer{position:absolute;inset:0;pointer-events:none;z-index:6}
+.chihuahuas .runner{position:absolute;left:0;top:0;width:0;height:0;will-change:transform}
+.chihuahuas .runner .rflip{position:absolute;bottom:0;left:calc(var(--cw) / -2);width:var(--cw);height:var(--chh)}
+.chihuahuas .runner .rider{filter:drop-shadow(0 6px 4px rgba(0,0,0,.35))}
+.chihuahuas .bowl.shake{animation:ch-shake .22s linear var(--t) infinite}
+.chihuahuas .reveal{position:absolute;left:50%;top:38%;z-index:4;display:grid;place-items:center;pointer-events:none;
+  animation:ch-reveal var(--rv) cubic-bezier(.3,1.5,.5,1) var(--t) both}
+.chihuahuas .reveal b{position:absolute;right:-12px;bottom:-8px;min-width:30px;height:30px;line-height:26px;border-radius:15px;text-align:center;
+  font:900 20px/26px var(--display);background:var(--ch-cream);color:var(--ch-ink);border:2px solid var(--ch-ink);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.chihuahuas .status.fx{color:var(--accent)}
 .chihuahuas .finish{position:absolute;top:4px;left:6px;display:flex;align-items:center;gap:2px;font-size:14px}
 
 /* Estado y reloj */
@@ -149,6 +167,17 @@
 .sheet .cardrow{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:6px 0}
 .sheet .cardbtn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;min-height:0}
 .sheet .cardbtn small{font-size:11px}
+.sheet .histwrap{display:flex;flex-direction:column}
+.sheet .hleg{margin:12px 0 4px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sheet .hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.sheet .hrow{display:flex;align-items:flex-start;gap:8px;font-size:14px;line-height:1.35;border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+.sheet .hrow.hsys{background:color-mix(in srgb,var(--accent) 10%,var(--card))}
+.sheet .hicon{flex:none;width:34px;display:grid;place-items:center;font-size:18px;line-height:1}
+.sheet .hicon .thing{width:28px;height:28px}
+.sheet .htext em{font-style:normal;color:var(--ok);font-weight:800;white-space:nowrap}
+.sheet .htext .face{vertical-align:middle}
+.sheet .hdie{position:relative;line-height:0}
+.sheet .hdie b{position:absolute;right:-6px;bottom:-4px;min-width:15px;height:15px;line-height:15px;border-radius:8px;background:var(--ch-cream);color:var(--ch-ink);font-size:11px;text-align:center;border:1.5px solid var(--ch-ink)}
 .sheet .advlist{display:flex;flex-direction:column;gap:4px;margin:8px 0}
 .sheet .adv{display:flex;justify-content:space-between;gap:8px;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:6px 8px}
 .sheet .adv.best{border-color:var(--accent);font-weight:800}
@@ -157,9 +186,11 @@
 .rules ul{padding-left:20px}
 .log{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
 
+@keyframes ch-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-6deg) translateX(-2px)}75%{transform:rotate(6deg) translateX(2px)}}
+@keyframes ch-reveal{0%,45%{transform:translate(-50%,-10%) scale(.2);opacity:0}62%{transform:translate(-50%,-70%) scale(1.25);opacity:1}80%,100%{transform:translate(-50%,-55%) scale(1);opacity:1}}
 @keyframes ch-hop{0%{transform:translate(-50%,0) scale(.9)}40%{transform:translate(-50%,-14px) scale(1.08)}100%{transform:translate(-50%,0) scale(1)}}
 @keyframes ch-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
 @keyframes ch-pulse{from{outline-color:var(--accent)}to{outline-color:transparent}}
 @keyframes ch-zap{0%{box-shadow:0 0 0 0 var(--gold)}100%{box-shadow:0 0 0 12px transparent}}
-@media (prefers-reduced-motion:reduce){.chihuahuas .rider.hop,.chihuahuas .bubble.pop,.chihuahuas .cell.can,.chihuahuas .cell.zap{animation:none}}
+@media (prefers-reduced-motion:reduce){.chihuahuas .bowl.shake,.chihuahuas .reveal,.chihuahuas .rider.hop,.chihuahuas .bubble.pop,.chihuahuas .cell.can,.chihuahuas .cell.zap{animation:none}}
 @media (max-width:380px){.chihuahuas .bar-info{display:none}}
