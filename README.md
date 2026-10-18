@@ -20,6 +20,7 @@ El sitio tiene tres tipos de piezas:
 | Panal | `games/panal/` | 2 | Juego de colmena con bichos hexagonales. Práctica contra la compu y mesas en línea |
 | Skull | `games/skull/` | 3–6 | Faroleo con flores y una calavera. Práctica contra la compu y mesas en línea |
 | Damas chinas | `games/damas-chinas/` | 2, 3, 4 o 6 | Canicas en la estrella. Práctica contra la compu y mesas en línea |
+| Carrera de Chihuahuas | `games/chihuahuas/` | 2–8 | Apuestas en una carrera de perros que se apilan (estilo Camel Up). Práctica contra la compu y mesas en línea; por ahora solo teléfono |
 
 ## Cómo está hecho
 
@@ -60,7 +61,8 @@ games/
 │   ├── viuda/            # misma forma
 │   ├── panal/            # misma forma, más assets/ (banco de imágenes)
 │   ├── skull/            # misma forma
-│   └── damas-chinas/     # misma forma
+│   ├── damas-chinas/     # misma forma
+│   └── chihuahuas/       # misma forma, más assets/ (banco de imágenes)
 ├── tests/
 │   ├── architecture.test.js # las reglas de dependencia se cumplen (revisa los imports)
 │   ├── contract.test.js  # todos los juegos cumplen el contrato
