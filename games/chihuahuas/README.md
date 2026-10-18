@@ -3,7 +3,7 @@
 Juego de apuestas en una carrera de perros, estilo Camel Up, para 2 a 8 jugadores. Nadie tiene perro: cada quien
 apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botón **Reglas** de la mesa (`ui/rules.js`).
 
-- **Perros:** Canela (rojo) y Panda (azul) son los perros de la familia (foto de referencia en
+- **Perros:** Chia (rojo) y Oreo (azul) son los perros de la familia (foto de referencia en
   [`docs/disenos/chihuahuas/referencia/`](../../docs/disenos/chihuahuas/referencia/)); Chocolate (verde), Nacho
   (amarillo) y Frijol (morado) son inventados.
 - **Jugadas:** sacudir el tazón (un perro corre 1–3 y ganas 1 🍪), boleto de etapa (5, 3, 2), tapete de hueso (+1) o

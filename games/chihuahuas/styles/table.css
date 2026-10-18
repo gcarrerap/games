@@ -15,7 +15,7 @@
   --ch-grass:#3f7a3a; --ch-grass-2:#2b5a29; --ch-sky:#1b1a14;
 }
 
-[data-dog=canela]{--dog:var(--ch-rojo)} [data-dog=panda]{--dog:var(--ch-azul)} [data-dog=chocolate]{--dog:var(--ch-verde)}
+[data-dog=chia]{--dog:var(--ch-rojo)} [data-dog=oreo]{--dog:var(--ch-azul)} [data-dog=chocolate]{--dog:var(--ch-verde)}
 [data-dog=nacho]{--dog:var(--ch-amarillo)} [data-dog=frijol]{--dog:var(--ch-morado)}
 
 .game.chihuahuas{height:100%;max-width:560px;margin:0 auto;padding:6px 8px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;overflow:hidden;

@@ -20,8 +20,8 @@
 // Las croquetas nunca bajan de 0.
 
 export const DOGS = [
-  { id: "canela", name: "Canela", color: "rojo" },
-  { id: "panda", name: "Panda", color: "azul" },
+  { id: "chia", name: "Chia", color: "rojo" },
+  { id: "oreo", name: "Oreo", color: "azul" },
   { id: "chocolate", name: "Chocolate", color: "verde" },
   { id: "nacho", name: "Nacho", color: "amarillo" },
   { id: "frijol", name: "Frijol", color: "morado" },
