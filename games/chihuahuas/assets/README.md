@@ -10,6 +10,8 @@ Chia y Oreo son los perros de la familia: foto de referencia en
 | Llave | Qué es | Teléfono | Máximo | Estado |
 |---|---|---|---|---|
 | `dog-chia`, `dog-oreo`, `dog-chocolate`, `dog-gustavo`, `dog-catrina` | El perro corriendo, de lado, mirando a la derecha, transparente; los cinco con el mismo recorte (patas en la orilla de abajo; Catrina ocupa menos ancho porque es la más chiquita) | 512 × 456 | 80 KB | listos · 36–61 KB |
+| `dog-chia-up`, … `dog-catrina-up` | Corriendo hacia arriba, **de espaldas** (#49), mismo lienzo, misma altura y línea de patas que el de lado | 512 × 456 | 80 KB | listos · 20–36 KB |
+| `dog-chia-down`, … `dog-catrina-down` | Corriendo hacia abajo, **de frente** (#49), igual | 512 × 456 | 80 KB | listos · 26–40 KB |
 | `face-chia`, … `face-catrina` | Su cara, para el círculo de su color (boletos, dados, cartas), transparente | 256 × 256 | 80 KB | listas · 14–18 KB |
 | `hueso`, `aspiradora` | Los dos lados del tapete, transparentes | 256 × 256 | 80 KB | listos · 17 y 13 KB |
 | `tazon` | El tazón de donde salen los dados, transparente | 768 × 384 | 80 KB | listo · 34 KB |
@@ -25,6 +27,7 @@ Chia y Oreo son los perros de la familia: foto de referencia en
 | Llave | Archivo | Tamaño | Máximo |
 |---|---|---|---|
 | `dog-chia@tv`, … `dog-catrina@tv` | `dog-*-tele.webp`, mismo recorte que los del teléfono | 1024 × 912 | 160 KB |
+| `dog-chia-up@tv`, `dog-chia-down@tv`, … | `dog-*-up-tele.webp`, `dog-*-down-tele.webp` | 1024 × 912 | 160 KB |
 | `face-chia@tv`, … `face-catrina@tv` | `face-*-tele.webp` | 512 × 512 | 80 KB |
 | `fondo-tele` | `fondo-tele-1`, el fondo de la mesa en la tele | 3840 × 2160 | 600 KB |
 | `portada@tv` | `portada-tele.webp` (`portada-7`), fondo de la espera de la tele (`manifest.tvCover`) | 1920 × 1080 | 300 KB |
@@ -40,3 +43,7 @@ estos tamaños. Prompts, guía de estilo y formato completo: issue #33.
 
 `tests/games/chihuahuas/assets.test.js` revisa que cada llave sea una de `ui/art.js` (`KEYS`), que su archivo exista y
 que no pase su máximo.
+
+**Hacia dónde mira el perro** (#49, `ui/facing.js`): casillas 1–4 a la derecha (de lado), 5–8 hacia arriba
+(`-up`, de espaldas), 9–12 a la izquierda (de lado en espejo), 13–16 y la meta hacia abajo (`-down`, de frente). Cuando
+la aspiradora lo regresa, en ese brinco usa la vista contraria. Elección de las vistas: `docs/disenos/chihuahuas/eleccion/vistas.md`.

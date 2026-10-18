@@ -7,7 +7,8 @@
 //
 // Tiempos: los de engine/ (SHOW), para que la compu espere lo mismo que dura la animación (bots.thinkMs).
 import { SHOW, showMs, rollSteps, positions, RULES } from "../engine/index.js";
-import { dogArt } from "./art.js";
+import { dogViews } from "./art.js";
+import { facingAt, facingStep } from "./facing.js";
 
 const reduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const now = () => performance.now();
@@ -76,9 +77,8 @@ function spot(board, space) {
   const s = space > RULES.track ? 1 : Math.max(1, space);
   const el = board.querySelector(`.cell[data-space="${s}"]`);
   if (!el) return null;
-  return { x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight, w: el.offsetWidth, h: el.offsetHeight, flip: flipAt(s) };
+  return { x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight, w: el.offsetWidth, h: el.offsetHeight };
 }
-const flipAt = (s) => (s >= 10 && s <= 13) || s >= 14; // por arriba van a la izquierda y por la izquierda bajan
 
 // Dibuja las piezas de la animación dentro de la pista y las adelanta al momento en que van
 export function paintFx(board, fx, st) {
@@ -96,7 +96,7 @@ function runner(dogs, cell) {
   el.className = "runner";
   el.style.setProperty("--cw", `${cell.w}px`);
   el.style.setProperty("--chh", `${cell.h}px`);
-  el.innerHTML = `<div class="rflip">${dogs.map((d, i) => `<span class="rider" style="--lvl:${i}">${dogArt(d)}</span>`).join("")}</div>`;
+  el.innerHTML = `<div class="rflip">${dogs.map((d, i) => `<span class="rider" style="--lvl:${i}">${dogViews(d)}</span>`).join("")}</div>`;
   return el;
 }
 
@@ -127,6 +127,8 @@ function paintRoll(layer, board, fx, st) {
   layer.appendChild(el);
   const steps = rollSteps(l);
   const frames = [], flips = [];
+  const faces = path.map((s, i) => (i === 0 ? facingAt(s) : facingStep(path[i - 1], s)));
+  const views = { side: [], up: [], down: [] };
   pts.forEach((p, i) => {
     const off = steps ? i / steps : 1;
     if (i > 0) {
@@ -134,13 +136,23 @@ function paintRoll(layer, board, fx, st) {
       frames.push({ offset: (i - 0.5) / steps, transform: `translate(${(a.x + p.x) / 2}px, ${Math.min(a.y, p.y) - p.h * 0.32}px)` });
     }
     frames.push({ offset: Math.min(1, off), transform: `translate(${p.x}px, ${p.y}px)` });
-    flips.push({ offset: Math.min(1, off), transform: `scaleX(${p.flip ? -1 : 1})`, easing: "step-end" });
+    // Mira hacia donde corre: a la izquierda en espejo; arriba y abajo con su vista de espaldas o de frente
+    const f = faces[i], at = Math.min(1, off);
+    flips.push({ offset: at, transform: `scaleX(${f === "left" ? -1 : 1})`, easing: "step-end" });
+    for (const v in views) views[v].push({ offset: at, opacity: (v === "side" ? f === "left" || f === "right" : f === v) ? 1 : 0, easing: "step-end" });
   });
   const dur = steps * SHOW.step;
   const opts = { duration: Math.max(1, dur), delay: SHOW.reveal, fill: "both", easing: "linear" };
   const t = elapsed(fx);
-  const a1 = el.animate(frames, opts), a2 = el.firstElementChild.animate(flips, opts);
-  a1.currentTime = t; a2.currentTime = t;
+  const anims = [el.animate(frames, opts), el.firstElementChild.animate(flips, opts)];
+  // Si un perro no tiene vista de frente o de espaldas, se queda con la de lado
+  el.querySelectorAll(".rider").forEach((r) => {
+    const has = (v) => !!r.querySelector(`.view-${v}`);
+    for (const v of ["up", "down"]) if (has(v)) anims.push(r.querySelector(`.view-${v}`).animate(views[v], opts));
+    const side = r.querySelector(".view-side");
+    if (side) anims.push(side.animate(views.side.map((k, i) => ({ ...k, opacity: k.opacity || (has(faces[i]) ? 0 : 1) })), opts));
+  });
+  for (const a of anims) a.currentTime = t;
 }
 
 // La salida: cada perro entra corriendo desde antes de la casilla 1 hasta su lugar, uno tras otro

@@ -105,6 +105,7 @@
 .chihuahuas .runner{position:absolute;left:0;top:0;width:0;height:0;will-change:transform}
 .chihuahuas .runner .rflip{position:absolute;bottom:0;left:calc(var(--cw) / -2);width:var(--cw);height:var(--chh)}
 .chihuahuas .runner .rider{filter:drop-shadow(0 6px 4px rgba(0,0,0,.35))}
+.chihuahuas .runner .view-up,.chihuahuas .runner .view-down{position:absolute;left:0;bottom:0;opacity:0}
 .chihuahuas .bowl.shake{animation:ch-shake .22s linear var(--t) infinite}
 .chihuahuas .reveal{position:absolute;left:50%;top:38%;z-index:4;display:grid;place-items:center;pointer-events:none;
   animation:ch-reveal var(--rv) cubic-bezier(.3,1.5,.5,1) var(--t) both}
