@@ -52,18 +52,19 @@ function renderHistory(ctx, st, seat) {
 // Apuesta secreta: al ganador o al último, con las cartas que te quedan
 function renderFinal(ctx, st, seat) {
   const cards = st.cards[seat] || [];
-  const pay = (bets) => RULES.finals[bets.length] ?? 1;
   const row = (which) => DOGS.map((_, d) => {
     const ok = cards.includes(d);
     return `<button class="cardbtn" data-final="${which}" data-dog="${d}" ${ok ? "" : "disabled"} aria-label="${esc(dogName(d))}">${faceArt(d, "lg")}<small>${esc(dogName(d))}</small></button>`;
   }).join("");
+  const count = (bets) => `Ya hay ${bets.length} apuesta${bets.length === 1 ? "" : "s"} secreta${bets.length === 1 ? "" : "s"}.`;
   renderSheet(ctx.modal, "final", "Apuesta secreta", `
     <p class="hint">Nadie ve a qué perro le apuestas hasta el final. Cada carta se usa una sola vez.</p>
+    <p class="hint"><b>Cómo paga:</b> al final se revelan en el orden en que se hicieron. La primera que atina cobra ${RULES.finals[0]} 🍪, la segunda ${RULES.finals[1]}, luego ${RULES.finals.slice(2).join(", ")}… Las que fallan pierden ${RULES.finalMiss} y no cuentan: entre más temprano le atines, más cobras.</p>
     <h4 class="fh">🏆 ¿Quién gana la carrera?</h4>
-    <p class="hint">Ya hay ${st.winnerBets.length} apuesta${st.winnerBets.length === 1 ? "" : "s"}: si aciertas cobras ${pay(st.winnerBets)} 🍪; si no, pierdes ${RULES.finalMiss}.</p>
+    <p class="hint">${count(st.winnerBets)}</p>
     <div class="cardrow">${row("winner")}</div>
     <h4 class="fh">🐢 ¿Quién llega al último?</h4>
-    <p class="hint">Ya hay ${st.loserBets.length} apuesta${st.loserBets.length === 1 ? "" : "s"}: si aciertas cobras ${pay(st.loserBets)} 🍪; si no, pierdes ${RULES.finalMiss}.</p>
+    <p class="hint">${count(st.loserBets)}</p>
     <div class="cardrow">${row("loser")}</div>`);
   ctx.modal.querySelectorAll("[data-final]").forEach((b) => b.onclick = () => {
     closeOverlay();
@@ -71,45 +72,114 @@ function renderFinal(ctx, st, seat) {
   });
 }
 
-const podium = (rank) => `<div class="podium">${rank.map((d, i) => `<div class="pod p${i + 1}">${faceArt(d, i === 0 ? "lg" : "")}<small>${placeName(i)} ${esc(dogName(d))}</small></div>`).join("")}</div>`;
+// ---------- Revelar los puntos ----------
+// Al terminar una etapa (y la carrera) los pagos no salen de golpe: primero el podio, luego cada boleto con su pago y,
+// al final de la carrera, cada apuesta secreta volteándose una por una, en el orden en que se hicieron. Al último
+// suben las croquetas y aparece el botón. Todo con animaciones de CSS cuyo retraso (--d) se calcula desde que se abrió
+// la ventana (`ui.reveal`), así que redibujar a media revelación no la reinicia. "Ver todo" la salta.
+const REVEAL = { podium: 160, first: 1100, gap: 400 };
+const stepMs = (n) => Math.max(550, Math.min(1150, 1300 - n * 40));
 
-function betLines(st, seat, lines, label) {
-  if (!lines.length) return "";
-  return `<div class="betlines">${lines.map((b) => `<div class="bl ${b.got > 0 ? "win" : "lose"}">
-      ${faceArt(b.dog)}<span>${esc(b.seat === seat ? "Tú" : nameOf(st, b.seat))}: ${label(b)}</span><b>${b.got > 0 ? "+" : ""}${b.got}</b></div>`).join("")}</div>`;
+export function revealPlan(st) {
+  if (st.phase !== "leg" && st.phase !== "over") return null;
+  const sm = st.summary, f = st.phase === "over" ? st.final : null;
+  const items = sm.bets.length + (f ? f.winner.length + f.loser.length : 0);
+  const step = stepMs(items);
+  let t = REVEAL.first;
+  const legAt = sm.bets.map(() => { const x = t; t += step; return x; });
+  let winAt = [], loseAt = [], winHead = 0, loseHead = 0;
+  if (f) {
+    if (f.winner.length) { t += REVEAL.gap; winHead = t; t += REVEAL.gap; winAt = f.winner.map(() => { const x = t; t += step; return x; }); }
+    if (f.loser.length) { t += REVEAL.gap; loseHead = t; t += REVEAL.gap; loseAt = f.loser.map(() => { const x = t; t += step; return x; }); }
+  }
+  const end = t + 300;
+  return { key: `${st.phase}-${sm.leg}`, legAt, winAt, loseAt, winHead, loseHead, end, done: end + 900 };
 }
 
-function standings(st, seat, delta) {
+function revealClock(ui, plan) {
+  if (!ui.reveal || ui.reveal.key !== plan.key) ui.reveal = { key: plan.key, start: performance.now() };
+  return performance.now() - ui.reveal.start;
+}
+
+const at = (ms, t) => `style="--d:${Math.round(ms - t)}ms" data-when="${Math.round(ms)}"`;
+
+const podium = (rank, t = 1e9) => `<div class="podium">${rank.map((d, i) => `<div class="pod p${i + 1} rv" ${at(i * REVEAL.podium, t)}>${faceArt(d, i === 0 ? "lg" : "")}<small>${placeName(i)} ${esc(dogName(d))}</small></div>`).join("")}</div>`;
+
+// Una línea de pago: lo que se sabe desde antes a la izquierda, el pago aparece a su tiempo
+function payLine(st, seat, b, label, when, t, { secret = false } = {}) {
+  const name = esc(b.seat === seat ? "Tú" : nameOf(st, b.seat));
+  const res = `<b class="pay rv ${b.got > 0 ? "up" : "down"}" ${at(when + 350, t)}>${b.got > 0 ? "+" : ""}${b.got}</b>`;
+  if (!secret) {
+    return `<div class="bl rvline ${b.got > 0 ? "win" : "lose"}" ${at(when, t)}>${faceArt(b.dog)}<span>${name}: ${label}</span>${res}</div>`;
+  }
+  // Apuesta secreta: primero boca abajo (🤫) y luego se voltea con el perro
+  return `<div class="bl rvline flipper ${b.got > 0 ? "win" : "lose"}" ${at(when, t)}>
+      <span class="fcard"><span class="fback rvout" ${at(when, t)}>🤫</span><span class="ffront rv" ${at(when, t)}>${faceArt(b.dog)}</span></span>
+      <span>${name}: <span class="rv" ${at(when, t)}>${esc(dogName(b.dog))}</span>${label ? ` <small class="rv" ${at(when + 350, t)}>${label}</small>` : ""}</span>${res}</div>`;
+}
+
+// Croquetas: las de antes, y al final la diferencia y las nuevas
+function standings(st, seat, delta, t = 1e9, end = 0) {
   const order = st.names.map((_, s) => s).sort((a, b) => st.coins[b] - st.coins[a]);
-  return `<div class="standings">${order.map((s) => `<div class="strow ${s === seat ? "mine" : ""}"><b>${esc(nameOf(st, s))}${s === seat && nameOf(st, s) !== "Tú" ? " (tú)" : ""}</b>
-      <span>${delta && delta[s] ? `<em class="${delta[s] > 0 ? "up" : "down"}">${delta[s] > 0 ? "+" : ""}${delta[s]}</em> ` : ""}${COINS(st.coins[s])}</span></div>`).join("")}</div>`;
+  return `<div class="standings">${order.map((s) => {
+    const d = delta ? delta[s] : 0, before = st.coins[s] - d;
+    return `<div class="strow ${s === seat ? "mine" : ""}"><b>${esc(nameOf(st, s))}${s === seat && nameOf(st, s) !== "Tú" ? " (tú)" : ""}</b>
+      <span>${d ? `<em class="rv ${d > 0 ? "up" : "down"}" ${at(end, t)}>${d > 0 ? "+" : ""}${d}</em> ` : ""}<span class="coins">${thingArt("croqueta", "coin")}<span class="swap"><b class="rvout" ${at(end, t)}>${before}</b><b class="rv" ${at(end, t)}>${st.coins[s]}</b></span></span></span></div>`;
+  }).join("")}</div>`;
 }
 
-function renderLeg(ctx, st, seat) {
-  const sm = st.summary;
+function skipButton(plan, t) {
+  return t < plan.end ? `<button class="ghost skip" id="skip">Ver todo ⏩</button>` : "";
+}
+
+function wireSkip(ctx, ui) {
+  $("#skip", ctx.modal)?.addEventListener("click", () => { if (ui.reveal) ui.reveal.start -= 1e6; ctx.refresh(); });
+  // La ventana baja sola para que siempre se vea lo último que se reveló
+  (ui.scrollTimers || []).forEach(clearTimeout);
+  const t = ui.reveal ? performance.now() - ui.reveal.start : 0;
+  ui.scrollTimers = [...ctx.modal.querySelectorAll(".sheet [data-when]")]
+    .map((el) => ({ el, ms: Number(el.dataset.when) - t }))
+    .filter((x) => x.ms > 0)
+    .map(({ el, ms }) => setTimeout(() => { if (el.isConnected) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, ms));
+}
+
+function renderLeg(ctx, st, seat, ui) {
+  const sm = st.summary, plan = revealPlan(st), t = revealClock(ui, plan);
+  const lines = sm.bets.map((b, i) => payLine(st, seat, b, `boleto de ${b.value} de ${esc(dogName(b.dog))} <small>(${placeName(b.place)})</small>`, plan.legAt[i], t)).join("");
   renderSheet(ctx.modal, `leg-${ctx.table.round}-${sm.leg}`, `Fin de la etapa ${sm.leg}`, `
-    ${podium(sm.rank)}
-    ${betLines(st, seat, sm.bets, (b) => `boleto de ${b.value} de ${esc(dogName(b.dog))} (${placeName(b.place)})`) || `<p class="hint center">Nadie tomó boletos en esta etapa.</p>`}
-    ${standings(st, seat, sm.delta)}
-    ${seat >= 0 ? `<button class="primary big-cta" id="next">¡Siguiente etapa!</button>` : `<p class="hint center">Esperando la siguiente etapa.</p>`}`, { closable: false });
+    ${podium(sm.rank, t)}
+    ${lines ? `<div class="betlines">${lines}</div>` : `<p class="hint center rv" ${at(REVEAL.first, t)}>Nadie tomó boletos en esta etapa.</p>`}
+    ${standings(st, seat, sm.delta, t, plan.end)}
+    ${skipButton(plan, t)}
+    <div class="rv" ${at(plan.end + 300, t)}>${seat >= 0 ? `<button class="primary big-cta" id="next">¡Siguiente etapa!</button>` : `<p class="hint center">Esperando la siguiente etapa.</p>`}</div>`, { closable: false });
   $("#next", ctx.modal)?.addEventListener("click", () => ctx.act({ type: "next" }));
+  wireSkip(ctx, ui);
 }
 
-function renderOver(ctx, st, seat) {
-  const f = st.final;
-  const champ = f.champions.length > 1 ? `¡Empate de ${f.champions.map((s) => nameOf(st, s)).join(" y ")}!`
-    : f.champions[0] === seat ? "¡Ganaste la carrera de apuestas!" : `¡Ganó ${nameOf(st, f.champions[0])}!`;
-  renderSheet(ctx.modal, `over-${ctx.table.round}`, champ, `
+function renderOver(ctx, st, seat, ui) {
+  const f = st.final, plan = revealPlan(st), t = revealClock(ui, plan);
+  const champ = f.champions.length > 1 ? `¡Empate de ${f.champions.map((s) => esc(nameOf(st, s))).join(" y ")}!`
+    : f.champions[0] === seat ? "¡Ganaste la carrera de apuestas!" : `¡Ganó ${esc(nameOf(st, f.champions[0]))}!`;
+  const nthLabel = (b) => (b.ok ? `${b.nth + 1}º en atinarle` : "falló");
+  const legLines = st.summary.bets.map((b, i) => payLine(st, seat, b, `boleto de ${b.value} de ${esc(dogName(b.dog))}`, plan.legAt[i], t)).join("");
+  const win = f.winner.map((b, i) => payLine(st, seat, b, nthLabel(b), plan.winAt[i], t, { secret: true })).join("");
+  const lose = f.loser.map((b, i) => payLine(st, seat, b, nthLabel(b), plan.loseAt[i], t, { secret: true })).join("");
+  renderSheet(ctx.modal, `over-${ctx.table.round}`, "¡Fin de la carrera!", `
     <p class="center"><b>${esc(dogName(f.rank[0]))}</b> cruzó la meta primero; <b>${esc(dogName(f.rank[ND - 1]))}</b> llegó al último.</p>
-    ${podium(f.rank)}
-    ${betLines(st, seat, st.summary.bets, (b) => `boleto de ${b.value} de ${esc(dogName(b.dog))}`)}
-    ${f.winner.length ? `<h4 class="fh">🏆 Apuestas al ganador</h4>${betLines(st, seat, f.winner, (b) => esc(dogName(b.dog)))}` : ""}
-    ${f.loser.length ? `<h4 class="fh">🐢 Apuestas al último</h4>${betLines(st, seat, f.loser, (b) => esc(dogName(b.dog)))}` : ""}
-    ${standings(st, seat, null)}
-    ${seat >= 0 ? `<button class="primary big-cta" id="again">Revancha</button>` : ""}
-    <button class="ghost" id="exit">Salir</button>`, { closable: false });
+    ${podium(f.rank, t)}
+    ${legLines ? `<h4 class="fh rv" ${at(REVEAL.first - 200, t)}>Boletos de la última etapa</h4><div class="betlines">${legLines}</div>` : ""}
+    ${win ? `<h4 class="fh rv" ${at(plan.winHead, t)}>🏆 Apuestas al ganador</h4><div class="betlines">${win}</div>` : ""}
+    ${lose ? `<h4 class="fh rv" ${at(plan.loseHead, t)}>🐢 Apuestas al último</h4><div class="betlines">${lose}</div>` : ""}
+    ${standings(st, seat, st.summary.delta, t, plan.end)}
+    <div class="champ rv" ${at(plan.end + 300, t)}>🎉 ${champ}</div>
+    ${skipButton(plan, t)}
+    <div class="rv" ${at(plan.end + 600, t)}>
+      ${seat >= 0 ? `<button class="primary big-cta" id="again">Revancha</button>` : ""}
+      <button class="ghost" id="exit">Salir</button>
+    </div>`, { closable: false });
   $("#again", ctx.modal)?.addEventListener("click", () => ctx.again());
   $("#exit", ctx.modal)?.addEventListener("click", () => ctx.leave());
+  wireSkip(ctx, ui);
 }
 
 function renderAdvice(ctx, st) {
@@ -168,6 +238,17 @@ export function renderTable(app, ctx, ui) {
   app.className = "game chihuahuas";
   app.setAttribute("style", textureVars());
 
+  // Mientras se revelan los pagos (o corre el perro que cerró la etapa), arriba se ven las croquetas de antes
+  const plan = revealPlan(st);
+  let holding = false;
+  if (plan) {
+    const left = fx ? Infinity : ui.reveal && ui.reveal.key === plan.key ? plan.end - (performance.now() - ui.reveal.start) : plan.end;
+    holding = left > 0;
+    clearTimeout(ui.holdTimer);
+    if (holding && Number.isFinite(left)) ui.holdTimer = setTimeout(() => ctx.refresh(), left + 50);
+  }
+  const shownCoins = (s) => (holding ? st.coins[s] - st.summary.delta[s] : st.coins[s]);
+
   // Jugadores: croquetas, sus boletos, su tapete y cuántas apuestas secretas hizo
   const players = st.names.map((_, s) => {
     const tickets = st.bets.filter((b) => b.seat === s).map((b) => `<span class="mini" data-dog="${DOGS[b.dog].id}">${b.value}</span>`).join("");
@@ -175,7 +256,7 @@ export function renderTable(app, ctx, ui) {
     const secret = st.winnerBets.filter((b) => b.seat === s).length + st.loserBets.filter((b) => b.seat === s).length;
     return `<div class="pl ${playing && st.turn === s ? "turn" : ""} ${s === seat ? "mine" : ""}">
       <div class="plname">${esc(nameOf(st, s))}${s === seat && nameOf(st, s) !== "Tú" ? " <small>(tú)</small>" : ""}</div>
-      <div class="plinfo">${COINS(st.coins[s])}${tickets}${tile ? `<span class="minitile" title="Su tapete en la ${tile.space}">${thingArt(tile.kind)}</span>` : ""}${secret ? `<span class="secret" title="Apuestas secretas">🤫${secret}</span>` : ""}</div>
+      <div class="plinfo">${COINS(shownCoins(s))}${tickets}${tile ? `<span class="minitile" title="Su tapete en la ${tile.space}">${thingArt(tile.kind)}</span>` : ""}${secret ? `<span class="secret" title="Apuestas secretas">🤫${secret}</span>` : ""}</div>
     </div>`;
   }).join("");
 
@@ -282,8 +363,8 @@ export function renderTable(app, ctx, ui) {
   else if (ov && ov.id === "hist") renderHistory(ctx, st, seat);
   else if (ov && ov.id === "final" && canAct) renderFinal(ctx, st, seat);
   else if (fx) { if (ov && ov.id === "final") closeOverlay(); ctx.modal.innerHTML = ""; } // primero se ve la carrera
-  else if (st.phase === "leg") renderLeg(ctx, st, seat);
-  else if (st.phase === "over") renderOver(ctx, st, seat);
+  else if (st.phase === "leg") renderLeg(ctx, st, seat, ui);
+  else if (st.phase === "over") renderOver(ctx, st, seat, ui);
   else if (ctx.advice && canAct) renderAdvice(ctx, st);
   else { if (ov && ov.id === "final") closeOverlay(); ctx.modal.innerHTML = ""; }
 }

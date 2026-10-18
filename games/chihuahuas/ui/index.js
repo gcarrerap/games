@@ -19,7 +19,7 @@ export function update(ctx) { if (ui) { renderTable(ui.el, ctx, ui); paintClock(
 export function tick(ctx, clock) { if (ui) paintClock(clock); }
 
 export function unmount() {
-  if (ui) stopFx(ui);
+  if (ui) { stopFx(ui); clearTimeout(ui.holdTimer); (ui.scrollTimers || []).forEach(clearTimeout); }
   if (ui && ui.el) ui.el.innerHTML = "";
   ui = null;
   unloadStyles("chihuahuas");

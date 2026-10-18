@@ -115,6 +115,7 @@ test("cruzar la meta termina la carrera: se cobran la etapa y las apuestas final
   assert.equal(st.phase, "over");
   assert.deepEqual(st.final.rank, [C, P, CH, F, N]);
   assert.deepEqual(st.final.winner.map((b) => b.got), [8, 5, -1]);
+  assert.deepEqual(st.final.winner.map((b) => b.nth), [0, 1, null], "lugar entre los que atinan")
   assert.deepEqual(st.final.loser.map((b) => b.got), [8, -1]);
   // Ana: 3 + 8 + 8 · Noe: 3 + 5 − 1 · Gui: 3 + 1 (tazón) − 1
   assert.deepEqual(st.coins, [19, 7, 3]);
@@ -210,4 +211,14 @@ test("lo que tarda en verse una tirada: sale el dado y el perro avanza casilla p
   assert.equal(rollSteps({ kind: "roll", from: 15, landed: 18, tile: null }), 2, "hasta la meta");
   assert.equal(showMs(plain), SHOW.reveal + 2 * SHOW.step + SHOW.settle);
   assert.equal(game.bots.thinkMs({ last: plain }), 1700 + showMs(plain), "la compu espera a que se vea");
+});
+
+test("apuestas finales con la regla original: las que fallan no ocupan lugar", () => {
+  let st = { ...fresh(3), spaces: track({ 15: [C], 16: [P], 10: [CH], 3: [N, F] }), dice: [C] };
+  st = apply(st, 0, { type: "final", which: "winner", dog: P }, ctx); // falla
+  st = apply(st, 1, { type: "final", which: "winner", dog: N }, ctx); // falla
+  st = apply(st, 2, { type: "final", which: "winner", dog: C }, ctx); // tercera en apostar, primera en atinar
+  st = apply(st, 0, { type: "roll" }, { rnd: seq(0, 0.99), now: 0 }); // Chia cruza la meta
+  assert.equal(st.phase, "over");
+  assert.deepEqual(st.final.winner.map((b) => [b.ok, b.nth, b.got]), [[false, null, -1], [false, null, -1], [true, 0, 8]]);
 });
