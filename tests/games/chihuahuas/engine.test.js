@@ -7,7 +7,7 @@ import { legOdds, fastMove, toFast, decide, advise, scoreActions } from "../../.
 import game from "../../../games/chihuahuas/index.js";
 import { seededRandom } from "../../../modules/random/index.js";
 
-const C = 0, P = 1, CH = 2, N = 3, F = 4; // canela, panda, chocolate, nacho, frijol
+const C = 0, P = 1, CH = 2, N = 3, F = 4; // chia, oreo, chocolate, nacho, frijol
 const ctx = { rnd: seededRandom(1), now: 0 };
 const fresh = (n = 3, seed = 1) => newGame({ n, timer: false }, ["Ana", "Noe", "Gui", "Bar"].slice(0, n), 0, seededRandom(seed));
 const empty = () => Array.from({ length: 21 }, () => []);
@@ -49,7 +49,7 @@ test("hueso: una casilla más y queda encima; aspiradora: una menos y queda deba
 
 test("sacudir el tazón: un perro corre, da 1 croqueta y su dado ya no regresa en la etapa", () => {
   let st = { ...fresh(3), spaces: track({ 1: [C, P], 2: [CH], 3: [N, F] }) };
-  st = apply(st, 0, { type: "roll" }, { rnd: seq(0.1, 0.99), now: 0 }); // dado 0 (Canela), número 3
+  st = apply(st, 0, { type: "roll" }, { rnd: seq(0.1, 0.99), now: 0 }); // dado 0 (Chia), número 3
   assert.equal(st.last.dog, C); assert.equal(st.last.n, 3);
   assert.deepEqual(st.spaces[4], [C, P]);
   assert.equal(st.coins[0], 4);
@@ -88,8 +88,8 @@ test("fin de etapa: el boleto del primero paga su valor, el del segundo 1, los d
   let st = { ...fresh(3), spaces: track({ 5: [C], 6: [P], 7: [CH], 8: [N], 9: [F] }), dice: [C], coins: [3, 3, 0] };
   st = apply(st, 0, { type: "ticket", dog: F }, ctx); // 5 por Frijol
   st = apply(st, 1, { type: "ticket", dog: N }, ctx); // 5 por Nacho
-  st = apply(st, 2, { type: "ticket", dog: C }, ctx); // 5 por Canela
-  st = apply(st, 0, { type: "roll" }, { rnd: seq(0, 0), now: 0 }); // Canela corre 1: sigue al último
+  st = apply(st, 2, { type: "ticket", dog: C }, ctx); // 5 por Chia
+  st = apply(st, 0, { type: "roll" }, { rnd: seq(0, 0), now: 0 }); // Chia corre 1: sigue al último
   assert.equal(st.phase, "leg");
   assert.deepEqual(currentSeats(st), []);
   assert.deepEqual(legalActions(st, 2), [{ type: "next" }]);
@@ -111,7 +111,7 @@ test("cruzar la meta termina la carrera: se cobran la etapa y las apuestas final
   st = apply(st, 0, { type: "final", which: "loser", dog: N }, ctx);
   st = apply(st, 1, { type: "final", which: "loser", dog: F }, ctx);
   assert.throws(() => apply(st, 2, { type: "final", which: "loser", dog: P }, ctx), /Ya usaste/);
-  st = apply(st, 2, { type: "roll" }, { rnd: seq(0, 0.99), now: 0 }); // Canela corre 3: 18, cruza la meta
+  st = apply(st, 2, { type: "roll" }, { rnd: seq(0, 0.99), now: 0 }); // Chia corre 3: 18, cruza la meta
   assert.equal(st.phase, "over");
   assert.deepEqual(st.final.rank, [C, P, CH, F, N]);
   assert.deepEqual(st.final.winner.map((b) => b.got), [8, 5, -1]);
@@ -159,7 +159,7 @@ test("la simulación rápida de la compu mueve igual que las reglas", () => {
 });
 
 test("probabilidades de la etapa: suman 1 y son exactas en un caso a mano", () => {
-  // Solo queda el dado de Canela, sola en la 1; Panda en la 4. Canela es primera solo si saca 3 (cae encima de Panda)
+  // Solo queda el dado de Chia, sola en la 1; Oreo en la 4. Chia es primera solo si saca 3 (cae encima de Oreo)
   const sp = track({ 1: [C], 4: [P], 2: [CH, N, F] });
   const o = legOdds(sp, [C]);
   assert.ok(Math.abs(o.first[C] - 1 / 3) < 1e-9);
@@ -170,7 +170,7 @@ test("probabilidades de la etapa: suman 1 y son exactas en un caso a mano", () =
 });
 
 test("la compu toma el boleto de 5 cuando un perro es casi seguro primero, y su consejo lo dice", () => {
-  // Frijol muy adelante; solo falta el dado de Canela, que no lo alcanza
+  // Frijol muy adelante; solo falta el dado de Chia, que no lo alcanza
   const st = { ...fresh(3), spaces: track({ 1: [C], 2: [P, CH, N], 8: [F] }), dice: [C] };
   const v = view(st, 0);
   const opts = scoreActions(v, 0, "normal");
