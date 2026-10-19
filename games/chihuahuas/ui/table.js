@@ -22,7 +22,7 @@ import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
 import { fullscreenButton, wireFullscreen } from "../../../platform/ui/tv.js";
 import { musicButton, musicControls, wireMusic } from "../../../modules/music/ui.js";
 import { sfxButton, sfxControls, wireSfx } from "../../../modules/sfx/ui.js";
-import { syncSounds } from "./sound.js";
+import { syncSounds, partyOn } from "./sound.js";
 import { syncParty } from "./party.js";
 
 // Dónde va cada casilla en el cuadro de 5 × 5: la 1 abajo a la izquierda, a la derecha por abajo, sube por la
@@ -276,18 +276,20 @@ export function renderTable(app, ctx, ui) {
 
   // Mientras se revelan los pagos (o corre el perro que cerró la etapa), arriba se ven las croquetas de antes
   const plan = revealPlan(st);
+  // Sonidos de lo que acaba de pasar (no del redibujado). La tele y el teléfono se reparten en sound.js.
+  // Cuando un perro llega a la meta y ya se vio la tirada, sale la fiesta del ganador (no al redibujar). Mientras
+  // está en pantalla, la hoja de pagos no se abre: su reloj (ui.reveal) arranca cuando la fiesta termina o se salta.
+  const party = syncSounds(ui, ctx, { fxOn: !!fx, plan });
+  syncParty(ui, ctx, party);
+  const partying = partyOn(ui, plan);
   let holding = false;
   if (plan) {
-    const left = fx ? Infinity : ui.reveal && ui.reveal.key === plan.key ? plan.end - (performance.now() - ui.reveal.start) : plan.end;
+    const left = fx || partying ? Infinity : ui.reveal && ui.reveal.key === plan.key ? plan.end - (performance.now() - ui.reveal.start) : plan.end;
     holding = left > 0;
     clearTimeout(ui.holdTimer);
     if (holding && Number.isFinite(left)) ui.holdTimer = setTimeout(() => ctx.refresh(), left + 50);
   }
   const shownCoins = (s) => (holding ? st.coins[s] - st.summary.delta[s] : st.coins[s]);
-  // Sonidos de lo que acaba de pasar (no del redibujado). La tele y el teléfono se reparten en sound.js.
-  // La fiesta sale en ese mismo momento (fin de etapa o ganador), no al redibujar.
-  const party = syncSounds(ui, ctx, { fxOn: !!fx, plan });
-  syncParty(ui, ctx, party);
 
   // Jugadores: croquetas, sus boletos, su tapete y cuántas apuestas secretas hizo
   const players = st.names.map((_, s) => {
@@ -393,7 +395,7 @@ export function renderTable(app, ctx, ui) {
     $("#menu", app).onclick = () => openOverlay("gameMenu");
     if (covering) ctx.modal.innerHTML = ""; // nada encima de la portada
     else if (overlay() && overlay().id === "gameMenu") renderMenu(ctx, st, ui.music);
-    else if (fx) ctx.modal.innerHTML = ""; // primero se ve la carrera
+    else if (fx || partying) ctx.modal.innerHTML = ""; // primero se ve la carrera, luego la fiesta
     else if (st.phase === "leg") renderLeg(ctx, st, seat, ui, true);
     else if (st.phase === "over") renderOver(ctx, st, seat, ui, true);
     else ctx.modal.innerHTML = "";
@@ -451,6 +453,7 @@ export function renderTable(app, ctx, ui) {
   else if (ov && ov.id === "hist") renderHistory(ctx, st, seat);
   else if (ov && ov.id === "final" && canAct) renderFinal(ctx, st, seat);
   else if (fx) { if (ov && ov.id === "final") closeOverlay(); ctx.modal.innerHTML = ""; } // primero se ve la carrera
+  else if (partying) ctx.modal.innerHTML = ""; // luego la fiesta del ganador; la hoja de pagos sale después
   else if (st.phase === "leg") renderLeg(ctx, st, seat, ui);
   else if (st.phase === "over") renderOver(ctx, st, seat, ui);
   else if (ctx.advice && canAct) renderAdvice(ctx, st);

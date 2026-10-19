@@ -1,7 +1,7 @@
-// La fiesta en pantalla: los perros de Petra, el confeti, el nombre y el audio.
-// Se dispara una sola vez por evento (takeParty). Redibujar la mesa no la reinicia: el cartel vive fuera del
-// HTML de la mesa. Un toque en la fiesta, el botón Saltar o una tecla la cierran. El botón de la siguiente etapa
-// sigue abajo y se puede tocar: la fiesta no bloquea el turno.
+// La fiesta en pantalla: el perro ganador de Petra, el confeti, el nombre y el audio.
+// Se dispara una sola vez, cuando un perro llega a la meta (takeParty). Redibujar la mesa no la reinicia: el cartel
+// vive fuera del HTML de la mesa. Un toque en la fiesta, el botón Saltar o una tecla la cierran. Al cerrarse (sola o
+// saltada) se redibuja la mesa y ahí se abre la hoja final, que revela las apuestas y el resultado.
 import { CLIPS } from "../sfx/index.js";
 import {
   PAPEL, CONFETTI, PARTY_MS, MUSIC_DUCK, partyHears, partySize,
@@ -10,13 +10,6 @@ import { href } from "./art.js";
 
 const reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const asset = (file) => new URL(`../assets/${file}`, import.meta.url).href;
-
-function lineup(dogs, winner) {
-  const rest = dogs.filter((d) => d.dog !== winner);
-  const mid = Math.ceil(rest.length / 2);
-  const star = dogs.find((d) => d.dog === winner);
-  return [...rest.slice(0, mid), ...(star ? [star] : []), ...rest.slice(mid)];
-}
 
 function fallback(dog) {
   const el = document.createElement("span");
@@ -27,9 +20,9 @@ function fallback(dog) {
   return el;
 }
 
-function dogFigure(dog, winner, reduced) {
+function dogFigure(dog, reduced) {
   const fig = document.createElement("figure");
-  fig.className = "party-dog" + (dog.dog === winner ? " win" : "");
+  fig.className = "party-dog";
   fig.dataset.dog = dog.id;
   const img = (src, cls, alt) => {
     const el = document.createElement("img");
@@ -46,7 +39,7 @@ function dogFigure(dog, winner, reduced) {
     return fig;
   }
   const shadow = img(asset(dog.shadow), "shadow", "");
-  const body = img(asset(dog.file), "dog", dog.anim === "tropiezo" ? `${dog.name} se tropieza` : `${dog.name} festeja`);
+  const body = img(asset(dog.file), "dog", `${dog.name} festeja`);
   shadow.addEventListener("error", () => shadow.remove());
   body.addEventListener("error", () => {
     shadow.remove();
@@ -169,7 +162,7 @@ function build(party, size, reduced) {
   if (size !== "mini") {
     const row = document.createElement("div");
     row.className = "party-dogs";
-    for (const dog of lineup(party.dogs, party.winner)) row.append(dogFigure(dog, party.winner, reduced));
+    for (const dog of party.dogs) row.append(dogFigure(dog, reduced));
     hit.append(row);
   }
   const skip = document.createElement("button");
@@ -209,6 +202,14 @@ export function stopParty(ui) {
   if (ui.music && typeof ui.music.stopCue === "function") ui.music.stopCue();
 }
 
+// Se acabó sola o la saltaron: quitarla y redibujar para que salga la hoja de pagos.
+function endParty(ui) {
+  if (!ui || !ui.party) return;
+  const refresh = ui.party.refresh;
+  stopParty(ui);
+  if (typeof refresh === "function") refresh();
+}
+
 function onKey(ui, e) {
   if (!ui.party) return;
   const tag = e.target && e.target.tagName;
@@ -216,18 +217,18 @@ function onKey(ui, e) {
   if (e.key !== "Escape" && e.key !== " " && e.key !== "Enter") return;
   if (e.key !== "Escape" && e.target && e.target.closest && e.target.closest("button, a, [role=button]")) return;
   e.preventDefault();
-  stopParty(ui);
+  endParty(ui);
 }
 
 export function syncParty(ui, ctx, party) {
   if (!ui || typeof document === "undefined") return;
-  if (party) { startParty(ui, party); return; }
+  if (party) { startParty(ui, party, ctx && ctx.refresh); return; }
   const st = ctx && ctx.view;
-  const still = ui.party && st && (st.phase === "leg" || st.phase === "over") && st.phase === ui.party.phase;
+  const still = ui.party && st && st.phase === "over" && st.phase === ui.party.phase;
   if (ui.party && !still) stopParty(ui);
 }
 
-function startParty(ui, party) {
+function startParty(ui, party, refresh) {
   if (ui.party && ui.party.key === party.key) return;
   if (ui.party) stopParty(ui);
   const reduced = reducedMotion();
@@ -238,11 +239,11 @@ function startParty(ui, party) {
   const stopFx = startConfetti(canvas, count, reduced);
   const keyFn = (e) => onKey(ui, e);
   document.addEventListener("keydown", keyFn);
-  const skipNow = (e) => { e.preventDefault(); e.stopPropagation(); stopParty(ui); };
+  const skipNow = (e) => { e.preventDefault(); e.stopPropagation(); endParty(ui); };
   hit.addEventListener("pointerdown", skipNow);
   skip.addEventListener("pointerdown", skipNow);
-  ui.party = { key: party.key, phase: party.phase, root, stopFx, onKey: keyFn, timers: [] };
+  ui.party = { key: party.key, phase: party.phase, root, stopFx, onKey: keyFn, timers: [], refresh };
   const timers = playAudio(ui, party);
-  timers.push(setTimeout(() => { if (ui.party && ui.party.key === party.key) stopParty(ui); }, party.ms || PARTY_MS));
+  timers.push(setTimeout(() => { if (ui.party && ui.party.key === party.key) endParty(ui); }, party.ms || PARTY_MS));
   ui.party.timers = timers;
 }

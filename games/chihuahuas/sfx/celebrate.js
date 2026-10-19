@@ -1,6 +1,9 @@
 // La fiesta del ganador: qué evento la dispara y qué sonido hace cada perro.
 // Puro: no toca el DOM ni suena nada. La interfaz está en ui/party.js.
 //
+// Sale una sola vez, cuando un perro llega a la meta y se acaba la carrera (fase «over»), no al cerrar cada etapa.
+// Festeja solo el ganador: su WebP, su sombra y sus sonidos. Los pagos de la hoja final esperan a que termine.
+//
 // Este archivo es el único lugar del mapeo perro → sonido. Petra (la artista) todavía no manda los clips
 // originales; cuando lleguen, se cambian las llaves de aquí y nada más.
 //
@@ -56,10 +59,6 @@ export const MOVES = {
       file: "festejo-catrina.webp", shadow: "festejo-catrina-sombra.webp", ms: 4830,
       move: "Brinca moviendo las patas delanteras.",
     },
-    tropiezo: {
-      file: "tropiezo-catrina.webp", shadow: "tropiezo-catrina-sombra.webp", ms: 6040,
-      move: "Brinca de 0 a 1.5 s, cae cerca de 1.5 s, rueda de 2 a 4 s y queda mareada boca arriba de 4 a 6 s.",
-    },
   },
 };
 
@@ -100,17 +99,6 @@ export const DOG_SOUNDS = {
   },
 };
 
-// Si Catrina llega última en la carrera, su festejo es el tropiezo. No hay clip de chihuahua triste:
-// la caída usa apilar (el plof de un perro que aterriza).
-export const STUMBLE_SOUNDS = {
-  id: "catrina",
-  cues: [
-    { at: 280, key: "caer-hueso" },
-    { at: 900, key: "ladrido-doble" },
-    { at: 1500, key: "apilar" },
-  ],
-};
-
 const PAIR_MS = 40;
 const GAP_MS = 200;
 
@@ -138,58 +126,51 @@ export function packSounds(cues) {
 
 const shoutName = (dog) => (DOGS[dog].id === "catrina" ? "LA CATRINA" : DOGS[dog].name.toUpperCase());
 
-export function winnerShout(dog, phase) {
-  const name = shoutName(dog);
-  if (phase === "leg") return `¡¡${name} GANÓ LA ETAPA!!`;
-  return `¡¡GANÓ ${name}!!`;
+export function winnerShout(dog) {
+  return `¡¡GANÓ ${shoutName(dog)}!!`;
 }
 
-function dogShow(index, { winner, last, phase }) {
+function dogShow(index) {
   const id = DOGS[index].id;
-  const stumble = phase === "over" && id === "catrina" && index === last && index !== winner;
-  const anim = stumble ? "tropiezo" : "festejo";
-  const meta = MOVES[id][anim];
-  return { dog: index, id, name: DOGS[index].name, anim, file: meta.file, shadow: meta.shadow, ms: meta.ms };
+  const meta = MOVES[id].festejo;
+  return { dog: index, id, name: DOGS[index].name, anim: "festejo", file: meta.file, shadow: meta.shadow, ms: meta.ms };
 }
 
-// Los sonidos de esta fiesta: el confeti, el letrero y el gesto de cada perro.
+// Los sonidos de esta fiesta: el confeti, el letrero y el gesto del ganador.
 export function celebrationSounds(party) {
   const cues = [{ key: "confeti", at: 0 }, { key: "nombre-entra", at: 380 }];
   for (const dog of party.dogs) {
-    const bank = dog.anim === "tropiezo" ? STUMBLE_SOUNDS.cues : DOG_SOUNDS[dog.id].cues;
-    for (const c of bank) cues.push({ key: c.key, at: c.at });
+    for (const c of DOG_SOUNDS[dog.id].cues) cues.push({ key: c.key, at: c.at });
   }
   return packSounds(cues);
 }
 
-// La fiesta que corresponde a este estado, o null si no es fin de etapa ni fin de carrera.
+// La fiesta que corresponde a este estado, o null si la carrera no se ha acabado.
 export function partyFrom(st, key) {
-  if (!st || (st.phase !== "leg" && st.phase !== "over")) return null;
-  const over = st.phase === "over";
-  const rank = over ? st.final && st.final.rank : st.summary && st.summary.rank;
+  if (!st || st.phase !== "over") return null;
+  const rank = st.final && st.final.rank;
   if (!rank || !rank.length || !DOGS[rank[0]]) return null;
   const winner = rank[0];
-  const last = rank[rank.length - 1];
-  const dogs = DOGS.map((_, i) => dogShow(i, { winner, last, phase: st.phase }));
   const party = {
-    kind: over ? "winner" : "leg",
-    key: key || (over ? "over" : "leg"),
+    kind: "winner",
+    key: key || "over",
     phase: st.phase,
     winner,
     winnerId: DOGS[winner].id,
-    shout: winnerShout(winner, st.phase),
-    dogs,
+    shout: winnerShout(winner),
+    dogs: [dogShow(winner)],
     ms: PARTY_MS,
   };
   party.cues = celebrationSounds(party);
   return party;
 }
 
-// El mismo portón que los efectos de fin de etapa (sfx/cues.js): solo cuando el plan de revelar cambia, no mientras
-// corre la tirada, y nunca sin foto anterior (abrir o reconectar). Redibujar deja prev.reveal igual al plan.
+// El mismo portón que los efectos de fin de carrera (sfx/cues.js): solo cuando el plan de revelar cambia, no mientras
+// corre la tirada, y nunca sin foto anterior (abrir o reconectar). Mientras dura la fiesta, prev.reveal se queda como
+// estaba (los pagos esperan), así que prev.party marca que esta fiesta ya salió y no se repite al redibujar.
 export function takeParty({ prev = null, st = null, plan = null, fxOn = false } = {}) {
   if (!prev || !st || !plan || fxOn) return null;
-  if (prev.reveal === plan.key) return null;
+  if (prev.reveal === plan.key || prev.party === plan.key) return null;
   return partyFrom(st, plan.key);
 }
 

@@ -5,9 +5,9 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { DOGS, newGame, apply } from "../../../games/chihuahuas/engine/index.js";
 import { CLIP_KEYS } from "../../../games/chihuahuas/sfx/index.js";
-import { soundRole } from "../../../games/chihuahuas/sfx/cues.js";
+import { soundRole, gather } from "../../../games/chihuahuas/sfx/cues.js";
 import {
-  MOVES, DOG_SOUNDS, STUMBLE_SOUNDS, PARKED_CLIPS, PAPEL, CONFETTI, PARTY_MS,
+  MOVES, DOG_SOUNDS, PARKED_CLIPS, PAPEL, CONFETTI, PARTY_MS,
   packSounds, winnerShout, partyFrom, takeParty, partyHears, partySize, celebrationSounds,
 } from "../../../games/chihuahuas/sfx/celebrate.js";
 import { seededRandom as mulberry32 } from "../../../modules/random/index.js";
@@ -29,23 +29,19 @@ test("cada perro tiene su gesto y un sonido dentro de esa animación", () => {
       assert.ok(!(c.key in PARKED_CLIPS), c.key);
     }
   }
-  for (const c of STUMBLE_SOUNDS.cues) {
-    assert.ok(CLIP_KEYS.includes(c.key));
-    assert.ok(c.at >= 0 && c.at < MOVES.catrina.tropiezo.ms);
-  }
-  assert.ok(existsSync(fileURLToPath(new URL("games/chihuahuas/assets/tropiezo-catrina.webp", root))));
+  for (const dog of DOGS) assert.deepEqual(Object.keys(MOVES[dog.id]), ["festejo"], dog.id);
   for (const key of Object.keys(PARKED_CLIPS)) assert.ok(CLIP_KEYS.includes(key));
 });
 
 test("el grito nombra al perro, y Catrina lleva artículo", () => {
-  assert.equal(winnerShout(4, "over"), "¡¡GANÓ LA CATRINA!!");
-  assert.equal(winnerShout(0, "over"), "¡¡GANÓ CHIA!!");
-  assert.equal(winnerShout(1, "leg"), "¡¡OREO GANÓ LA ETAPA!!");
-  assert.equal(winnerShout(3, "over"), "¡¡GANÓ GUSTAVO!!");
-  assert.equal(winnerShout(2, "leg"), "¡¡CHOCOLATE GANÓ LA ETAPA!!");
+  assert.equal(winnerShout(4), "¡¡GANÓ LA CATRINA!!");
+  assert.equal(winnerShout(0), "¡¡GANÓ CHIA!!");
+  assert.equal(winnerShout(1), "¡¡GANÓ OREO!!");
+  assert.equal(winnerShout(3), "¡¡GANÓ GUSTAVO!!");
+  assert.equal(winnerShout(2), "¡¡GANÓ CHOCOLATE!!");
 });
 
-test("la fiesta no amontona sonidos: a lo más dos a la vez, y separados", () => {
+test("los sonidos del festejo no se amontonan: a lo más dos a la vez, y separados", () => {
   const dogs = DOGS.map((d, i) => ({ dog: i, id: d.id, anim: "festejo" }));
   const cues = celebrationSounds({ dogs });
   const times = [...new Set(cues.map((c) => c.at))].sort((a, b) => a - b);
@@ -61,37 +57,65 @@ test("la fiesta no amontona sonidos: a lo más dos a la vez, y separados", () =>
   assert.deepEqual(packSounds([{ key: "a", at: 0 }, { key: "b", at: 0 }, { key: "c", at: 10 }]).map((c) => c.key), ["a", "b"]);
 });
 
-test("se dispara al revelar la etapa o al ganador, no al abrir, reconectar, redibujar o a media tirada", () => {
+test("sale solo cuando un perro llega a la meta, no al cerrar una etapa ni al abrir, reconectar o redibujar", () => {
   let st = newGame({ n: 2, timer: false }, ["Ana", "Bo"], 0, mulberry32(4));
   const rnd = mulberry32(5);
   for (let i = 0; i < 8 && st.phase === "play"; i++) st = apply(st, st.turn, { type: "roll" }, { rnd });
   assert.equal(st.phase, "leg");
   const plan = { key: `leg-${st.summary.leg}` };
-  assert.equal(takeParty({ prev: null, st, plan, fxOn: false }), null);
-  assert.equal(takeParty({ prev: { reveal: null }, st, plan, fxOn: true }), null);
-  const party = takeParty({ prev: { reveal: null }, st, plan, fxOn: false });
-  assert.equal(party.kind, "leg");
-  assert.equal(party.key, plan.key);
-  assert.equal(party.winner, st.summary.rank[0]);
-  assert.equal(party.shout, winnerShout(party.winner, "leg"));
-  assert.ok(party.dogs.every((d) => d.anim === "festejo"));
-  assert.equal(takeParty({ prev: { reveal: plan.key }, st, plan, fxOn: false }), null);
+  assert.equal(takeParty({ prev: { reveal: null }, st, plan, fxOn: false }), null);
+  assert.equal(partyFrom(st, plan.key), null);
 
   const over = {
     phase: "over",
-    summary: { leg: 3, rank: [2, 0, 1, 3, 4] },
-    final: { rank: [2, 0, 1, 3, 4] },
+    summary: { leg: 3, rank: [4, 0, 1, 3, 2] },
+    final: { rank: [4, 0, 1, 3, 2] },
   };
   const end = { key: "over-3" };
+  assert.equal(takeParty({ prev: null, st: over, plan: end, fxOn: false }), null);
+  assert.equal(takeParty({ prev: { reveal: "leg-3" }, st: over, plan: end, fxOn: true }), null);
   const win = takeParty({ prev: { reveal: "leg-3" }, st: over, plan: end, fxOn: false });
   assert.equal(win.kind, "winner");
-  assert.equal(win.winnerId, "chocolate");
-  assert.equal(win.shout, "¡¡GANÓ CHOCOLATE!!");
-  assert.equal(win.dogs.find((d) => d.id === "catrina").anim, "tropiezo");
-  const stumble = win.cues.filter((c) => c.key === "apilar" || c.key === "ladrido-doble");
-  assert.ok(stumble.length >= 2);
+  assert.equal(win.key, end.key);
+  assert.equal(win.winnerId, "catrina");
+  assert.equal(win.shout, "¡¡GANÓ LA CATRINA!!");
+  assert.deepEqual(win.dogs.map((d) => [d.id, d.anim, d.file, d.shadow]),
+    [["catrina", "festejo", "festejo-catrina.webp", "festejo-catrina-sombra.webp"]]);
+  // Solo los sonidos del ganador, más el confeti y el letrero
+  const mine = new Set(["confeti", "nombre-entra", ...DOG_SOUNDS.catrina.cues.map((c) => c.key)]);
+  assert.ok(win.cues.every((c) => mine.has(c.key)), win.cues.map((c) => c.key).join());
+  assert.ok(!win.cues.some((c) => c.key.startsWith("ladrido-") && c.key !== "ladrido-doble"));
   assert.equal(takeParty({ prev: { reveal: "over-3" }, st: over, plan: end, fxOn: false }), null);
+  assert.equal(takeParty({ prev: { reveal: "leg-3", party: "over-3" }, st: over, plan: end, fxOn: false }), null);
   assert.equal(partyFrom({ phase: "play" }, "x"), null);
+});
+
+test("los pagos de la hoja final esperan a que termine la fiesta, y no se repite al redibujar", () => {
+  const st = {
+    phase: "over", seq: 9, turn: 0, tiles: [], last: { kind: "roll" },
+    summary: { leg: 3, rank: [2, 0, 1, 3, 4], bets: [{ got: 5 }], delta: [5, 0] },
+    final: { rank: [2, 0, 1, 3, 4], winner: [{ got: 8 }], loser: [] },
+  };
+  const plan = { key: "over-3", legAt: [1100], winAt: [2000], loseAt: [], end: 2300 };
+  const base = { role: "all", st, seat: 0, seats: [], err: "", plan, fxOn: false };
+  const prev = { seq: 9, turn: 0, phase: "over", err: "", tiles: [], seats: [], botTurn: false, reveal: "leg-3", party: null };
+  // Sale la fiesta: los pagos no suenan y la foto no marca el plan como revelado
+  const party = takeParty({ prev, st, plan, fxOn: false });
+  assert.ok(party);
+  const during = gather({ ...base, prev, hold: true });
+  assert.equal(during.cues.length, 0);
+  assert.equal(during.snap.reveal, "leg-3");
+  during.snap.party = party.key;
+  // Redibujar con la fiesta encima: nada nuevo, y la fiesta no vuelve a salir
+  assert.equal(takeParty({ prev: during.snap, st, plan, fxOn: false }), null);
+  const still = gather({ ...base, prev: during.snap, hold: true });
+  assert.equal(still.cues.length, 0);
+  // Terminó (o la saltaron): ahora sí la hoja y sus pagos, una sola vez
+  assert.equal(takeParty({ prev: still.snap, st, plan, fxOn: false }), null);
+  const after = gather({ ...base, prev: still.snap, hold: false });
+  assert.deepEqual(after.cues.map((c) => c.key), ["fin-carrera", "pago-ganar", "pago-ganar"]);
+  assert.equal(after.snap.reveal, "over-3");
+  assert.equal(gather({ ...base, prev: after.snap }).cues.length, 0);
 });
 
 test("la tele oye la fiesta completa y el teléfono de una mesa con tele no", () => {

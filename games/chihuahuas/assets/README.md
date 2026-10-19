@@ -51,8 +51,8 @@ la aspiradora lo regresa, en ese brinco usa la vista contraria. Elección de las
 ## Animaciones
 
 Animaciones de los perros, la carrera y dos fondos. **No están en `bank.js`**, así que `assets.test.js` no las revisa
-y no se bajan con la mesa. La fiesta del ganador (`ui/party.js`, #71) usa `festejo-*` y, si Catrina llega última,
-`tropiezo-catrina`, con su sombra. Solo las pide la tele o la mesa sin tele, y solo cuando arranca la fiesta. El
+y no se bajan con la mesa. La fiesta del ganador (`ui/party.js`, #71) usa el `festejo-*` del perro que ganó la carrera,
+con su sombra. `tropiezo-catrina` no se usa hoy. Solo las pide la tele o la mesa sin tele, y solo cuando arranca la fiesta. El
 teléfono de una mesa con tele no las baja: ahí la fiesta es confeti y el nombre. Siguen pesando más que el máximo del
 banco (cerca de 1 MB cada una).
 
