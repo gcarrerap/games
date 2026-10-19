@@ -54,10 +54,11 @@ async function route() {
   if (s.gameId !== gameId || !s.game) await session.actions.openGame(gameId);
   if (sub === "practica") { if (!s.table || !s.practice) location.replace(`#/${gameId}`); return; } // al recargar no hay práctica que retomar
   if (sub && /^[A-Z]{4}$/.test(sub.toUpperCase())) {
-    const code = sub.toUpperCase(), tv = extra === "tele";
-    if (s.code === code && s.screen === "table" && s.tv === tv) return;
+    // .../tele abre la mesa en Monitor (la tele, o cualquier aparato que solo mira)
+    const code = sub.toUpperCase(), monitor = extra === "tele";
+    if (s.code === code && s.screen === "table") { if (monitor && s.want !== "monitor") session.actions.setMode("monitor"); return; }
     await connected; // un enlace a una mesa puede abrirse antes de conectar
-    if (location.hash.split("/")[2]?.toUpperCase() === code) session.actions.openTable(code, { tv });
+    if (location.hash.split("/")[2]?.toUpperCase() === code) session.actions.openTable(code, { monitor });
     return;
   }
   if (s.screen === "table") session.actions.leave();

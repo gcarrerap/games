@@ -6,6 +6,7 @@ import { RULES, nTeams, teamOf, nameOf, topOf, isBlack3, isNatural, sortCards, c
 import { knownCards } from "../ai/index.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
+import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
 import { modeLabel, teamLabels, teamShort, seatPos, teamColor, isPartner, partnerWord, TOP_ORDER } from "./labels.js";
 import { cardSVG, backSVG, cardChip } from "./svg/card.js";
 import { meldChip, sortMelds } from "./svg/meld.js";
@@ -108,9 +109,11 @@ function renderGameMenu(ctx, ui, st, seat) {
     ${ctx.practice ? `<button id="reveal" class="${ui.reveal ? "primary" : ""}" aria-pressed="${ui.reveal}">${ui.reveal ? "Ocultar manos" : "Ver manos (revisar a la compu)"}</button>` : ""}
     <details class="help"><summary>Cómo se juega</summary>${rulesHelp()}</details>
     <details class="help"><summary>Jugadas (${st.log.length})</summary><div class="log">${st.log.slice().reverse().map((l) => `<div>${esc(l)}</div>`).join("")}</div></details>
+    ${modeMenu(ctx)}
     <button id="back">← Salir</button>
     <button class="primary big-cta" id="menuclose">Volver al juego</button>`);
   $("#menuclose", ctx.modal).onclick = closeOverlay;
+  wireModeMenu(ctx.modal, ctx);
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };
   $("#reveal", ctx.modal)?.addEventListener("click", () => { ui.reveal = !ui.reveal; ctx.refresh(); });
 }

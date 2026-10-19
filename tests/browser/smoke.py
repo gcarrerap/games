@@ -19,10 +19,12 @@ consola:
      el consejo y abrir el menú. En línea: la regla escogida se ve en la pantalla de asientos.
   5. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
      mientras escribes; el campo no debe perder el foco (el teclado se abría y cerraba sin parar).
-  7. Skull con la tele como tablero (al final): crear la mesa con la opción, abrirla como tele desde el lobby (espera
-     con el código), empezar desde el teléfono (solo lo suyo), y la tele con los tapetes de todos y sin botones.
-  7b. La Carrera con la tele como tablero (al final): mesa de 8 con la opción; la espera de la tele con la portada;
-     jugar un turno desde el teléfono (solo lo suyo: el tapete se escoge con la tira de números) y la tele con la
+  4b. Modos del aparato en el Continental en línea: desde el menú, Monitor (sin mano ni botones) y de regreso a Teléfono.
+  7. Skull con los modos del aparato (al final): abrir la mesa en Monitor desde el lobby (espera con el código), dejar
+     la espera para sentarse, empezar en Teléfono, cambiar a Control (solo lo suyo) y a Monitor (los tapetes de todos,
+     sin botones, con menú); el aviso de Monitor cuando le toca y volver a Control desde el aviso.
+  7b. La Carrera con los modos (al final): mesa de 8; la espera del Monitor con la portada;
+     jugar un turno en Control (solo lo suyo: el tapete se escoge con la tira de números) y el Monitor con la
      pista grande, las imágenes en alta, los 8 jugadores sin encimarse (16:9 y cuadrada) y sin botones. La música
      solo en la tele: el teléfono no tiene botón de música.
   6. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
@@ -374,9 +376,29 @@ with sync_playwright() as p:
         on.click(f"[data-addbot='{i}']"); on.wait_for_timeout(100)
     on.click("#start:not([disabled])"); on.wait_for_selector("#hand .cardbtn", timeout=10000)
     cont_online_buy = bool(on.query_selector("#buy"))
-    # Skull con la tele como tablero: el mismo aparato hace de teléfono y de tele (el Firebase de mentira vive en la página)
+    # Modos del aparato en un juego sin dibujo de Monitor propio: desde el menú, Monitor quita la mano y los botones;
+    # Teléfono la regresa
+    on.click("#menu"); on.wait_for_selector(".modepick [data-devmode='monitor']")
+    cont_menu_modes = len(on.query_selector_all(".modepick [data-devmode]:not([disabled])")) == 3
+    on.eval_on_selector(".modepick", "e => e.scrollIntoView()"); shot("15a-menu-modos")
+    on.click(".modepick [data-devmode='monitor']"); on.wait_for_timeout(300)
+    if on.query_selector("#menuclose"): on.click("#menuclose")
+    on.wait_for_timeout(300)
+    cont_monitor = (not on.query_selector("#hand .cardbtn") and on.evaluate("document.documentElement.classList.contains('tv')")
+                    and bool(on.query_selector("#menu"))); shot("15b-continental-monitor")
+    on.click("#menu"); on.wait_for_selector(".modepick [data-devmode='mobile']")
+    on.click(".modepick [data-devmode='mobile']"); on.wait_for_timeout(300)
+    if on.query_selector("#menuclose"): on.click("#menuclose")
+    on.wait_for_selector("#hand .cardbtn", timeout=5000)
+    cont_back = not on.evaluate("document.documentElement.classList.contains('tv')")
+    # Skull con Teléfono, Control y Monitor: el mismo aparato hace de teléfono y de tele (el Firebase de mentira vive en la página)
+    def pick_mode(m):
+        on.click("#menu"); on.wait_for_selector(f".modepick [data-devmode='{m}']")
+        on.click(f".modepick [data-devmode='{m}']"); on.wait_for_timeout(300)
+        if on.query_selector("#menuclose"): on.click("#menuclose")
+        on.wait_for_timeout(200)
     on.evaluate("location.hash = '#/skull'"); on.wait_for_selector("#create:not([disabled])")
-    on.click("[data-mode='3']"); on.click("[data-timer='0']"); on.click("[data-tvopt='1']"); on.click("#create")
+    on.click("[data-mode='3']"); on.click("[data-timer='0']"); on.click("#create")
     on.wait_for_selector(".seatlist")
     tv_code = on.evaluate("location.hash.split('/')[2]")
     tv_hint = bool(on.query_selector(".tvinfo"))
@@ -387,22 +409,32 @@ with sync_playwright() as p:
     on.click(f"[data-tv='{tv_code}']"); on.wait_for_selector(".tvwait")
     tv_wait = tv_code in on.inner_text(".tvcode") and not on.query_selector("[data-sit], #start"); shot("16-tele-espera")
     on.set_viewport_size({"width": 390, "height": 844})
-    on.evaluate(f"location.hash = '#/skull/{tv_code}'"); on.wait_for_selector("#start:not([disabled])")
-    on.click("#start"); on.wait_for_selector(".game.skull.phone [data-place]:not([disabled])", timeout=10000)
+    # Dejar la espera del Monitor para sentarse y jugar en este aparato
+    on.click("#tvplay"); on.wait_for_selector("#start:not([disabled])")
+    tv_unhash = not on.evaluate("location.hash.endsWith('/tele')")
+    on.click("#start"); on.wait_for_selector(".game.skull [data-place]:not([disabled])", timeout=10000)
+    tv_mobile = bool(on.query_selector(".game.skull .board"))  # Teléfono: el tablero y lo suyo
+    pick_mode("remote"); on.wait_for_selector(".game.skull.phone [data-place]")
     tv_phone = not on.query_selector(".game.skull .board"); shot("17-tele-telefono")
     on.click("[data-place='S']"); on.wait_for_timeout(300)
     on.set_viewport_size({"width": 1280, "height": 720})
-    on.evaluate(f"location.hash = '#/skull/{tv_code}/tele'"); on.wait_for_selector(".game.skull.tv .board")
-    on.wait_for_timeout(2500)  # la compu no la mueve la tele, pero sí se ve lo que ya pasó
+    pick_mode("monitor"); on.wait_for_selector(".game.skull.tv .board")
+    on.wait_for_timeout(2500)  # la compu sigue: la mueve el respaldo (este aparato no, está en Monitor)
     tv_board = (len(on.query_selector_all(".skull.tv .prow")) == 3 and not on.query_selector(".skull.tv [data-place], .skull.tv #bid, .skull.tv [data-flip]")
-                and on.evaluate("document.documentElement.classList.contains('tv')"))
+                and on.evaluate("document.documentElement.classList.contains('tv')") and bool(on.query_selector(".skull.tv #menu")))
     shot("18-tele-tablero")
-    on.evaluate(f"location.hash = '#/skull/{tv_code}'"); on.wait_for_selector(".game.skull.phone")
-    tv_left = not on.evaluate("document.documentElement.classList.contains('tv')")
+    # Sentado en Monitor y le toca: el aviso para cambiar de modo
+    try:
+        on.wait_for_selector(".modebar [data-barmode='remote']", timeout=30000); tv_bar = True; shot("18b-monitor-te-toca")
+        on.click(".modebar [data-barmode='remote']")
+    except PWError:
+        tv_bar = False; pick_mode("remote")
+    on.wait_for_selector(".game.skull.phone")
+    tv_left = not on.evaluate("document.documentElement.classList.contains('tv')") and not on.query_selector(".modebar")
 
     # La Carrera de Chihuahuas con la tele como tablero: mesa de 8 (7 con la compu)
     on.evaluate("location.hash = '#/chihuahuas'"); on.wait_for_selector("#create:not([disabled])")
-    on.click("[data-mode='8']"); on.click("[data-timer='0']"); on.click("[data-tvopt='1']"); on.click("#create")
+    on.click("[data-mode='8']"); on.click("[data-timer='0']"); on.click("#create")
     on.wait_for_selector(".seatlist")
     ch_code = on.evaluate("location.hash.split('/')[2]")
     for i in range(1, 8):
@@ -411,8 +443,10 @@ with sync_playwright() as p:
     on.evaluate(f"location.hash = '#/chihuahuas/{ch_code}/tele'"); on.wait_for_selector(".tvwait")
     ch_tv_wait = bool(on.query_selector(".tvwait.cover")) and ch_code in on.inner_text(".tvcode"); shot("19-carrera-tele-espera")
     on.set_viewport_size({"width": 390, "height": 844})
-    on.evaluate(f"location.hash = '#/chihuahuas/{ch_code}'"); on.wait_for_selector("#start:not([disabled])")
-    on.click("#start"); on.wait_for_selector(".game.chihuahuas.phone", timeout=10000)
+    on.click("#tvplay"); on.wait_for_selector("#start:not([disabled])")
+    on.click("#start"); on.wait_for_selector(".game.chihuahuas #menu", timeout=10000)
+    on.wait_for_timeout(4500)  # la portada al empezar
+    pick_mode("remote"); on.wait_for_selector(".game.chihuahuas.phone", timeout=10000)
     ch_phone_only = not on.query_selector(".game.chihuahuas .board, .game.chihuahuas .players") and "tele" in on.inner_text(".tvnote")
     ch_phone_quiet = not on.query_selector(".game.chihuahuas [data-music]")
     # Esperar el turno propio (la compu la mueve este mismo teléfono) y poner el tapete con la tira de números
@@ -440,7 +474,8 @@ with sync_playwright() as p:
           const crash = board.left < side.right - 1 && side.left < board.right - 1 && board.top < side.bottom - 1 && side.top < board.bottom - 1;
           return {
             players: pls.length, overlap, fits: pls.every(inside) && inside(board) && !crash,
-            buttons: q(".chihuahuas.tv #roll, .chihuahuas.tv [data-ticket], .chihuahuas.tv [data-pick], .chihuahuas.tv #menu, .chihuahuas.tv #bubble").length,
+            buttons: q(".chihuahuas.tv #roll, .chihuahuas.tv [data-ticket], .chihuahuas.tv [data-pick], .chihuahuas.tv #bubble").length,
+            menu: !!document.querySelector(".chihuahuas.tv #menu"),
             big: q(".chihuahuas.tv .board .dogimg").length > 0 && q(".chihuahuas.tv .board .dogimg").every((i) => i.src.includes("-tele.")),
             tile: !!document.querySelector(`.chihuahuas.tv .cell[data-space="${picked}"] .tile`),
             tvClass: document.documentElement.classList.contains("tv"),
@@ -451,7 +486,7 @@ with sync_playwright() as p:
     ch_tv = tv_check(1920, 1080, "21-carrera-tele-tablero")
     ch_tv_sq = tv_check(1080, 1080, "22-carrera-tele-cuadrada")
     on.set_viewport_size({"width": 390, "height": 844})
-    on.evaluate(f"location.hash = '#/chihuahuas/{ch_code}'"); on.wait_for_selector(".game.chihuahuas.phone")
+    pick_mode("remote"); on.wait_for_selector(".game.chihuahuas.phone")
     ch_phone_small = not on.evaluate("[...document.images].some((i) => i.src.includes('-tele.'))")
     browser.close()
 
@@ -502,6 +537,10 @@ if cc_styles != ["damas-chinas"]: problems.append(f"Damas chinas: estilos cargad
 if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not tv_hint: problems.append("Skull con tele: la pantalla de asientos no explica cómo abrir la tele")
+if not (cont_menu_modes and cont_monitor and cont_back): problems.append(f"Continental: cambiar a Monitor y de regreso desde el menú (modos {cont_menu_modes}, monitor {cont_monitor}, regreso {cont_back})")
+if not tv_unhash: problems.append("Skull: al dejar la espera del Monitor, la dirección sigue en /tele")
+if not tv_mobile: problems.append("Skull en Teléfono: no se ve el tablero")
+if not tv_bar: problems.append("Skull sentado en Monitor: no salió el aviso cuando le tocaba")
 if not tv_wait: problems.append("Skull con tele: la tele no muestra la espera con el código (o tiene botones de asiento)")
 if not tv_phone: problems.append("Skull con tele: el teléfono muestra los tapetes de todos")
 if not tv_board: problems.append("Skull con tele: la tele no muestra los 3 tapetes sin botones")
@@ -516,6 +555,7 @@ if not ch_phone_small: problems.append("Carrera con tele: el teléfono bajó im�
 for label, r in (("16:9", ch_tv), ("cuadrada", ch_tv_sq)):
     if r["players"] != 8 or r["overlap"] or not r["fits"]: problems.append(f"Carrera con tele ({label}): los 8 jugadores no caben sin encimarse {r}")
     if r["buttons"]: problems.append(f"Carrera con tele ({label}): la tele tiene botones de juego")
+    if not r["menu"]: problems.append(f"Carrera con tele ({label}): el Monitor no tiene menú para cambiar de modo")
     if not r["big"] or not r["tvClass"]: problems.append(f"Carrera con tele ({label}): la tele no usa las imágenes en alta {r}")
     if not r["tile"]: problems.append(f"Carrera con tele ({label}): el tapete puesto desde el teléfono no se ve en la tele")
 if not online_finished: problems.append("en línea: la mano no terminó")

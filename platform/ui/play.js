@@ -5,8 +5,10 @@
 //      practice, clock (lo que queda del turno, o null), act(action) → Promise<boolean> (true si se pudo), again(), leave(), advice + askAdvice() + closeAdvice(), setSeatBot(seat, profile),
 //      peek() (el estado completo; solo en práctica, para "ver manos"; en línea es null), prefs (las de este juego), err,
 //      modal (donde van las ventanas), refresh() (volver a dibujar), setDragging(on) (no redibujar mientras arrastras)
-//      display: "tv" (este aparato es la tele de la mesa: el tablero para todos, sin asiento ni botones de juego),
-//               "phone" (mesa con tele y tú sentado: solo lo tuyo, la mesa se ve en la tele) o "full" (lo de siempre)
+//      display: "tv" (Monitor: el tablero para todos, sin asiento ni botones de juego),
+//               "phone" (Control, en un juego que lo dibuja: solo lo tuyo, sin el tablero) o "full" (lo de siempre),
+//      mode ("mobile" | "remote" | "monitor"), modes (los que este aparato puede escoger), setMode(m): el modo del
+//      aparato (docs/ARCHITECTURE.md §5, "Modos del aparato"). El juego pone en su menú modeMenu(ctx) (./modes.js).
 import { gamePrefs } from "../services/index.js";
 import { esc } from "./dom.js";
 import { displayFor } from "../app/table.js";
@@ -18,7 +20,8 @@ let dragging = false;
 function buildCtx({ state, actions, store }, modal) {
   const game = state.game, t = state.table, seat = actions.mySeat(), practice = state.practice;
   return {
-    game, table: t, seat, practice, clock: actions.clock(), display: displayFor({ game, table: t, seat, practice, tv: state.tv }),
+    game, table: t, seat, practice, clock: actions.clock(), display: displayFor({ game, mode: actions.mode() }),
+    mode: actions.mode(), modes: actions.modes(), setMode: (m) => actions.setMode(m),
     view: game.view(t.state, seat),
     peek: practice ? () => store.state.table.state : null,
     act: (a) => actions.play(a),

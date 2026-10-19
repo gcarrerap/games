@@ -16,6 +16,7 @@ import { historyHTML } from "./history.js";
 import { startFx, activeFx, hiddenDogs, fxStatus, revealed, paintFx, elapsed } from "./fx.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
+import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
 import { fullscreenButton, wireFullscreen } from "../../../platform/ui/tv.js";
 import { musicButton, musicControls, wireMusic } from "../../../modules/music/ui.js";
 
@@ -42,9 +43,11 @@ function renderMenu(ctx, st, music) {
     ${music && music.hasSongs ? `<h4 class="fh">🎵 Música</h4>${musicControls(music)}` : ""}
     <details class="help"><summary>Reglas</summary>${rulesHelp()}</details>
     <button id="menuhist">📜 Jugadas</button>
+    ${modeMenu(ctx)}
     <button id="back">← Salir</button>
     <button class="primary big-cta" id="menuclose">Volver a la carrera</button>`);
   $("#menuclose", ctx.modal).onclick = closeOverlay;
+  wireModeMenu(ctx.modal, ctx);
   $("#menuhist", ctx.modal).onclick = () => openOverlay("hist");
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };
   wireMusic(ctx.modal, music, { setDragging: ctx.setDragging });
@@ -343,6 +346,7 @@ export function renderTable(app, ctx, ui) {
     const left = DOGS.map((_, d) => `<span class="tleft" data-dog="${DOGS[d].id}">${faceArt(d)}<b>${st.tickets[d].length ? st.tickets[d][0] : "—"}</b></span>`).join("");
     app.innerHTML = `
       <header class="gbar">
+        <button class="menubtn" id="menu" aria-label="Menú de la partida" aria-haspopup="dialog"><span></span><span></span><span></span></button>
         <div class="gtitle">Carrera de Chihuahuas</div>
         ${musicControls(ui.music)}
         ${fullscreenButton()}
@@ -360,7 +364,10 @@ export function renderTable(app, ctx, ui) {
     wireFullscreen(app);
     wireMusic(app, ui.music, { setDragging: ctx.setDragging });
     paintFx($(".board", app), fx, st);
-    if (fx) ctx.modal.innerHTML = ""; // primero se ve la carrera
+    // El menú, para cambiar de modo desde aquí (un Monitor con asiento puede volver a Teléfono o Control)
+    $("#menu", app).onclick = () => openOverlay("gameMenu");
+    if (overlay() && overlay().id === "gameMenu") renderMenu(ctx, st, ui.music);
+    else if (fx) ctx.modal.innerHTML = ""; // primero se ve la carrera
     else if (st.phase === "leg") renderLeg(ctx, st, seat, ui, true);
     else if (st.phase === "over") renderOver(ctx, st, seat, ui, true);
     else ctx.modal.innerHTML = "";

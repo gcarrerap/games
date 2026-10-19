@@ -12,7 +12,7 @@ import { seededRandom } from "../../modules/random/index.js";
 import nim from "../modules/fixtures/nim.js";
 import domino from "../../games/domino/index.js";
 import skull from "../../games/skull/index.js";
-import { displayFor } from "../../platform/app/table.js";
+import { displayFor, deviceMode, deviceModes } from "../../platform/app/table.js";
 
 const GAMES = { nim, domino, skull };
 
@@ -232,59 +232,100 @@ test("una mesa de otro juego no se abre como si fuera de este", async () => {
   assert.match(B.st.err, /otro juego/);
 });
 
-test("la tele como tablero: la opción solo existe si el juego la admite y queda en la mesa", async () => {
-  const w = world(), A = w.phone("A");
-  await ready(A, "skull", "Ana");
-  assert.equal(A.a.practiceSettings().tv, false);
-  A.a.savePractice({ tv: true });
-  assert.equal(A.a.practiceSettings().tv, true);
-  const code = await A.a.createTable({ ...A.a.practiceSettings(), mode: "3", timer: false });
-  A.a.openTable(code);
-  assert.equal(A.st.table.config.tv, true);
-  // El dominó no tiene tele: aunque se pida, no queda en la mesa
-  const B = w.phone("B"); await ready(B, "domino", "Beto");
-  const c2 = await B.a.createTable({ ...B.a.practiceSettings(), mode: "2x7", timer: false, tv: true });
-  B.a.openTable(c2);
-  assert.equal(B.st.table.config.tv, undefined);
-  assert.equal(B.a.practiceSettings().tv, false);
+test("modos del aparato: sin asiento solo Monitor; sentado escoge; en práctica solo Teléfono", () => {
+  assert.deepEqual(deviceModes({ seated: false }), ["monitor"]);
+  assert.deepEqual(deviceModes({ seated: true }), ["mobile", "remote", "monitor"]);
+  assert.deepEqual(deviceModes({ seated: true, practice: true }), ["mobile"]);
+  assert.equal(deviceMode({ requested: null, seated: true }), "mobile");
+  assert.equal(deviceMode({ requested: null, seated: false }), "monitor");
+  assert.equal(deviceMode({ requested: "remote", seated: true }), "remote");
+  assert.equal(deviceMode({ requested: "remote", seated: false }), "monitor"); // pierde el asiento: Monitor
+  assert.equal(deviceMode({ requested: "monitor", seated: true, practice: true }), "mobile");
 });
 
-test("la tele: nunca tiene asiento (aunque en ese aparato se haya sentado alguien), no mueve a la compu, no graba y no ve discos", async () => {
+test("ctx.display: Monitor es la tele en todos los juegos; Control solo cambia el dibujo si el juego lo tiene", () => {
+  assert.equal(displayFor({ game: skull, mode: "monitor" }), "tv");
+  assert.equal(displayFor({ game: domino, mode: "monitor" }), "tv");
+  assert.equal(displayFor({ game: skull, mode: "remote" }), "phone");
+  assert.equal(displayFor({ game: domino, mode: "remote" }), "full"); // sin dibujo de Control: la mesa de siempre
+  assert.equal(displayFor({ game: skull, mode: "mobile" }), "full");
+});
+
+test("Monitor (la ruta /tele): sin asiento no juega, no mueve a la compu, no graba y no ve discos", async () => {
   const w = world(), A = w.phone("A"), T = w.phone("T");
   await ready(A, "skull", "Ana"); await ready(T, "skull", "Tele");
-  const code = await A.a.createTable({ ...A.a.practiceSettings(), mode: "3", timer: false, tv: true });
+  const code = await A.a.createTable({ ...A.a.practiceSettings(), mode: "3", timer: false });
   A.a.openTable(code); await A.a.addBotAt(1, skull.bots.profiles[0].id); await A.a.addBotAt(2, skull.bots.profiles[0].id);
-  T.a.openTable(code, { tv: true });
-  assert.equal(T.st.tv, true);
+  T.a.openTable(code, { monitor: true });
+  assert.equal(T.a.mode(), "monitor");
+  assert.deepEqual(T.a.modes(), ["monitor"]);
   assert.equal(T.seat(), -1);
   await A.a.startGame();
   assert.equal(T.st.table.status, "playing");
-  // La tele no juega: su jugada no cuenta
   const before = T.st.table.turn;
   assert.equal(await T.a.play({ type: "place", disc: "F" }), false);
   assert.equal(T.st.table.turn, before);
-  // Ni su reloj resuelve turnos ni mueve a la compu
   assert.ok([...w.timers.values()].every((x) => x.phone !== "T"));
-  // Lo que ve la tele: ningún disco boca abajo
   await A.a.play({ type: "place", disc: "S" });
   const v = skull.view(T.st.table.state, T.seat());
   assert.ok(v.stacks.every((stack) => stack.every((d) => d === null)));
   assert.ok(v.discs.every((d) => d === null));
-  // Una tele en el aparato de alguien sentado tampoco juega por esa persona
-  const A2 = w.phone("A2", "A"); await ready(A2, "skull", "Ana");
-  A2.a.openTable(code, { tv: true });
-  assert.equal(A2.seat(), -1);
-  // Salir de la tele deja el aparato como cualquier otro
+  // Sin asiento no puede pedir otro modo
+  T.a.setMode("mobile");
+  assert.equal(T.a.mode(), "monitor");
   T.a.leave();
-  assert.equal(T.st.tv, false);
+  assert.equal(T.st.want, null);
 });
 
-test("ctx.display: tele, teléfono de una mesa con tele, o la mesa completa", () => {
-  const withTv = { config: { tv: true } }, without = { config: {} };
-  assert.equal(displayFor({ game: skull, table: withTv, seat: -1, tv: true }), "tv");
-  assert.equal(displayFor({ game: skull, table: withTv, seat: 1 }), "phone");
-  assert.equal(displayFor({ game: skull, table: withTv, seat: -1 }), "full"); // quien solo mira en su teléfono
-  assert.equal(displayFor({ game: skull, table: without, seat: 1 }), "full");
-  assert.equal(displayFor({ game: skull, table: withTv, seat: 0, practice: true }), "full");
-  assert.equal(displayFor({ game: domino, table: withTv, seat: -1, tv: true }), "full"); // juego sin tele
+test("sentado en Monitor: conserva su asiento, no tira hasta volver a Teléfono o Control, y el modo se recuerda por mesa", async () => {
+  const w = world(), A = w.phone("A"), B = w.phone("B");
+  await ready(A, "nim", "Ana"); await ready(B, "nim", "Beto");
+  const code = await A.a.createTable({ ...A.a.practiceSettings(), mode: A.st.game.modes[0].id, timer: false });
+  A.a.openTable(code); B.a.openTable(code);
+  assert.equal(B.a.mode(), "monitor"); // sin asiento
+  await B.a.sitAt(1);
+  assert.equal(B.a.mode(), "mobile"); // sentado: el de siempre
+  await A.a.startGame();
+  const turn = A.st.game.currentSeats(A.st.table.state)[0];
+  const P = turn === 0 ? A : B;
+  P.a.setMode("monitor");
+  assert.equal(P.a.mode(), "monitor");
+  assert.equal(P.a.seatedAt(), turn); // sigue sentado
+  assert.equal(P.seat(), -1); // pero no juega
+  const before = P.st.table.turn;
+  const action = P.st.game.legalActions(P.st.table.state, turn)[0];
+  assert.equal(await P.a.play(action), false);
+  assert.match(P.st.err, /Monitor/);
+  assert.equal(P.st.table.turn, before);
+  P.a.setMode("remote");
+  assert.equal(P.a.mode(), "remote");
+  assert.equal(await P.a.play(action), true);
+  // Al volver a abrir la mesa en ese aparato, regresa en el mismo modo; con /tele, en Monitor
+  P.a.leave(); P.a.openTable(code);
+  assert.equal(P.a.mode(), "remote");
+  P.a.leave(); P.a.openTable(code, { monitor: true });
+  assert.equal(P.a.mode(), "monitor");
+});
+
+test("sentado en Monitor: la compu sigue jugando (este aparato la mueve aunque no tire)", async () => {
+  const w = world(), A = w.phone("A");
+  await ready(A, "skull", "Ana");
+  const code = await A.a.createTable({ ...A.a.practiceSettings(), mode: "3", timer: false });
+  A.a.openTable(code); await A.a.addBotAt(1, skull.bots.profiles[0].id); await A.a.addBotAt(2, skull.bots.profiles[0].id);
+  await A.a.startGame();
+  await A.a.play({ type: "place", disc: "F" });
+  A.a.setMode("monitor");
+  const before = A.st.table.turn;
+  for (let i = 0; i < 4 && w.timers.size; i++) await w.runNext();
+  assert.ok(A.st.table.turn > before, "la compu no jugó con la única persona en Monitor");
+});
+
+test("modos del aparato: en práctica no se cambia", async () => {
+  const w = world(), A = w.phone("A");
+  await ready(A, "skull", "Ana");
+  A.a.startPractice({ ...A.a.practiceSettings(), mode: "3", timer: false });
+  assert.deepEqual(A.a.modes(), ["mobile"]);
+  A.a.setMode("monitor");
+  assert.equal(A.a.mode(), "mobile");
+  assert.equal(A.seat(), 0);
 });

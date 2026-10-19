@@ -95,12 +95,27 @@ export function act(game, t, seat, action, now) {
 // un turnKey solo se guarda si la mesa sigue en ese turnKey (otro teléfono pudo adelantarse).
 export const turnKey = (t) => (t && t.status === "playing" ? `${t.round}:${t.turn}` : null);
 
-// Cómo se dibuja la mesa en un aparato (ctx.display): "tv" si es la tele de una mesa en línea, "phone" si la mesa se
-// juega con tele y ese aparato tiene asiento, "full" en todo lo demás (práctica, quien solo mira, juegos sin tele).
-export function displayFor({ game, table, seat, practice = false, tv = false }) {
-  if (!game || !game.tv || practice) return "full";
-  if (tv) return "tv";
-  return table && table.config && table.config.tv && seat >= 0 ? "phone" : "full";
+// Modos del aparato (docs/ARCHITECTURE.md §5, "Modos del aparato"). Cada aparato que entra a una mesa en línea
+// escoge cómo la usa:
+//   "mobile"  (Teléfono): ve el tablero y juega lo suyo. Necesita asiento.
+//   "remote"  (Control): juega lo suyo; si el juego tiene dibujo de control (game.remote), sin el tablero. Necesita asiento.
+//   "monitor" (Monitor): ve el tablero y las jugadas de todos, sin nada oculto y sin jugar. Con o sin asiento.
+// Sin asiento solo hay Monitor. En práctica solo hay Teléfono.
+export const DEVICE_MODES = ["mobile", "remote", "monitor"];
+export function deviceModes({ seated, practice = false }) {
+  if (practice) return ["mobile"];
+  return seated ? DEVICE_MODES.slice() : ["monitor"];
+}
+// El modo que queda: el pedido si se puede; si no, Teléfono (sentado) o Monitor (sin asiento)
+export function deviceMode({ requested = null, seated, practice = false }) {
+  const can = deviceModes({ seated, practice });
+  return can.includes(requested) ? requested : can[0];
+}
+// ctx.display para el juego: "tv" en Monitor, "phone" en Control (solo si el juego lo dibuja), "full" en lo demás
+export function displayFor({ game, mode }) {
+  if (mode === "monitor") return "tv";
+  if (mode === "remote" && game && game.remote) return "phone";
+  return "full";
 }
 
 export const mySeat = (t, playerId) => t.seats.findIndex((s) => s && !s.bot && s.id === playerId);

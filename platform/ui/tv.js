@@ -1,20 +1,21 @@
-// La tele como tablero (docs/ARCHITECTURE.md §5, "La tele"). Un aparato sin asiento abre la mesa en línea con
-// #/<juego>/<CÓDIGO>/tele y muestra la mesa para que todos la vean; cada quien juega desde su teléfono.
+// El modo Monitor (docs/ARCHITECTURE.md §5, "Modos del aparato"). Una tele, o cualquier aparato, abre la mesa en
+// línea con #/<juego>/<CÓDIGO>/tele (o escoge Monitor en el menú del juego) y muestra la mesa para que todos la vean.
 //
-// Aquí está lo que la plataforma pone para cualquier juego que la admite (game.tv): la pantalla de espera mientras
+// Aquí está lo que la plataforma pone para cualquier juego: la pantalla de espera mientras
 // la gente se sienta (con la portada del juego de fondo si trae `tvCover`), mantener la pantalla encendida, pantalla completa y el aviso de cómo abrir la tele. La mesa
 // durante la partida la dibuja cada juego con ctx.display === "tv".
 import { $, esc } from "./dom.js";
+import { switchMode } from "./modes.js";
 
 export const tvLink = (gameId, code) => `${location.origin}${location.pathname}#/${gameId}/${code}/tele`;
 export const siteLink = () => `${location.origin}${location.pathname}`;
 
 // Cómo se abre la tele, para los teléfonos de una mesa con tele
 export const tvHowTo = (game, code) =>
-  `En la tele abre <b>${esc(siteLink().replace(/^https?:\/\//, ""))}</b>, entra a ${esc(game.name)} y toca <b>Tele</b> en la mesa <b>${esc(code)}</b>.`;
+  `Para usar una tele como tablero, ábrela en <b>${esc(siteLink().replace(/^https?:\/\//, ""))}</b>, entra a ${esc(game.name)} y toca <b>📺 Monitor</b> en la mesa <b>${esc(code)}</b>.`;
 
 // Mientras se sientan: el código grande, quién ya está y cómo entrar desde el teléfono. Nadie toca la tele.
-export function renderTvSeats(app, { state }) {
+export function renderTvSeats(app, { state, actions }) {
   const t = state.table, game = state.game;
   const seats = t.seats.map((x, i) => `<li class="${x ? "taken" : ""}"><span class="tvseatn">${i + 1}</span>${x ? `<b>${esc(x.name)}</b>${x.bot ? ` <small>compu</small>` : ""}` : `<i>libre</i>`}</li>`).join("");
   const missing = t.seats.filter((x) => !x).length;
@@ -28,8 +29,11 @@ export function renderTvSeats(app, { state }) {
     <p class="tvjoin">En tu teléfono abre <b>${esc(siteLink().replace(/^https?:\/\//, ""))}</b>, entra a ${esc(game.name)} y siéntate en la mesa <b>${esc(t.code)}</b>.</p>
     <ul class="tvseats">${seats}</ul>
     <p class="tvhint">${missing ? `Falta${missing === 1 ? "" : "n"} ${missing}. Los asientos libres se pueden llenar con la compu desde un teléfono.` : "Todos sentados. Empiecen desde cualquier teléfono."}</p>
-    <p class="err" role="alert">${esc(state.err)}</p>`;
+    <p class="err" role="alert">${esc(state.err)}</p>
+    <button class="ghost tvplay" id="tvplay">Sentarme y jugar en este aparato</button>`;
   wireFullscreen(app);
+  // Para dejar la espera y ver los asientos: el modo de siempre (y quitar .../tele de la dirección)
+  $("#tvplay", app).onclick = () => switchMode((m) => actions.setMode(m), "mobile");
 }
 
 // Botón de pantalla completa (el navegador solo deja entrar con un toque)
