@@ -1,8 +1,9 @@
 // Service worker del sitio (heredado de myDomino #19). Para los archivos del propio sitio, pide siempre primero al servidor y obliga a
 // confirmar que el archivo sigue igual (cache: "no-cache"), así el navegador nunca se queda con una versión vieja.
 // Guarda una copia de cada archivo para usarla solo si no hay conexión (la práctica contra la compu funciona sin internet).
-// Firebase, Google y cualquier otro sitio no pasan por aquí. Tampoco el audio: el navegador lo pide por pedazos
-// (Range → 206) y una respuesta parcial no se puede guardar; la música se baja directo y no queda para sin conexión.
+// Firebase, Google y cualquier otro sitio no pasan por aquí. La música tampoco: el <audio> la pide por pedazos
+// (Range → 206) y una respuesta parcial no se puede guardar. Los efectos (…/sfx/*.mp3) sí: se piden enteros, son
+// chicos, y así la práctica los tiene sin conexión.
 const PREFIX = "juegos-";
 const CACHE = PREFIX + "v1"; // distinto de los de Noli, La Pata y myDomino: viven en el mismo dominio
 
@@ -14,9 +15,15 @@ function handle(request, origin) {
   return networkFirst(request);
 }
 
+function isSfx(request) {
+  return /\/sfx\/[^/?#]+\.mp3(\?|$)/i.test(new URL(request.url).pathname);
+}
+
 function isMedia(request) {
   const range = request.headers && typeof request.headers.get === "function" && request.headers.get("range");
-  return !!range || request.destination === "audio" || request.destination === "video" || /\.(mp3|m4a|ogg|wav)(\?|$)/i.test(request.url);
+  if (range) return true;
+  if (isSfx(request)) return false;
+  return request.destination === "audio" || request.destination === "video" || /\.(mp3|m4a|ogg|wav)(\?|$)/i.test(request.url);
 }
 
 async function networkFirst(request) {

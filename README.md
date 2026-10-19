@@ -48,6 +48,7 @@ games/
 │   ├── call/             # llamadas de voz y video en la mesa
 │   ├── cards/            # baraja francesa: notación, barajas, revolver y dibujo de cartas
 │   ├── music/            # música de fondo: pool de canciones, silencio y volumen
+│   ├── sfx/              # efectos de sonido: clips, silencio y volumen propios
 │   └── <nombre>/         # index.js (API pública), ui.js (opcional), README.md
 ├── games/
 │   ├── registry.js       # lista de juegos (solo manifiestos; el código se carga al abrir cada juego)

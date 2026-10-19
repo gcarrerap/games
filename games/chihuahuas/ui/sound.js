@@ -1,0 +1,36 @@
+// Engancha los efectos con lo que acaba de pasar. syncSounds se llama en cada dibujo, pero gather() solo devuelve
+// sonidos cuando hay un evento nuevo (jugada, turno, error, asiento, pagos): redibujar o reconectar no repite.
+import { gather, soundRole } from "../sfx/cues.js";
+
+export function syncSounds(ui, ctx, { fxOn = false, plan = null } = {}) {
+  if (!ui) return;
+  const tvOn = !!(ctx.table && ctx.table.config && ctx.table.config.tv);
+  ui.soundRole = soundRole(ctx.display || "full", tvOn);
+  ui.modal = ctx.modal || null;
+  const sfx = ui.sfx;
+  if (!sfx) return;
+  const prev = ui.soundSnap || null;
+  const { cues, snap } = gather({
+    role: ui.soundRole,
+    prev,
+    st: ctx.view,
+    seat: ctx.seat,
+    seats: (ctx.table && ctx.table.seats) || [],
+    err: ctx.err || "",
+    plan,
+    fxOn: !!fxOn,
+  });
+  const seqChanged = !!(prev && ctx.view && ctx.view.seq !== prev.seq);
+  ui.soundSnap = snap;
+  if (seqChanged) sfx.cancel();
+  if (cues.length) sfx.playAll(cues);
+}
+
+// Clic de un botón de la mesa. En la tele no (ahí no se juega). En la mesa sin tele, la jugada en sí ya suena
+// (el tazón, el boleto…): el clic solo acompaña a los botones que no tienen efecto propio, y en el teléfono de
+// una mesa con tele, donde lo público lo pone la tele.
+export function playPress(ui, { action = false } = {}) {
+  if (!ui || !ui.sfx || ui.soundRole === "board") return;
+  if (action && ui.soundRole === "all") return;
+  ui.sfx.play("boton");
+}

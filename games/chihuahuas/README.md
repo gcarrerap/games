@@ -26,14 +26,25 @@ apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botó
   suena solo la tele. **Para agregar una canción:** pasarla a 128 kbps
   (`ffmpeg -i original.mp3 -c:a libmp3lame -b:a 128k -ar 44100 -map_metadata 0 nueva.mp3`; unos 2.5 MB por cada 2½
   minutos, el límite es 3.5 MB), soltarla en `music/` y añadir su línea en `music/index.js`.
+- **Efectos** (`sfx/`, #69): cada jugada y cada aviso tiene su clip, con `modules/sfx`. El botón 🔔/🔕 y el volumen
+  van junto a los de la música (en la barra el botón, en el menú el deslizador; en la tele, los dos en la barra) y se
+  recuerdan aparte, en la llave `"sfx"`. Callar la música no calla los efectos, ni al revés. Suenan con el primer
+  toque. **Con la tele como tablero no se oye doble:** la tele suena lo de la partida (tirada, ladridos, pasitos,
+  tapetes, pagos, meta, fin, turno de la compu, alguien que se sienta o se levanta) y el teléfono solo lo suyo: el
+  clic de sus botones, un error de su jugada, y «te toca» cuando le llega el turno. Quien mira sin asiento una mesa
+  con tele tampoco suena lo público. Sin tele, el mismo aparato suena todo. No suena al abrir, al reconectar ni al
+  redibujar: solo cuando pasa algo nuevo. **Para regenerar un clip** (no hace falta para jugar):
+  `ELEVENLABS_API_KEY=… node games/chihuahuas/sfx/generate.mjs` genera los que falten;
+  `node games/chihuahuas/sfx/generate.mjs pasitos` regenera esa llave. La llave de la API no va al repo ni al sitio.
 
-  **Origen y licencia de las canciones:**
+  **Origen y licencia de las canciones y los efectos:**
 
   | Canción | Archivo | Origen | Uso |
   |---|---|---|---|
   | *Marimba Jaroche* | `music/marimba-jaroche.mp3` | Hecha por Guillermo con la versión **gratuita** de [Suno](https://suno.com) (18 oct 2026) | ⚠️ Puede tener restricciones de uso comercial: las canciones del plan gratuito de Suno son, en general, solo para uso no comercial. Está bien para este sitio familiar sin fines de lucro; antes de cualquier uso comercial (vender el juego, anuncios, publicarla aparte) hay que revisar los términos de Suno o reemplazarla. |
+  | Efectos de la carrera (28 clips) | `sfx/*.mp3` | Generados con la API de efectos de [ElevenLabs](https://elevenlabs.io) (`POST /v1/sound-generation`, mp3 a 64 kbps, plan **gratuito**, 19 oct 2026). Los prompts están en `sfx/prompts.json`. | ⚠️ El plan gratuito de ElevenLabs permite **solo uso no comercial** y pide **atribución a ElevenLabs**. Está bien para este sitio familiar sin fines de lucro. Antes de cualquier uso comercial hay que pasar a un plan que lo permita o reemplazarlos. Atribución: efectos generados con ElevenLabs. |
 
-  Al agregar una canción, anotar aquí de dónde salió y con qué licencia.
+  Al agregar una canción o un efecto, anotar aquí de dónde salió y con qué licencia.
 
 | Archivo | Qué hace |
 |---|---|
@@ -43,4 +54,5 @@ apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botó
 | `ui/art.js` | Imágenes del banco o su respaldo; lista de llaves (`KEYS`); en la tele, las versiones `@tv` |
 | `ui/text.js` | Lo que dice la burbuja después de cada jugada |
 | `music/` | Las canciones de fondo y su lista (`music/index.js`) |
+| `sfx/` | Los efectos (`prompts.json`, los `.mp3`, `generate.mjs`) y qué llave suena en cada evento (`cues.js`) |
 | `assets/` | Banco de imágenes (ver su README) |

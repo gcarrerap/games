@@ -286,8 +286,8 @@ html.tv .sheet .bl,html.tv .sheet .strow{font-size:inherit}
 @media (prefers-reduced-motion:reduce){.chihuahuas .bowl.shake,.chihuahuas .reveal,.chihuahuas .rider.hop,.chihuahuas .bubble.pop,.chihuahuas .cell.can,.chihuahuas .cell.zap{animation:none}}
 @media (max-width:380px){.chihuahuas .bar-info{display:none}}
 
-/* Música (modules/music): el botón en la barra y, en la tele, el deslizador al lado */
-.chihuahuas .musicbtn{flex:none}
-.chihuahuas.tv .musicvol{width:auto;flex:none;gap:1vw}
-.chihuahuas.tv .musicvol .musicbtn{width:calc(var(--u) * 5.4);height:calc(var(--u) * 5.4);min-height:0;font-size:calc(var(--u) * 3)}
-.chihuahuas.tv .musicvol input[type=range]{width:calc(var(--u) * 18);height:calc(var(--u) * 4)}
+/* Música (modules/music) y efectos (modules/sfx): el botón en la barra y, en la tele, el deslizador al lado */
+.chihuahuas .musicbtn,.chihuahuas .sfxbtn{flex:none}
+.chihuahuas.tv .musicvol,.chihuahuas.tv .sfxvol{width:auto;flex:none;gap:.6vw}
+.chihuahuas.tv .musicvol .musicbtn,.chihuahuas.tv .sfxvol .sfxbtn{width:calc(var(--u) * 5.4);height:calc(var(--u) * 5.4);min-height:0;font-size:calc(var(--u) * 3)}
+.chihuahuas.tv .musicvol input[type=range],.chihuahuas.tv .sfxvol input[type=range]{width:calc(var(--u) * 14);min-width:0;height:calc(var(--u) * 4)}
