@@ -101,7 +101,8 @@ export function revealCues(st, plan) {
     });
     add(st.final.winner, plan.winAt);
     add(st.final.loser, plan.loseAt);
-    cues.push({ key: "ganador", at: plan.end || 0 });
+    // El efecto corto «ganador» lo reemplaza la música de festejo (celebrate.js), que sale en este mismo momento.
+    // Si esa pieza no puede sonar, la interfaz usa «ganador» como respaldo.
   }
   return cues;
 }

@@ -178,6 +178,45 @@ test("arranca con el primer toque, pero no con un toque en los controles de mús
   assert.equal(target.l.pointerdown, undefined); // ya no espera
 });
 
+test("un clip baja la música y al acabar vuelve; el silencio no lo deja sonar", async () => {
+  const { m, t, audio } = setup({ music: { muted: false, volume: 0.8 } });
+  try {
+    await m.start(); t.run();
+    assert.equal(audio().paused, false);
+    assert.equal(await m.playCue("festejo.mp3", { duck: 0.25, ms: 60000 }), true);
+    const cue = FakeAudio.all[1];
+    assert.equal(cue.src, "festejo.mp3");
+    assert.equal(cue.paused, false);
+    assert.equal(audio().paused, false);
+    t.run();
+    assert.ok(Math.abs(audio().volume - 0.2) < 1e-9);
+    cue.fire("ended");
+    t.run();
+    assert.ok(Math.abs(audio().volume - 0.8) < 1e-9);
+    assert.equal(cue.paused, true);
+  } finally { m.destroy(); }
+
+  const quiet = setup({ music: { muted: true, volume: 0.8 } });
+  assert.equal(await quiet.m.playCue("festejo.mp3"), false);
+  assert.equal(FakeAudio.all.length, 0);
+  quiet.m.destroy();
+});
+
+test("el clip sigue el volumen de la música y volumen 0 no lo arranca", async () => {
+  const { m, t, audio } = setup({ music: { volume: 0.5 } });
+  try {
+    await m.start(); t.run();
+    assert.equal(await m.playCue("sting.mp3", { duck: 0.2, ms: 60000 }), true);
+    assert.equal(FakeAudio.all[1].volume, 0.5);
+    m.setVolume(0.4);
+    assert.equal(FakeAudio.all[1].volume, 0.4);
+    t.run();
+    assert.ok(Math.abs(audio().volume - 0.08) < 1e-9);
+    m.setVolume(0);
+    assert.equal(await m.playCue("sting.mp3"), false);
+  } finally { m.destroy(); }
+});
+
 test("los controles reflejan el estado y no aparecen sin canciones", async () => {
   const { m } = setup();
   assert.match(musicButton(m), /🔇/);

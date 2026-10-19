@@ -24,7 +24,8 @@ test("cada llave de prompts.json tiene su mp3, y al revés; juntos pesan menos d
     const p = prompts[key];
     assert.equal(typeof p.prompt, "string");
     assert.ok(p.prompt.length > 0);
-    assert.ok(p.duration > 0 && p.duration <= 2);
+    const cap = key === "celebracion-musica" ? 8 : 2;
+    assert.ok(p.duration > 0 && p.duration <= cap, key);
     total += statSync(file).size;
   }
   assert.ok(total <= MAX_TOTAL, `los efectos pesan ${total} bytes`);
@@ -134,8 +135,8 @@ test("los pagos de la etapa y el ganador de la carrera", () => {
   };
   const end = { key: "over-1", legAt: [1000], winAt: [2000], loseAt: [2600], end: 4000 };
   const keys = revealCues(over, end).map((c) => c.key);
-  assert.deepEqual(keys, ["fin-carrera", "pago-ganar", "pago-ganar", "pago-perder", "ganador"]);
-  assert.equal(revealCues(over, end).find((c) => c.key === "ganador").at, 4000);
+  assert.deepEqual(keys, ["fin-carrera", "pago-ganar", "pago-ganar", "pago-perder"]);
+  assert.ok(!keys.includes("ganador"));
 });
 
 const HUMANS = [{ id: "ana", name: "Ana" }, { id: "bo", name: "Bo" }];

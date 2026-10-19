@@ -286,6 +286,56 @@ html.tv .sheet .bl,html.tv .sheet .strow{font-size:inherit}
 @media (prefers-reduced-motion:reduce){.chihuahuas .bowl.shake,.chihuahuas .reveal,.chihuahuas .rider.hop,.chihuahuas .bubble.pop,.chihuahuas .cell.can,.chihuahuas .cell.zap{animation:none}}
 @media (max-width:380px){.chihuahuas .bar-info{display:none}}
 
+/* Fiesta del ganador (ui/party.js). Lilita One, de Juan Montoreano, SIL OFL 1.1: ver fonts/OFL.txt.
+   Si el archivo no carga, el nombre cae en la fuente de los letreros (Alfa Slab One). */
+@font-face{
+  font-family:"Lilita One";
+  src:url("../fonts/LilitaOne-Regular.woff2") format("woff2");
+  font-weight:400;font-style:normal;font-display:swap;
+}
+.party{position:fixed;inset:0;z-index:30;pointer-events:none;display:flex;flex-direction:column;
+  background:linear-gradient(to bottom,rgba(42,12,22,.42) 0%,rgba(42,12,22,.28) 58%,rgba(42,12,22,0) 100%);
+  font-family:"Lilita One","Alfa Slab One",Georgia,serif}
+.party-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.party-banner{display:flex;justify-content:center;gap:4px;padding:max(8px,env(safe-area-inset-top)) 6px 0;pointer-events:none;z-index:1}
+.party-banner i{flex:1 1 0;max-width:48px;height:28px;clip-path:polygon(0 0,100% 0,100% 68%,50% 100%,0 68%)}
+.party-skip{position:absolute;top:max(10px,env(safe-area-inset-top));right:10px;z-index:3;pointer-events:auto;
+  min-height:36px;padding:0 12px;font-family:var(--body);font-weight:800}
+/* El cartel no tapa los botones de la hoja (siguiente etapa, revancha): solo el nombre, los perros y Saltar
+   reciben el toque, y ese toque cierra la fiesta. */
+.party-hit{pointer-events:none;position:absolute;left:0;right:0;top:0;bottom:8%;z-index:2;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:8px 8px 0}
+.party-name,.party-dogs{pointer-events:auto}
+.party.mini .party-hit{bottom:42%;justify-content:center}
+.party-name{margin:0 0 1vh;max-width:96vw;text-align:center;text-wrap:balance;color:#fff6d4;
+  font-size:clamp(28px,8.2vw,108px);line-height:.92;letter-spacing:.4px;
+  -webkit-text-stroke:clamp(3px,.55vw,8px) #2a160f;paint-order:stroke fill;
+  text-shadow:0 clamp(4px,.7vw,10px) 0 #e2186f,0 0 14px rgba(0,0,0,.35);
+  animation:party-pop .7s cubic-bezier(.15,1.55,.4,1) both,party-glow 1.7s ease-in-out .7s infinite alternate}
+.party-dogs{display:flex;align-items:flex-end;justify-content:center;width:100%;gap:1vw;margin:0}
+.party-dog{position:relative;flex:1 1 0;min-width:0;max-width:20%;margin:0;animation:party-dog .55s cubic-bezier(.2,1.4,.4,1) both}
+.party-dog.win{max-width:34%;flex:1.45 1 0;z-index:1}
+.party-dog:nth-child(1){animation-delay:.05s}.party-dog:nth-child(2){animation-delay:.12s}
+.party-dog:nth-child(3){animation-delay:.02s}.party-dog:nth-child(4){animation-delay:.16s}
+.party-dog:nth-child(5){animation-delay:.1s}
+.party-dog .shadow,.party-dog .dog{width:100%;height:auto;display:block}
+.party-dog .shadow{position:absolute;left:0;bottom:0;z-index:0}
+.party-dog .dog{position:relative;z-index:1}
+.party-dog .facepic{width:72%;margin:0 auto 8px;border-radius:50%;background:var(--dog);border:3px solid #2a160f}
+.party-fallback{display:grid;place-items:center;width:100%;aspect-ratio:1;border-radius:18px;background:var(--dog);
+  border:3px solid #2a160f;font-size:clamp(28px,8vw,72px)}
+.party.mini .party-dogs{display:none}
+@keyframes party-pop{0%{transform:scale(.2) rotate(-6deg);opacity:0}70%{transform:scale(1.08) rotate(1deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+@keyframes party-glow{from{transform:translateY(0) rotate(-.4deg)}to{transform:translateY(-4px) rotate(.4deg)}}
+@keyframes party-dog{from{transform:translateY(18px) scale(.8);opacity:0}to{transform:none;opacity:1}}
+@media (min-width:900px){
+  .party-banner i{height:46px;max-width:72px}
+  .party-name{font-size:clamp(48px,6vw,120px)}
+}
+@media (prefers-reduced-motion:reduce){
+  .party-name,.party-dog{animation:none}
+}
+
 /* Música (modules/music) y efectos (modules/sfx): el botón en la barra y, en la tele, el deslizador al lado */
 .chihuahuas .musicbtn,.chihuahuas .sfxbtn{flex:none}
 .chihuahuas.tv .musicvol,.chihuahuas.tv .sfxvol{width:auto;flex:none;gap:.6vw}

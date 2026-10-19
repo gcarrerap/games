@@ -1,14 +1,15 @@
 // Engancha los efectos con lo que acaba de pasar. syncSounds se llama en cada dibujo, pero gather() solo devuelve
 // sonidos cuando hay un evento nuevo (jugada, turno, error, asiento, pagos): redibujar o reconectar no repite.
 import { gather, soundRole } from "../sfx/cues.js";
+import { takeParty } from "../sfx/celebrate.js";
 
 export function syncSounds(ui, ctx, { fxOn = false, plan = null } = {}) {
-  if (!ui) return;
+  if (!ui) return null;
   const tvOn = !!(ctx.table && ctx.table.config && ctx.table.config.tv);
   ui.soundRole = soundRole(ctx.display || "full", tvOn);
   ui.modal = ctx.modal || null;
   const sfx = ui.sfx;
-  if (!sfx) return;
+  if (!sfx || !ctx.view) return null;
   const prev = ui.soundSnap || null;
   const { cues, snap } = gather({
     role: ui.soundRole,
@@ -20,10 +21,13 @@ export function syncSounds(ui, ctx, { fxOn = false, plan = null } = {}) {
     plan,
     fxOn: !!fxOn,
   });
+  // La fiesta usa el mismo portón que estos efectos: la foto de antes, no el redibujado.
+  const party = takeParty({ prev, st: ctx.view, plan, fxOn: !!fxOn });
   const seqChanged = !!(prev && ctx.view && ctx.view.seq !== prev.seq);
   ui.soundSnap = snap;
   if (seqChanged) sfx.cancel();
   if (cues.length) sfx.playAll(cues);
+  return party;
 }
 
 // Clic de un botón de la mesa. En la tele no (ahí no se juega). En la mesa sin tele, la jugada en sí ya suena

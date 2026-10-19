@@ -21,6 +21,7 @@ import { fullscreenButton, wireFullscreen } from "../../../platform/ui/tv.js";
 import { musicButton, musicControls, wireMusic } from "../../../modules/music/ui.js";
 import { sfxButton, sfxControls, wireSfx } from "../../../modules/sfx/ui.js";
 import { syncSounds } from "./sound.js";
+import { syncParty } from "./party.js";
 
 // Dónde va cada casilla en el cuadro de 5 × 5: la 1 abajo a la izquierda, a la derecha por abajo, sube por la
 // derecha, a la izquierda por arriba y baja por la izquierda hasta la 16. La meta queda entre la 16 y la 1.
@@ -271,7 +272,9 @@ export function renderTable(app, ctx, ui) {
   }
   const shownCoins = (s) => (holding ? st.coins[s] - st.summary.delta[s] : st.coins[s]);
   // Sonidos de lo que acaba de pasar (no del redibujado). La tele y el teléfono se reparten en sound.js.
-  syncSounds(ui, ctx, { fxOn: !!fx, plan });
+  // La fiesta sale en ese mismo momento (fin de etapa o ganador), no al redibujar.
+  const party = syncSounds(ui, ctx, { fxOn: !!fx, plan });
+  syncParty(ui, ctx, party);
 
   // Jugadores: croquetas, sus boletos, su tapete y cuántas apuestas secretas hizo
   const players = st.names.map((_, s) => {

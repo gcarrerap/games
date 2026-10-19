@@ -67,6 +67,14 @@ test("sw: la música no pasa por aquí (se pide por pedazos y una respuesta parc
   assert.equal(sw.handle({ url: SITE + "x.js", method: "GET", headers: new Headers({ range: "bytes=0-" }) }, o), null);
 });
 
+test("sw: la fuente del festejo se guarda (mismo sitio, no es audio)", async () => {
+  const { sw, store } = loadSW({ network: async () => new Response("woff", { status: 200 }) });
+  const url = SITE + "games/chihuahuas/fonts/LilitaOne-Regular.woff2";
+  const res = await sw.handle({ url, method: "GET", destination: "font" }, "https://gcarrerap.github.io");
+  assert.equal(await res.text(), "woff");
+  assert.ok(store.has(url));
+});
+
 test("sw: los efectos sí se guardan (son chicos y se piden enteros); con Range, tampoco", async () => {
   const { sw, store } = loadSW({ network: async () => new Response("clip", { status: 200 }) });
   const o = "https://gcarrerap.github.io";
