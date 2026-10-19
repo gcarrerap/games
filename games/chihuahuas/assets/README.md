@@ -60,7 +60,7 @@ mesa, hay que sacarle una versión ligera.
 | `festejo-chia.webp` | Chia festeja, se tira y queda boca arriba con la lengua de fuera | 448 × 284 | 121 | 5.04 s | 1.6 MB |
 | `festejo-gustavo.webp` | Gustavo pone su cara de bravo con los dientes de abajo de fuera y sacude la cabeza | 322 × 282 | 121 | 5.04 s | 1.1 MB |
 | `festejo-chocolate.webp` | Chocolate aplaude parado en las patas de atrás y le rebota la panza | 252 × 312 | 121 | 5.04 s | 1.2 MB |
-| `festejo-catrina.webp` | Catrina festeja | 272 × 310 | 116 | 4.83 s | 0.9 MB |
+| `festejo-catrina.webp` | Catrina baila parada en las patas de atrás, con su suéter de rayas, y da una vuelta completa | 272 × 310 | 116 | 4.83 s | 0.9 MB |
 | `tropiezo-catrina.webp` | Catrina brinca, se tropieza, rueda y queda boca arriba, mareada | 460 × 316 | 145 | 6.04 s | 1.1 MB |
 | `festejo-*-sombra.webp`, `tropiezo-catrina-sombra.webp` | La sombra de cada una (ver abajo) | igual que su perro | igual | igual | 60–94 KB |
 | `carrera-5-perros.webp` | Los cinco corren hacia la cámara por la calle; hay cambios de punta y Chia gana por poquito | 960 × 540 | 96 | 4.0 s | 1.1 MB |
