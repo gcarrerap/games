@@ -2,7 +2,8 @@
 // casillas alrededor y el tazón en el pasto del centro) y abajo tus jugadas. Dibuja con ctx.view y juega con
 // ctx.act(). Lo propio de esta pantalla: si estás escogiendo casilla para tu tapete (`ui.mode`, `ui.kind`) y la
 // animación en curso (`ui.fx`, ver fx.js): al sacudir el tazón se ve qué perro salió y cómo avanza casilla por casilla,
-// y al empezar la partida, la salida. Mientras dura, tus botones esperan y el fin de etapa no se abre.
+// y al empezar la partida, la portada (`ui.cover`, ver cover.js) y luego la salida. Mientras duran, tus botones esperan y
+// no se abre ninguna ventana.
 //
 // Con la tele como tablero (ctx.display, docs/ARCHITECTURE.md §5) se parte en dos: "tv" dibuja la pista grande, los
 // jugadores y el tazón para todos, sin botones; "phone" solo lo tuyo (tus botones, boletos, tapete y apuestas) y la
@@ -14,6 +15,7 @@ import { lastLine, actionText, placeName } from "./text.js";
 import { rulesHelp } from "./rules.js";
 import { historyHTML } from "./history.js";
 import { startFx, activeFx, hiddenDogs, fxStatus, revealed, paintFx, elapsed } from "./fx.js";
+import { coverWanted, startCover, paintCover } from "./cover.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
 import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
@@ -242,12 +244,23 @@ export function renderTable(app, ctx, ui) {
   const seated = seat >= 0;
   const first = ui.seenSeq === -1;
   const fresh = st.seq !== ui.seenSeq; // cambió la mesa
+  const round = ctx.table ? ctx.table.round : 0;
+  // Partida nueva (la primera o una revancha): primero la portada; al quitarse, la salida de los perros
+  const isNew = fresh && coverWanted({ first, seq: st.seq, round, seenRound: ui.seenRound });
   ui.seenSeq = st.seq;
-  if (fresh) startFx(ui, st, { first, refresh: ctx.refresh });
+  ui.seenRound = round;
+  if (isNew) {
+    let painting = true;
+    startCover(ui, display, () => { ui.introPending = true; if (!painting) ctx.refresh(); });
+    painting = false;
+  } else if (fresh) startFx(ui, st, { first, refresh: ctx.refresh });
+  if (ui.introPending) { ui.introPending = false; startFx(ui, st, { first, refresh: ctx.refresh, intro: true }); }
+  const covering = !!ui.cover;
   const fx = activeFx(ui, st);
-  const hidden = hiddenDogs(fx);
+  // Con la portada encima, los perros todavía no están en la pista (entran con la salida)
+  const hidden = covering ? new Set(DOGS.map((_, d) => d)) : hiddenDogs(fx);
   const myTurn = playing && seated && st.turn === seat;
-  const canAct = myTurn && !fx; // mientras se ve la jugada anterior, tus botones esperan
+  const canAct = myTurn && !fx && !covering; // mientras se ve la jugada anterior (o la portada), tus botones esperan
   if (!canAct) ui.mode = null;
   const clockOn = playing && st.config.timer !== false;
   const can = myTurn && ui.mode === "tile" ? new Set(tileSpaces(st, seat)) : new Set();
@@ -375,11 +388,13 @@ export function renderTable(app, ctx, ui) {
     paintFx($(".board", app), fx, st);
     // El menú, para cambiar de modo desde aquí (un Monitor con asiento puede volver a Teléfono o Control)
     $("#menu", app).onclick = () => openOverlay("gameMenu");
-    if (overlay() && overlay().id === "gameMenu") renderMenu(ctx, st, ui.music);
+    if (covering) ctx.modal.innerHTML = ""; // nada encima de la portada
+    else if (overlay() && overlay().id === "gameMenu") renderMenu(ctx, st, ui.music);
     else if (fx) ctx.modal.innerHTML = ""; // primero se ve la carrera
     else if (st.phase === "leg") renderLeg(ctx, st, seat, ui, true);
     else if (st.phase === "over") renderOver(ctx, st, seat, ui, true);
     else ctx.modal.innerHTML = "";
+    paintCover(app, ui);
     return;
   }
 
@@ -425,8 +440,10 @@ export function renderTable(app, ctx, ui) {
   $("#finalbtn", app)?.addEventListener("click", () => openOverlay("final"));
   $("#advice", app)?.addEventListener("click", () => ctx.askAdvice());
 
+  paintCover(app, ui);
   const ov = overlay();
-  if (ov && ov.id === "rules") renderRules(ctx);
+  if (covering) ctx.modal.innerHTML = ""; // nada encima de la portada (lo que estuviera abierto sale después)
+  else if (ov && ov.id === "rules") renderRules(ctx);
   else if (ov && ov.id === "gameMenu") renderMenu(ctx, st, ui);
   else if (ov && ov.id === "hist") renderHistory(ctx, st, seat);
   else if (ov && ov.id === "final" && canAct) renderFinal(ctx, st, seat);
