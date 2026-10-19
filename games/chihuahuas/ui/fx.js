@@ -2,7 +2,8 @@
 //
 // La mesa se redibuja completa en cada cambio (incluso a media animación: el reloj, otro teléfono), así que una
 // animación no vive en el DOM sino en `ui.fx`: { kind, seq, start, ms, … }. En cada dibujo, `paintFx` vuelve a crear
-// las piezas animadas y las adelanta a donde iban (Web Animations con currentTime, o animation-delay negativo en CSS).
+// las piezas animadas y las adelanta a donde iban (Web Animations con currentTime, o animation-delay negativo en CSS);
+// si la animación ya estaba dibujada, reusa sus piezas (ui.fxLayer) para que no se corte.
 // Al terminar, un temporizador pide redibujar sin la animación.
 //
 // Tiempos: los de engine/ (SHOW), para que la compu espere lo mismo que dura la animación (bots.thinkMs).
@@ -39,7 +40,7 @@ export function startFx(ui, st, { first, refresh, intro = false }) {
 }
 
 // Al desmontar la mesa
-export function stopFx(ui) { (ui.fxTimers || []).forEach(clearTimeout); ui.fx = null; }
+export function stopFx(ui) { (ui.fxTimers || []).forEach(clearTimeout); ui.fx = null; ui.fxLayer = null; }
 
 // ¿Sigue la animación? (si la mesa cambió de jugada, la anterior ya no importa)
 export function activeFx(ui, st) {
@@ -78,14 +79,27 @@ function spot(board, space) {
   return { x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight, w: el.offsetWidth, h: el.offsetHeight };
 }
 
-// Dibuja las piezas de la animación dentro de la pista y las adelanta al momento en que van
-export function paintFx(board, fx, st) {
-  if (!fx || !board) return;
+// Dibuja las piezas de la animación dentro de la pista y las adelanta al momento en que van.
+//
+// Si la misma animación ya estaba en la pista del dibujo anterior (y la pista mide lo mismo), se mueve esa capa a la
+// pista nueva en vez de crearla otra vez: sus Web Animations siguen corriendo sin cortarse. Crearla de nuevo en cada
+// redibujo (al salir el dado, al arrancar el perro, con cualquier aviso de la sala) obligaba a decodificar las
+// imágenes y reiniciar la animación; en aparatos lentos (la tele) el perro se congelaba y luego saltaba.
+export function paintFx(board, fx, st, ui) {
+  if (!board) return;
+  if (!fx) { if (ui) ui.fxLayer = null; return; }
+  const size = `${board.clientWidth}x${board.clientHeight}`;
+  const kept = ui && ui.fxLayer;
+  if (kept && kept.fx === fx && kept.size === size) {
+    board.appendChild(kept.layer);
+    return;
+  }
   const layer = document.createElement("div");
   layer.className = "fxlayer";
   board.appendChild(layer);
   if (fx.kind === "roll") paintRoll(layer, board, fx, st);
   else paintIntro(layer, board, fx, st);
+  if (ui) ui.fxLayer = { fx, size, layer };
 }
 
 // Una pila de perros que corre: dentro, los perros se acomodan como en una casilla del tamaño de las de la pista
