@@ -17,6 +17,13 @@ apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botó
   pantallas cuadradas. Cada teléfono queda con lo suyo: sus botones, boletos, tapete, apuestas y croquetas; la casilla
   del tapete se escoge con una tira de números. La tele usa las imágenes en alta (`@tv`) y la portada de fondo en la
   espera (`tvCover`); el teléfono nunca las baja.
+- **Portada al empezar** (#56, `ui/cover.js`): al empezar una partida nueva (práctica, en línea y revancha) la
+  portada de Petra se ve a pantalla completa unos 3 s (`COVER_MS` en `timing.js`), con entrada y salida suaves, y
+  luego el tablero con la salida de los perros. Un toque la quita (y arranca la música). En la tele usa `portada@tv`;
+  en el teléfono y la mesa de siempre, `portada`. Al reabrir una mesa a medias no aparece, y si la imagen falta o
+  tarda más de 1 s en cargar se va directo al tablero. El primer turno cuenta ese tiempo (`turnMs` y la espera de la
+  compu), para que nadie pierda reloj ni la compu juegue con la portada encima. La portada también sale arriba de las
+  **Reglas** y de fondo en la espera de la tele (`tvCover`).
 - **Imágenes** (`assets/`): banco de imágenes como en Panal y Skull, con las ilustraciones de Petra (#33; elección en
   [`docs/disenos/chihuahuas/`](../../docs/disenos/chihuahuas/)). Si falta una, la mesa usa un respaldo con colores y
   emoji (`ui/art.js`).

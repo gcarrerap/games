@@ -9,7 +9,7 @@ consola:
   3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar (el paño
      se pone rojo con el aviso de última vuelta) y pasar a la siguiente mano.
   3c. Skull en práctica: el botón "Reglas"; el tutorial desde el aviso de la primera ronda, de principio a fin; poner discos, apostar, voltear y pasar a la siguiente ronda.
-  3c2. Carrera de Chihuahuas en práctica: el botón "Reglas"; sacudir el tazón, tomar un boleto, poner la aspiradora
+  3c2. Carrera de Chihuahuas en práctica: la portada al empezar (a pantalla completa, un toque la quita); el botón "Reglas"; sacudir el tazón, tomar un boleto, poner la aspiradora
      en una casilla, una apuesta secreta y seguir el consejo; pasar a la siguiente etapa; la ventana de jugadas.
      La música de fondo: suena con el primer toque, el botón 🔊/🔇 la calla y la regresa, y el volumen del menú se
      recuerda. Los efectos: botón 🔔/🔕 y volumen propios, que no callan la música.
@@ -23,7 +23,8 @@ consola:
   7. Skull con los modos del aparato (al final): abrir la mesa en Monitor desde el lobby (espera con el código), dejar
      la espera para sentarse, empezar en Teléfono, cambiar a Control (solo lo suyo) y a Monitor (los tapetes de todos,
      sin botones, con menú); el aviso de Monitor cuando le toca y volver a Control desde el aviso.
-  7b. La Carrera con los modos (al final): mesa de 8; la espera del Monitor con la portada;
+  7b. La Carrera con los modos (al final): mesa de 8; la espera del Monitor con la portada; al empezar, la portada
+     chica en el teléfono y en alta en la tele, y no al reabrir la tele a medias;
      jugar un turno en Control (solo lo suyo: el tapete se escoge con la tira de números) y el Monitor con la
      pista grande, las imágenes en alta, los 8 jugadores sin encimarse (16:9 y cuadrada) y sin botones. La música
      solo en la tele: el teléfono no tiene botón de música. Los efectos sí: el teléfono oye lo suyo y la tele, la partida.
@@ -250,7 +251,19 @@ with sync_playwright() as p:
     # ---------- Carrera de Chihuahuas en práctica ----------
     page.evaluate("location.hash = '#/chihuahuas'"); page.wait_for_selector("#practice")
     page.click("[data-mode='4']"); page.click("[data-timer='0']"); page.click("#practice")
-    page.wait_for_selector(".game.chihuahuas .board .cell", timeout=10000); shot("15c-chihuahuas")
+    page.wait_for_selector(".game.chihuahuas .board .cell", timeout=10000)
+    # La portada al empezar (#56): a pantalla completa, la chica en el teléfono; un toque la quita (y arranca la música)
+    try:
+        page.wait_for_selector(".game.chihuahuas .cover-screen.in img", timeout=3000); page.wait_for_timeout(400)
+        shot("15b-chihuahuas-portada")
+        ch_cover = page.evaluate("""() => { const c = document.querySelector('.chihuahuas .cover-screen'), r = c.getBoundingClientRect(), i = c.querySelector('img');
+          return r.width >= innerWidth - 1 && r.height >= innerHeight - 1 && i.src.includes('portada.webp') && !i.src.includes('-tele.')
+            && !document.querySelector('.chihuahuas .board .rider:not(.pending)'); }""")
+        page.click(".cover-screen"); page.wait_for_timeout(500)
+        ch_cover_skip = not page.query_selector(".cover-screen")
+    except PWError:
+        ch_cover = ch_cover_skip = False
+    shot("15c-chihuahuas")
     tap("#rules"); page.wait_for_timeout(200)
     ch_rules = "aspiradora" in page.inner_text(".sheet[data-sheet='rules']")
     tap("#rulesclose"); page.wait_for_timeout(200)
@@ -457,7 +470,24 @@ with sync_playwright() as p:
     on.set_viewport_size({"width": 390, "height": 844})
     on.click("#tvplay"); on.wait_for_selector("#start:not([disabled])")
     on.click("#start"); on.wait_for_selector(".game.chihuahuas #menu", timeout=10000)
-    on.wait_for_timeout(4500)  # la portada al empezar
+    # La portada al empezar: en el teléfono la chica; un toque la quita. La tele que abre la partida recién empezada la
+    # ve en alta (-tele); al reabrir la tele ya a medias (tv_check, abajo) no aparece.
+    src = lambda: on.get_attribute(".cover-screen img", "src") or ""
+    try:
+        on.wait_for_selector(".game.chihuahuas .cover-screen.in img", timeout=3000)
+        ch_cover_phone = "portada.webp" in src() and "-tele." not in src()
+        on.click(".cover-screen"); on.wait_for_timeout(500)
+        on.set_viewport_size({"width": 1920, "height": 1080})
+        # La tele abre la mesa desde cero (como la que estaba en la espera): salir al lobby y entrar a la tele
+        on.evaluate("location.hash = '#/chihuahuas'"); on.wait_for_selector("#create")
+        on.evaluate(f"location.hash = '#/chihuahuas/{ch_code}/tele'")
+        on.wait_for_selector(".game.chihuahuas.tv .cover-screen.in img", timeout=6000); on.wait_for_timeout(400)
+        ch_cover_tv = "portada-tele.webp" in src(); shot("19b-carrera-tele-portada")
+        on.wait_for_selector(".game.chihuahuas.tv .cover-screen", state="detached", timeout=6000)
+    except PWError:
+        ch_cover_phone = locals().get("ch_cover_phone", False); ch_cover_tv = False
+    on.set_viewport_size({"width": 390, "height": 844})
+    on.wait_for_timeout(500)
     pick_mode("remote"); on.wait_for_selector(".game.chihuahuas.phone", timeout=10000)
     ch_phone_only = not on.query_selector(".game.chihuahuas .board, .game.chihuahuas .players") and "tele" in on.inner_text(".tvnote")
     ch_phone_quiet = not on.query_selector(".game.chihuahuas [data-music]")
@@ -486,6 +516,7 @@ with sync_playwright() as p:
           const side = r(document.querySelector(".chihuahuas.tv .side"));
           const crash = board.left < side.right - 1 && side.left < board.right - 1 && board.top < side.bottom - 1 && side.top < board.bottom - 1;
           return {
+            cover: !!document.querySelector(".chihuahuas .cover-screen"),
             players: pls.length, overlap, fits: pls.every(inside) && inside(board) && !crash,
             buttons: q(".chihuahuas.tv #roll, .chihuahuas.tv [data-ticket], .chihuahuas.tv [data-pick], .chihuahuas.tv #bubble").length,
             menu: !!document.querySelector(".chihuahuas.tv #menu"),
@@ -534,6 +565,8 @@ if skull_places < 2: problems.append(f"Skull: solo se pusieron {skull_places} di
 if skull_bids < 1: problems.append("Skull: nunca se pudo apostar")
 if skull_rounds < 1 and not skull_over: problems.append("Skull: no terminó ninguna ronda")
 if set(skull_styles) != {"skull"}: problems.append(f"Skull: estilos cargados {skull_styles}")
+if not ch_cover: problems.append("Carrera: al empezar no se vio la portada a pantalla completa (la chica, sin perros en la pista)")
+if not ch_cover_skip: problems.append("Carrera: un toque no quitó la portada")
 if not ch_rules: problems.append("Carrera: el botón Reglas no mostró las reglas")
 if not ch_music_req: problems.append("Carrera: la música nunca se pidió")
 if not ch_music_on: problems.append("Carrera: la música no sonó después de tocar la mesa")
@@ -564,6 +597,9 @@ if not tv_wait: problems.append("Skull con tele: la tele no muestra la espera co
 if not tv_phone: problems.append("Skull con tele: el teléfono muestra los tapetes de todos")
 if not tv_board: problems.append("Skull con tele: la tele no muestra los 3 tapetes sin botones")
 if not tv_left: problems.append("Skull con tele: al volver al teléfono sigue en modo tele")
+if not ch_cover_phone: problems.append("Carrera con tele: al empezar, el teléfono no mostró la portada chica")
+if not ch_cover_tv: problems.append("Carrera con tele: la tele no mostró la portada en alta al empezar")
+if ch_tv["cover"] or ch_tv_sq["cover"]: problems.append("Carrera con tele: la portada apareció al reabrir la tele a medias")
 if not ch_tv_wait: problems.append("Carrera con tele: la espera no tiene la portada o el código")
 if not ch_phone_only: problems.append("Carrera con tele: el teléfono muestra la pista o los jugadores")
 if not ch_phone_quiet: problems.append("Carrera con tele: el teléfono tiene música (debe sonar solo la tele)")
