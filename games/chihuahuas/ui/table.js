@@ -390,7 +390,7 @@ export function renderTable(app, ctx, ui) {
     wireFullscreen(app);
     wireMusic(app, ui.music, { setDragging: ctx.setDragging });
     wireSfx(app, ui.sfx, { setDragging: ctx.setDragging });
-    paintFx($(".board", app), fx, st);
+    paintFx($(".board", app), fx, st, ui);
     // El menú, para cambiar de modo desde aquí (un Monitor con asiento puede volver a Teléfono o Control)
     $("#menu", app).onclick = () => openOverlay("gameMenu");
     if (covering) ctx.modal.innerHTML = ""; // nada encima de la portada
@@ -430,7 +430,7 @@ export function renderTable(app, ctx, ui) {
   wireMusic(app, ui.music);
   wireSfx(app, ui.sfx);
   $("#bubble", app)?.addEventListener("click", () => openOverlay("hist"));
-  paintFx($(".board", app), fx, st);
+  paintFx($(".board", app), fx, st, ui);
   $("#roll", app)?.addEventListener("click", () => ctx.act({ type: "roll" }));
   app.querySelectorAll("[data-ticket]").forEach((b) => b.onclick = () => ctx.act({ type: "ticket", dog: Number(b.dataset.ticket) }));
   $("#tilebtn", app)?.addEventListener("click", () => { ui.mode = "tile"; ctx.refresh(); });
