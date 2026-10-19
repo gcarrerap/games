@@ -37,19 +37,28 @@ apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botó
   van junto a los de la música (en la barra el botón, en el menú el deslizador; en la tele, los dos en la barra) y se
   recuerdan aparte, en la llave `"sfx"`. Callar la música no calla los efectos, ni al revés. Suenan con el primer
   toque. **Con la tele como tablero no se oye doble:** la tele suena lo de la partida (tirada, ladridos, pasitos,
-  tapetes, pagos, meta, fin, turno de la compu, alguien que se sienta o se levanta) y el teléfono solo lo suyo: el
-  clic de sus botones, un error de su jugada, y «te toca» cuando le llega el turno. Quien mira sin asiento una mesa
-  con tele tampoco suena lo público. Sin tele, el mismo aparato suena todo. No suena al abrir, al reconectar ni al
-  redibujar: solo cuando pasa algo nuevo. **Para regenerar un clip** (no hace falta para jugar):
+  tapetes, pagos, meta, fin, turno de la compu, alguien que se sienta o se levanta, y la fiesta) y el teléfono solo
+  lo suyo: el clic de sus botones, un error de su jugada, y «te toca» cuando le llega el turno. Quien mira sin asiento
+  una mesa con tele tampoco suena lo público. Sin tele, el mismo aparato suena todo. No suena al abrir, al reconectar
+  ni al redibujar: solo cuando pasa algo nuevo. **Para regenerar un clip** (no hace falta para jugar):
   `ELEVENLABS_API_KEY=… node games/chihuahuas/sfx/generate.mjs` genera los que falten;
   `node games/chihuahuas/sfx/generate.mjs pasitos` regenera esa llave. La llave de la API no va al repo ni al sitio.
+- **Fiesta** (`sfx/celebrate.js`, `ui/party.js`, #71): cuando un perro llega a la meta y se acaba la carrera, ya
+  vista la tirada, sale **solo el ganador** festejando (su `festejo-*.webp` con su sombra y sus sonidos), confeti de
+  papel picado y su nombre. Al cerrar una etapa no hay fiesta. La hoja final no se abre mientras dura: cuando la
+  fiesta termina o se salta, se revelan una por una las últimas apuestas y el resultado, con sus sonidos. La pieza `celebracion-musica` va por el **canal de la música** (si está en silencio,
+  no suena, y mientras suena la de fondo baja). Los ladridos, el confeti y el letrero van por el **canal de efectos**.
+  El teléfono de una mesa con tele muestra confeti chico y el nombre, sin audio. Se salta con un toque, con Saltar o
+  con una tecla, y saltarla lleva directo a la hoja final. El mapeo de cada perro a su sonido está solo en
+  `sfx/celebrate.js` (`DOG_SOUNDS`), para poder cambiarlo cuando Petra mande sus clips.
 
-  **Origen y licencia de las canciones y los efectos:**
+  **Origen y licencia de las canciones, los efectos y la fuente:**
 
   | Canción | Archivo | Origen | Uso |
   |---|---|---|---|
   | *Marimba Jaroche* | `music/marimba-jaroche.mp3` | Hecha por Guillermo con la versión **gratuita** de [Suno](https://suno.com) (18 oct 2026) | ⚠️ Puede tener restricciones de uso comercial: las canciones del plan gratuito de Suno son, en general, solo para uso no comercial. Está bien para este sitio familiar sin fines de lucro; antes de cualquier uso comercial (vender el juego, anuncios, publicarla aparte) hay que revisar los términos de Suno o reemplazarla. |
-  | Efectos de la carrera (28 clips) | `sfx/*.mp3` | Generados con la API de efectos de [ElevenLabs](https://elevenlabs.io) (`POST /v1/sound-generation`, mp3 a 64 kbps, plan **gratuito**, 19 oct 2026). Los prompts están en `sfx/prompts.json`. | ⚠️ El plan gratuito de ElevenLabs permite **solo uso no comercial** y pide **atribución a ElevenLabs**. Está bien para este sitio familiar sin fines de lucro. Antes de cualquier uso comercial hay que pasar a un plan que lo permita o reemplazarlos. Atribución: efectos generados con ElevenLabs. |
+  | Efectos de la carrera (35 clips, incluida la pieza de festejo) | `sfx/*.mp3` | Generados con la API de efectos de [ElevenLabs](https://elevenlabs.io) (`POST /v1/sound-generation`, mp3 a 64 kbps, plan **gratuito**, 19 oct 2026). Los prompts están en `sfx/prompts.json`. La pieza `celebracion-musica` (7 s) se toca por el canal de la música; el resto, por el de efectos. `aullido-festejo` y `brinco` están en el catálogo y hoy no se usan (ver `PARKED_CLIPS` en `sfx/celebrate.js`). | ⚠️ El plan gratuito de ElevenLabs permite **solo uso no comercial** y pide **atribución a ElevenLabs**. Está bien para este sitio familiar sin fines de lucro. Antes de cualquier uso comercial hay que pasar a un plan que lo permita o reemplazarlos. Atribución: efectos generados con ElevenLabs. |
+  | *Lilita One* | `fonts/LilitaOne-Regular.woff2` | Juan Montoreano, 2011. Nombre reservado «Lilita». Licencia completa en `fonts/OFL.txt`. | [SIL Open Font License 1.1](https://scripts.sil.org/OFL). Se puede usar, estudiar y redistribuir con el programa; no se vende sola ni se le cambia el nombre reservado. El service worker la guarda porque vive en este sitio. Si no carga, el nombre del ganador usa Alfa Slab One. |
 
   Al agregar una canción o un efecto, anotar aquí de dónde salió y con qué licencia.
 

@@ -9,6 +9,7 @@ export const CLIP_KEYS = [
   "pasitos", "apilar", "caer-hueso", "caer-aspiradora",
   "fin-etapa", "pago-ganar", "pago-perder", "meta", "fin-carrera", "ganador",
   "te-toca", "turno-compu", "jugador-entra", "jugador-sale",
+  "celebracion-musica", "aullido-festejo", "ladrido-doble", "grunido-feliz", "brinco", "confeti", "nombre-entra",
 ];
 
 export const CLIPS = Object.fromEntries(CLIP_KEYS.map((k) => [k, file(k)]));

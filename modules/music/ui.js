@@ -1,10 +1,14 @@
 // La música que suena: un solo <audio> que va tocando la lista (index.js), con entrada y salida suaves, silencio y
 // volumen que se recuerdan, y los controles para la mesa (botón 🔊/🔇 y deslizador).
 //
+// Un clip corto (playCue) sale por el mismo silencio y el mismo volumen. Mientras suena, la música de fondo baja
+// (ducking) y al terminar vuelve. Si la música está en silencio, el clip no suena.
+//
 // Los navegadores (sobre todo Safari en iPhone) no dejan sonar audio hasta que la persona toca algo: armOnGesture()
 // espera el primer toque o tecla y entonces arranca. Si el navegador aún así la rechaza, no hay error: el botón queda en
 // 🔇 y al tocarlo se intenta otra vez. En iPhone el volumen por código no siempre se respeta; el silencio sí, porque
-// pausa el audio en vez de bajarlo a 0.
+// pausa el audio en vez de bajarlo a 0. El segundo elemento del clip se desbloquea en ese primer arranque, para que
+// un festejo más tarde no dependa de otro toque.
 //
 // Para probar sin navegador se pueden pasar Audio, doc y los temporizadores.
 import { createPlaylist, readSettings, saveSettings, clampVolume, PREF_KEY } from "./index.js";
@@ -13,16 +17,20 @@ import { createPlaylist, readSettings, saveSettings, clampVolume, PREF_KEY } fro
 export const MUSIC_STYLES = new URL("./ui/music.css", import.meta.url).href;
 
 const STEP_MS = 50;
+// Un wav mudo y mínimo, solo para que el navegador suelte el elemento del clip en el primer arranque.
+const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
 
 export function createMusic({
   songs, prefs = null, key = PREF_KEY, rnd = Math.random, fadeMs = 1000,
   Audio: AudioCtor = globalThis.Audio, doc = globalThis.document,
   setInterval: every = globalThis.setInterval, clearInterval: stopEvery = globalThis.clearInterval,
+  setTimeout: later = globalThis.setTimeout, clearTimeout: cancelLater = globalThis.clearTimeout,
 } = {}) {
   const playlist = createPlaylist(songs, rnd);
   const settings = readSettings(prefs, key);
   const listeners = new Set();
   let audio = null, current = null, playing = false, fading = null, fadingOut = false, resumeOnShow = false, dead = false;
+  let cueEl = null, cueTimer = null, cueGen = 0, ducked = false, duckRatio = 0.22, cueUnlocking = false;
 
   const target = () => (settings.muted ? 0 : settings.volume);
   const emit = () => { for (const f of listeners) f(api); paintAll(doc, api); };
@@ -65,9 +73,11 @@ export function createMusic({
   }
   // Ya casi acaba: se va apagando para que no corte de golpe
   function onTime() {
-    if (!playing || fadingOut || !audio || !(audio.duration > 0)) return;
+    if (!playing || fadingOut || ducked || !audio || !(audio.duration > 0)) return;
     if (audio.duration - audio.currentTime <= fadeMs / 1000) { fadingOut = true; fadeTo(0, fadeMs); }
   }
+
+  const landed = () => (ducked ? settings.volume * duckRatio : target());
 
   async function tryPlay() {
     if (dead || settings.muted || !ensureAudio()) return false;
@@ -80,9 +90,48 @@ export function createMusic({
     }
     if (dead || settings.muted) { audio.pause(); return false; }
     playing = true;
-    fadeTo(target(), fadeMs);
+    fadeTo(landed(), fadeMs);
+    unlockCue();
     emit();
     return true;
+  }
+
+  function ensureCueEl() {
+    if (cueEl || !AudioCtor) return cueEl;
+    try { cueEl = new AudioCtor(); } catch { return null; }
+    cueEl.preload = "auto";
+    return cueEl;
+  }
+
+  // El primer arranque (ya hubo un toque) suelta también el elemento del clip.
+  function unlockCue() {
+    if (cueUnlocking || !AudioCtor) return;
+    const c = ensureCueEl();
+    if (!c) return;
+    cueUnlocking = true;
+    const gen = cueGen;
+    try { c.src = SILENT_WAV; } catch { return; }
+    let p;
+    try { p = c.play(); } catch { return; }
+    Promise.resolve(p).then(() => {
+      if (cueGen === gen && !ducked) { try { c.pause(); } catch { /* ya pausado */ } }
+    }, () => {});
+  }
+
+  function endCue(restore) {
+    cueGen++;
+    stopFade();
+    if (cueTimer) { cancelLater(cueTimer); cueTimer = null; }
+    if (cueEl && cueEl._cueFinish) {
+      try { cueEl.removeEventListener("ended", cueEl._cueFinish); } catch { /* sin evento */ }
+      cueEl._cueFinish = null;
+    }
+    if (cueEl) { try { cueEl.pause(); } catch { /* ya pausado */ } }
+    const was = ducked;
+    ducked = false;
+    if (restore && was && playing && audio && !dead && !settings.muted && !fadingOut) {
+      fadeTo(target(), Math.min(480, fadeMs));
+    }
   }
 
   function pause() {
@@ -93,7 +142,7 @@ export function createMusic({
 
   function onVisibility() {
     if (!doc) return;
-    if (doc.hidden) { resumeOnShow = playing; if (playing) pause(); emit(); }
+    if (doc.hidden) { resumeOnShow = playing; if (ducked) endCue(false); if (playing) pause(); emit(); }
     else if (resumeOnShow) { resumeOnShow = false; tryPlay(); }
   }
   if (doc && doc.addEventListener) doc.addEventListener("visibilitychange", onVisibility);
@@ -107,23 +156,56 @@ export function createMusic({
     hasSongs: playlist.size > 0,
     // Empieza (o sigue) si no está en silencio. Devuelve si quedó sonando.
     start() { return playing ? Promise.resolve(true) : tryPlay(); },
+    // Clip corto por este mismo canal. `duck` (0–1) es a qué fracción baja la música de fondo.
+    // `ms` es un tope por si el archivo no avisa que terminó. false si está en silencio, el volumen es 0 o no hay src.
+    playCue(src, { ms = 8000, duck = 0.22 } = {}) {
+      const wait = Number.isFinite(ms) ? Math.max(0, ms) : 8000;
+      const ratio = Number.isFinite(duck) ? Math.min(1, Math.max(0, duck)) : 0.22;
+      if (dead || settings.muted || !(settings.volume > 0) || typeof src !== "string" || !src) return Promise.resolve(false);
+      const el = ensureCueEl();
+      if (!el) return Promise.resolve(false);
+      endCue(false);
+      duckRatio = ratio;
+      ducked = true;
+      const gen = ++cueGen;
+      try { el.volume = settings.volume; } catch { /* iPhone */ }
+      try { el.src = src; } catch { endCue(false); return Promise.resolve(false); }
+      const finish = () => { if (gen === cueGen) endCue(true); };
+      el._cueFinish = finish;
+      try { el.addEventListener("ended", finish); } catch { /* sin eventos */ }
+      if (playing && audio) fadeTo(settings.volume * duckRatio, Math.min(420, fadeMs));
+      if (wait > 0) cueTimer = later(() => finish(), wait);
+      let started;
+      try { started = el.play(); } catch (e) { started = Promise.reject(e); }
+      return Promise.resolve(started).then(() => {
+        if (dead || settings.muted || gen !== cueGen) { if (gen === cueGen) endCue(false); return false; }
+        return true;
+      }, () => { if (gen === cueGen) endCue(false); return false; });
+    },
+    stopCue() { endCue(true); },
     setMuted(on) {
       settings.muted = !!on; save();
-      if (settings.muted) { pause(); emit(); return Promise.resolve(false); }
+      if (settings.muted) { endCue(false); pause(); emit(); return Promise.resolve(false); }
       return tryPlay();
     },
     // El botón: si suena, silencio; si no (en silencio o bloqueada por el navegador), a sonar
     toggle() { return api.audible ? api.setMuted(true) : api.setMuted(false); },
     setVolume(v) {
       settings.volume = clampVolume(v); save();
-      if (playing && !fadingOut) { stopFade(); setVol(target()); }
+      if (!(settings.volume > 0)) endCue(false);
+      else if (cueEl && ducked) { try { cueEl.volume = settings.volume; } catch { /* iPhone */ } }
+      if (playing && !fadingOut) { stopFade(); setVol(landed()); }
       emit();
     },
     onChange(f) { listeners.add(f); return () => listeners.delete(f); },
     // Se acabó la mesa: calla y suelta el audio
     destroy() {
-      dead = true; pause();
+      dead = true; endCue(false); pause();
       if (doc && doc.removeEventListener) doc.removeEventListener("visibilitychange", onVisibility);
+      if (cueEl) {
+        try { cueEl.removeAttribute("src"); cueEl.load(); } catch { /* sin navegador */ }
+      }
+      cueEl = null;
       if (audio) {
         audio.removeEventListener("ended", onEnded);
         audio.removeEventListener("timeupdate", onTime);

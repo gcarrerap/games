@@ -101,7 +101,8 @@ export function revealCues(st, plan) {
     });
     add(st.final.winner, plan.winAt);
     add(st.final.loser, plan.loseAt);
-    cues.push({ key: "ganador", at: plan.end || 0 });
+    // El efecto corto «ganador» lo reemplaza la música de festejo (celebrate.js), que sale en este mismo momento.
+    // Si esa pieza no puede sonar, la interfaz usa «ganador» como respaldo.
   }
   return cues;
 }
@@ -126,9 +127,9 @@ function idsOf(seats) {
   return (seats || []).map(seatId);
 }
 
-function makeSnap({ st, seats, err, plan, fxOn, prev }) {
+function makeSnap({ st, seats, err, plan, fxOn, hold, prev }) {
   let reveal = null;
-  if (plan && fxOn) reveal = prev ? prev.reveal : null;
+  if (plan && (fxOn || hold)) reveal = prev ? prev.reveal : null;
   else if (plan) reveal = plan.key;
   const turn = st.turn;
   return {
@@ -140,12 +141,14 @@ function makeSnap({ st, seats, err, plan, fxOn, prev }) {
     seats: idsOf(seats),
     botTurn: st.phase === "play" && !!(seats && seats[turn] && seats[turn].bot),
     reveal,
+    party: prev ? prev.party || null : null,
   };
 }
 
 // Lo que hay que sonar ahora, y la foto para la próxima vez. Sin prev (acabas de abrir o reconectar) no suena nada.
-export function gather({ role = "all", prev = null, st, seat = -1, seats = [], err = "", plan = null, fxOn = false } = {}) {
-  const snap = makeSnap({ st, seats, err, plan, fxOn, prev });
+// hold: la fiesta del ganador está en pantalla; los pagos (y sus sonidos) esperan a que termine, como con la tirada.
+export function gather({ role = "all", prev = null, st, seat = -1, seats = [], err = "", plan = null, fxOn = false, hold = false } = {}) {
+  const snap = makeSnap({ st, seats, err, plan, fxOn, hold, prev });
   if (!prev || !st) return { cues: [], snap };
   const cues = [];
   if (st.seq !== prev.seq) {
@@ -156,7 +159,7 @@ export function gather({ role = "all", prev = null, st, seat = -1, seats = [], e
         : actionCues(st.last, prev.tiles);
     for (const c of pub) cues.push({ ...c, audience: "public" });
   }
-  if (plan && !fxOn && prev.reveal !== plan.key) {
+  if (plan && !fxOn && !hold && prev.reveal !== plan.key) {
     // Si la tirada que cierra la etapa todavía no tuvo animación, los pagos esperan a que terminen los pasitos
     const shift = st.seq !== prev.seq && st.last && st.last.kind === "roll" ? showMs(st.last) : 0;
     for (const c of revealCues(st, plan)) cues.push({ ...c, at: (c.at || 0) + shift, audience: "public" });

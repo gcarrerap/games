@@ -26,5 +26,12 @@
  "te-toca": {"prompt":"Friendly two-note marimba chime notification, warm","duration":0.7,"prompt_influence":0.7},
  "turno-compu": {"prompt":"Very soft single marimba note, discreet","duration":0.5,"prompt_influence":0.7},
  "jugador-entra": {"prompt":"Cheerful cartoon pop with a small doorbell ding, someone joins","duration":0.6,"prompt_influence":0.6},
- "jugador-sale": {"prompt":"Soft cartoon descending pop whoosh, someone leaves","duration":0.6,"prompt_influence":0.6}
+ "jugador-sale": {"prompt":"Soft cartoon descending pop whoosh, someone leaves","duration":0.6,"prompt_influence":0.6},
+ "celebracion-musica": {"prompt":"Festive Mexican celebration music, cheerful marimba melody with mariachi trumpets and guitarron, upbeat party fanfare, joyful ending","duration":7,"prompt_influence":0.5},
+ "aullido-festejo": {"prompt":"Small chihuahua happy howl, short joyful awoo, close mic, no background","duration":1.2,"prompt_influence":0.7},
+ "ladrido-doble": {"prompt":"Tiny chihuahua two quick excited happy yips while jumping, close mic, no background","duration":0.7,"prompt_influence":0.7},
+ "grunido-feliz": {"prompt":"Small dog happy playful grumble and snort while wagging tail, close mic, no background","duration":0.9,"prompt_influence":0.7},
+ "brinco": {"prompt":"Cartoon small boing jump sound, light and bouncy","duration":0.5,"prompt_influence":0.6},
+ "confeti": {"prompt":"Party popper confetti cannon pop with paper confetti rustling, festive","duration":1.2,"prompt_influence":0.6},
+ "nombre-entra": {"prompt":"Cartoon whoosh with sparkling chime as a title sign appears, festive","duration":1.0,"prompt_influence":0.6}
 }
