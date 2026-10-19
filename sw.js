@@ -1,7 +1,8 @@
 // Service worker del sitio (heredado de myDomino #19). Para los archivos del propio sitio, pide siempre primero al servidor y obliga a
 // confirmar que el archivo sigue igual (cache: "no-cache"), así el navegador nunca se queda con una versión vieja.
 // Guarda una copia de cada archivo para usarla solo si no hay conexión (la práctica contra la compu funciona sin internet).
-// Firebase, Google y cualquier otro sitio no pasan por aquí.
+// Firebase, Google y cualquier otro sitio no pasan por aquí. Tampoco el audio: el navegador lo pide por pedazos
+// (Range → 206) y una respuesta parcial no se puede guardar; la música se baja directo y no queda para sin conexión.
 const PREFIX = "juegos-";
 const CACHE = PREFIX + "v1"; // distinto de los de Noli, La Pata y myDomino: viven en el mismo dominio
 
@@ -9,14 +10,20 @@ const CACHE = PREFIX + "v1"; // distinto de los de Noli, La Pata y myDomino: viv
 function handle(request, origin) {
   if (request.method !== "GET") return null;
   if (new URL(request.url).origin !== origin) return null;
+  if (isMedia(request)) return null;
   return networkFirst(request);
+}
+
+function isMedia(request) {
+  const range = request.headers && typeof request.headers.get === "function" && request.headers.get("range");
+  return !!range || request.destination === "audio" || request.destination === "video" || /\.(mp3|m4a|ogg|wav)(\?|$)/i.test(request.url);
 }
 
 async function networkFirst(request) {
   const cache = await caches.open(CACHE);
   try {
     const response = await fetch(request, { cache: "no-cache" });
-    if (response && response.ok) await cache.put(request, response.clone());
+    if (response && response.status === 200) await cache.put(request, response.clone()).catch(() => {}); // sin copia, pero la respuesta sigue
     return response;
   } catch (e) {
     const cached = await cache.match(request, { ignoreSearch: true });

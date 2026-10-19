@@ -285,3 +285,9 @@ html.tv .sheet .bl,html.tv .sheet .strow{font-size:inherit}
 @keyframes ch-zap{0%{box-shadow:0 0 0 0 var(--gold)}100%{box-shadow:0 0 0 12px transparent}}
 @media (prefers-reduced-motion:reduce){.chihuahuas .bowl.shake,.chihuahuas .reveal,.chihuahuas .rider.hop,.chihuahuas .bubble.pop,.chihuahuas .cell.can,.chihuahuas .cell.zap{animation:none}}
 @media (max-width:380px){.chihuahuas .bar-info{display:none}}
+
+/* Música (modules/music): el botón en la barra y, en la tele, el deslizador al lado */
+.chihuahuas .musicbtn{flex:none}
+.chihuahuas.tv .musicvol{width:auto;flex:none;gap:1vw}
+.chihuahuas.tv .musicvol .musicbtn{width:calc(var(--u) * 5.4);height:calc(var(--u) * 5.4);min-height:0;font-size:calc(var(--u) * 3)}
+.chihuahuas.tv .musicvol input[type=range]{width:calc(var(--u) * 18);height:calc(var(--u) * 4)}

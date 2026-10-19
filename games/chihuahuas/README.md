@@ -20,6 +20,12 @@ apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botó
 - **Imágenes** (`assets/`): banco de imágenes como en Panal y Skull, con las ilustraciones de Petra (#33; elección en
   [`docs/disenos/chihuahuas/`](../../docs/disenos/chihuahuas/)). Si falta una, la mesa usa un respaldo con colores y
   emoji (`ui/art.js`).
+- **Música de fondo** (`music/`, #53): un pool de canciones `.mp3` que toca `modules/music` en orden barajado, con botón
+  🔊/🔇 en la barra y volumen en el menú (en la tele, los dos en la barra). Silencio y volumen se recuerdan en el
+  aparato. Empieza con el primer toque en la mesa (los navegadores no dejan sonar antes). Con la tele como tablero,
+  suena solo la tele. **Para agregar una canción:** pasarla a 128 kbps
+  (`ffmpeg -i original.mp3 -c:a libmp3lame -b:a 128k -ar 44100 -map_metadata 0 nueva.mp3`; unos 2.5 MB por cada 2½
+  minutos, el límite es 3.5 MB), soltarla en `music/` y añadir su línea en `music/index.js`.
 
 | Archivo | Qué hace |
 |---|---|
@@ -28,4 +34,5 @@ apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botó
 | `ui/table.js` | La mesa: completa, la tele (`ctx.display === "tv"`) y el teléfono de una mesa con tele (`"phone"`) |
 | `ui/art.js` | Imágenes del banco o su respaldo; lista de llaves (`KEYS`); en la tele, las versiones `@tv` |
 | `ui/text.js` | Lo que dice la burbuja después de cada jugada |
+| `music/` | Las canciones de fondo y su lista (`music/index.js`) |
 | `assets/` | Banco de imágenes (ver su README) |
