@@ -27,6 +27,14 @@ apuesta croquetas 🍪 a los chihuahuas. Las reglas completas están en el botó
   (`ffmpeg -i original.mp3 -c:a libmp3lame -b:a 128k -ar 44100 -map_metadata 0 nueva.mp3`; unos 2.5 MB por cada 2½
   minutos, el límite es 3.5 MB), soltarla en `music/` y añadir su línea en `music/index.js`.
 
+  **Origen y licencia de las canciones:**
+
+  | Canción | Archivo | Origen | Uso |
+  |---|---|---|---|
+  | *Marimba Jaroche* | `music/marimba-jaroche.mp3` | Hecha por Guillermo con la versión **gratuita** de [Suno](https://suno.com) (18 oct 2026) | ⚠️ Puede tener restricciones de uso comercial: las canciones del plan gratuito de Suno son, en general, solo para uso no comercial. Está bien para este sitio familiar sin fines de lucro; antes de cualquier uso comercial (vender el juego, anuncios, publicarla aparte) hay que revisar los términos de Suno o reemplazarla. |
+
+  Al agregar una canción, anotar aquí de dónde salió y con qué licencia.
+
 | Archivo | Qué hace |
 |---|---|
 | `engine/index.js` | Reglas puras: salida, apilar y cargar, tapetes, boletos, fin de etapa, apuestas finales, vista |
