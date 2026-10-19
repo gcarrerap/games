@@ -47,3 +47,47 @@ que no pase su máximo.
 **Hacia dónde mira el perro** (#49, `ui/facing.js`): casillas 1–4 a la derecha (de lado), 5–8 hacia arriba
 (`-up`, de espaldas), 9–12 a la izquierda (de lado en espejo), 13–16 y la meta hacia abajo (`-down`, de frente). Cuando
 la aspiradora lo regresa, en ese brinco usa la vista contraria. Elección de las vistas: `docs/disenos/chihuahuas/eleccion/vistas.md`.
+
+## Animaciones
+
+Animaciones de los perros, la carrera y dos fondos. **No están en `bank.js`**: la mesa todavía no las usa, así que
+`assets.test.js` no las revisa y el teléfono no las baja. Pesan más que los máximos del banco; si alguna se integra a la
+mesa, hay que sacarle una versión ligera.
+
+| Archivo | Qué muestra | Tamaño | Cuadros | Duración | Peso |
+|---|---|---|---|---|---|
+| `festejo-oreo.webp` | Oreo levanta la pata trasera como si hiciera pipí y la vuelve a bajar | 324 × 282 | 121 | 5.04 s | 1.6 MB |
+| `festejo-chia.webp` | Chia festeja, se tira y queda boca arriba con la lengua de fuera | 448 × 284 | 121 | 5.04 s | 1.6 MB |
+| `festejo-gustavo.webp` | Gustavo pone su cara de bravo con los dientes de abajo de fuera y sacude la cabeza | 322 × 282 | 121 | 5.04 s | 1.1 MB |
+| `festejo-chocolate.webp` | Chocolate aplaude parado en las patas de atrás y le rebota la panza | 252 × 312 | 121 | 5.04 s | 1.2 MB |
+| `festejo-catrina.webp` | Catrina festeja | 272 × 310 | 116 | 4.83 s | 0.9 MB |
+| `tropiezo-catrina.webp` | Catrina brinca, se tropieza, rueda y queda boca arriba, mareada | 460 × 316 | 145 | 6.04 s | 1.1 MB |
+| `festejo-*-sombra.webp`, `tropiezo-catrina-sombra.webp` | La sombra de cada una (ver abajo) | igual que su perro | igual | igual | 60–94 KB |
+| `carrera-5-perros.webp` | Los cinco corren hacia la cámara por la calle; hay cambios de punta y Chia gana por poquito | 960 × 540 | 96 | 4.0 s | 1.1 MB |
+| `carrera-5-perros.mp4` | La misma carrera en video (H.264), con un temblor leve de cámara | 1280 × 720 | 96 | 4.0 s | 2.1 MB |
+| `fondo-carrera.jpg` | La calle de la carrera, sin perros | 1280 × 720 | — | — | 0.4 MB |
+| `fondo-patio.jpg` | El patio con piso donde se pararon los perros de los festejos | 1280 × 720 | — | — | 0.4 MB |
+
+Todas las WebP son animadas, a 24 cuadros por segundo, y se repiten sin fin. La carrera en WebP no tiene el temblor
+de cámara para que pese poco; es la misma carrera que el video.
+
+**Perros transparentes y su sombra.** Cada perro viene solo, con fondo transparente y sin sombra; la sombra va en su
+propio archivo `-sombra.webp`, con **el mismo lienzo, los mismos cuadros y la misma duración**. Para usarla, pon las
+dos en el mismo lugar y del mismo tamaño, y dibuja la sombra **debajo** del perro; arrancan juntas. La sombra se
+ensancha cuando el perro se acuesta y se achica y aclara cuando brinca.
+
+**Misma escala.** Todos los perros de las animaciones están a la misma escala que en el patio (`fondo-patio.jpg`
+reducido a 960 × 540): si pones dos perros en el mismo lugar, las patas quedan a la misma altura. Cada lienzo es un
+recorte de ese cuadro de 960 × 540; la línea del piso está en y = 513 del cuadro completo:
+
+| Archivo | Esquina del recorte en 960 × 540 | Piso dentro del lienzo |
+|---|---|---|
+| `festejo-oreo` | (320, 240) | y = 273 |
+| `festejo-chia` | (248, 241) | y = 272 |
+| `festejo-gustavo` | (329, 242) | y = 271 |
+| `festejo-chocolate` | (365, 211) | y = 302 |
+| `festejo-catrina` | (356, 221) | y = 292 |
+| `tropiezo-catrina` | (253, 210) | y = 303 |
+
+Debajo del piso quedan pocos píxeles (9 a 18), así que la orilla de abajo de la sombra se desvanece en las últimas
+4 filas del lienzo para no cortarse en seco.
