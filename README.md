@@ -18,7 +18,7 @@ El sitio tiene tres tipos de piezas:
 | Continental | `games/continental/` | 2–6 | Práctica contra la compu y mesas en línea; la regla de compra se escoge al crear la mesa |
 | La Viuda | `games/viuda/` | 2–8 | Póker de 5 cartas con la viuda. Práctica contra la compu y mesas en línea |
 | Panal | `games/panal/` | 2 | Juego de colmena con bichos hexagonales. Práctica contra la compu y mesas en línea |
-| Skull | `games/skull/` | 3–6 | Faroleo con flores y una calavera. Práctica contra la compu y mesas en línea, también con la tele como tablero |
+| Skull | `games/skull/` | 3–6 | Faroleo con flores y una calavera. Práctica contra la compu y mesas en línea, también con la tele como tablero. Con música de fondo |
 | Damas chinas | `games/damas-chinas/` | 2, 3, 4 o 6 | Canicas en la estrella. Práctica contra la compu y mesas en línea |
 | Carrera de Chihuahuas | `games/chihuahuas/` | 2–8 | Apuestas en una carrera de perros que se apilan (estilo Camel Up). Práctica contra la compu y mesas en línea, también con la tele como tablero |
 
@@ -45,6 +45,7 @@ games/
 │   ├── worker/           # cálculos pesados en un hilo aparte
 │   ├── call/             # llamadas de voz y video en la mesa
 │   ├── cards/            # baraja francesa: notación, barajas, revolver y dibujo de cartas
+│   ├── music/            # música de fondo: pool de canciones, silencio y volumen
 │   └── <nombre>/         # index.js (API pública), ui.js (opcional), README.md
 ├── games/
 │   ├── registry.js       # lista de juegos (solo manifiestos; el código se carga al abrir cada juego)

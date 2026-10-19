@@ -9,10 +9,10 @@ globalThis.window = globalThis;
 
 // ---------- Service worker (sw.js se carga como en el navegador, con self, caches y fetch de mentira) ----------
 
-function loadSW({ network }) {
+function loadSW({ network, putFails = false }) {
   const store = new Map(), listeners = {};
   const cache = {
-    put: async (req, res) => store.set(req.url, res),
+    put: async (req, res) => { if (putFails) throw new TypeError("Partial response (status code 206) is unsupported"); store.set(req.url, res); },
     match: async (req, opts) => { const u = opts && opts.ignoreSearch ? req.url.split("?")[0] : req.url; for (const [k, v] of store) if ((opts && opts.ignoreSearch ? k.split("?")[0] : k) === u) return v; return undefined; },
   };
   const fetchCalls = [];
@@ -57,6 +57,20 @@ test("sw: no guarda respuestas de error (un 404 no reemplaza la copia buena)", a
   status = 404;
   await sw.handle(req(SITE + "a.js"), "https://gcarrerap.github.io");
   assert.equal(await store.get(SITE + "a.js").text(), "200");
+});
+
+test("sw: el audio no pasa por aquí (se pide por pedazos y una respuesta parcial no se puede guardar)", () => {
+  const { sw } = loadSW({ network: async () => new Response("x") });
+  const o = "https://gcarrerap.github.io";
+  assert.equal(sw.handle(req(SITE + "games/chihuahuas/music/marimba-jaroche.mp3"), o), null);
+  assert.equal(sw.handle({ url: SITE + "x", method: "GET", destination: "audio" }, o), null);
+  assert.equal(sw.handle({ url: SITE + "x.js", method: "GET", headers: new Headers({ range: "bytes=0-" }) }, o), null);
+});
+
+test("sw: si guardar la copia falla, la respuesta llega igual", async () => {
+  const { sw } = loadSW({ network: async () => new Response("ok", { status: 200 }), putFails: true });
+  const res = await sw.handle({ url: SITE + "a.js", method: "GET" }, "https://gcarrerap.github.io");
+  assert.equal(await res.text(), "ok");
 });
 
 test("sw: Firebase, Google y otros sitios no pasan por aquí; tampoco lo que no es GET", () => {

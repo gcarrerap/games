@@ -17,6 +17,7 @@ import { startFx, activeFx, hiddenDogs, fxStatus, revealed, paintFx, elapsed } f
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
 import { fullscreenButton, wireFullscreen } from "../../../platform/ui/tv.js";
+import { musicButton, musicControls, wireMusic } from "../../../modules/music/ui.js";
 
 // Dónde va cada casilla en el cuadro de 5 × 5: la 1 abajo a la izquierda, a la derecha por abajo, sube por la
 // derecha, a la izquierda por arriba y baja por la izquierda hasta la 16. La meta queda entre la 16 y la 1.
@@ -35,9 +36,10 @@ function renderRules(ctx) {
   $("#rulesclose", ctx.modal).onclick = closeOverlay;
 }
 
-function renderMenu(ctx, st) {
+function renderMenu(ctx, st, music) {
   renderSheet(ctx.modal, "gameMenu", ctx.practice ? "Práctica" : "Mesa " + ctx.table.code, `
     <p class="hint">Etapa ${st.leg} · ${st.config.n} jugadores</p>
+    ${music && music.hasSongs ? `<h4 class="fh">🎵 Música</h4>${musicControls(music)}` : ""}
     <details class="help"><summary>Reglas</summary>${rulesHelp()}</details>
     <button id="menuhist">📜 Jugadas</button>
     <button id="back">← Salir</button>
@@ -45,6 +47,7 @@ function renderMenu(ctx, st) {
   $("#menuclose", ctx.modal).onclick = closeOverlay;
   $("#menuhist", ctx.modal).onclick = () => openOverlay("hist");
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };
+  wireMusic(ctx.modal, music, { setDragging: ctx.setDragging });
 }
 
 function renderHistory(ctx, st, seat) {
@@ -341,6 +344,7 @@ export function renderTable(app, ctx, ui) {
     app.innerHTML = `
       <header class="gbar">
         <div class="gtitle">Carrera de Chihuahuas</div>
+        ${musicControls(ui.music)}
         ${fullscreenButton()}
         <div class="bar-info">Mesa <b>${esc(ctx.table.code)}</b> · Etapa <b>${st.leg}</b></div>
       </header>
@@ -354,6 +358,7 @@ export function renderTable(app, ctx, ui) {
         </aside>
       </div>`;
     wireFullscreen(app);
+    wireMusic(app, ui.music, { setDragging: ctx.setDragging });
     paintFx($(".board", app), fx, st);
     if (fx) ctx.modal.innerHTML = ""; // primero se ve la carrera
     else if (st.phase === "leg") renderLeg(ctx, st, seat, ui, true);
@@ -367,6 +372,7 @@ export function renderTable(app, ctx, ui) {
       <button class="menubtn" id="menu" aria-label="Menú de la partida" aria-haspopup="dialog"><span></span><span></span><span></span></button>
       <div class="gtitle">Carrera de Chihuahuas</div>
       <div class="bar-info">Etapa <b>${st.leg}</b></div>
+      ${musicButton(ui.music)}
       <button class="histbtn" id="hist" aria-haspopup="dialog" aria-label="Jugadas">📜</button>
       <button class="rulesbtn" id="rules" aria-haspopup="dialog">Reglas</button>
     </header>
@@ -384,6 +390,7 @@ export function renderTable(app, ctx, ui) {
   $("#menu", app).onclick = () => openOverlay("gameMenu");
   $("#rules", app).onclick = () => openOverlay("rules");
   $("#hist", app).onclick = () => openOverlay("hist");
+  wireMusic(app, ui.music);
   $("#bubble", app)?.addEventListener("click", () => openOverlay("hist"));
   paintFx($(".board", app), fx, st);
   $("#roll", app)?.addEventListener("click", () => ctx.act({ type: "roll" }));
@@ -402,7 +409,7 @@ export function renderTable(app, ctx, ui) {
 
   const ov = overlay();
   if (ov && ov.id === "rules") renderRules(ctx);
-  else if (ov && ov.id === "gameMenu") renderMenu(ctx, st);
+  else if (ov && ov.id === "gameMenu") renderMenu(ctx, st, ui.music);
   else if (ov && ov.id === "hist") renderHistory(ctx, st, seat);
   else if (ov && ov.id === "final" && canAct) renderFinal(ctx, st, seat);
   else if (fx) { if (ov && ov.id === "final") closeOverlay(); ctx.modal.innerHTML = ""; } // primero se ve la carrera
