@@ -59,12 +59,22 @@ test("sw: no guarda respuestas de error (un 404 no reemplaza la copia buena)", a
   assert.equal(await store.get(SITE + "a.js").text(), "200");
 });
 
-test("sw: el audio no pasa por aquí (se pide por pedazos y una respuesta parcial no se puede guardar)", () => {
+test("sw: la música no pasa por aquí (se pide por pedazos y una respuesta parcial no se puede guardar)", () => {
   const { sw } = loadSW({ network: async () => new Response("x") });
   const o = "https://gcarrerap.github.io";
   assert.equal(sw.handle(req(SITE + "games/chihuahuas/music/marimba-jaroche.mp3"), o), null);
   assert.equal(sw.handle({ url: SITE + "x", method: "GET", destination: "audio" }, o), null);
   assert.equal(sw.handle({ url: SITE + "x.js", method: "GET", headers: new Headers({ range: "bytes=0-" }) }, o), null);
+});
+
+test("sw: los efectos sí se guardan (son chicos y se piden enteros); con Range, tampoco", async () => {
+  const { sw, store } = loadSW({ network: async () => new Response("clip", { status: 200 }) });
+  const o = "https://gcarrerap.github.io";
+  const url = SITE + "games/chihuahuas/sfx/boton.mp3";
+  const res = await sw.handle(req(url), o);
+  assert.equal(await res.text(), "clip");
+  assert.ok(store.has(url));
+  assert.equal(sw.handle({ url, method: "GET", headers: new Headers({ range: "bytes=0-" }) }, o), null);
 });
 
 test("sw: si guardar la copia falla, la respuesta llega igual", async () => {

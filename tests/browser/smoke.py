@@ -12,7 +12,7 @@ consola:
   3c2. Carrera de Chihuahuas en práctica: el botón "Reglas"; sacudir el tazón, tomar un boleto, poner la aspiradora
      en una casilla, una apuesta secreta y seguir el consejo; pasar a la siguiente etapa; la ventana de jugadas.
      La música de fondo: suena con el primer toque, el botón 🔊/🔇 la calla y la regresa, y el volumen del menú se
-     recuerda.
+     recuerda. Los efectos: botón 🔔/🔕 y volumen propios, que no callan la música.
   3d. Damas chinas en práctica (3 jugadores): el botón "Reglas"; escoger una canica, ver a dónde puede ir y moverla
      varias veces contra la compu.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
@@ -24,7 +24,7 @@ consola:
   7b. La Carrera con la tele como tablero (al final): mesa de 8 con la opción; la espera de la tele con la portada;
      jugar un turno desde el teléfono (solo lo suyo: el tapete se escoge con la tira de números) y la tele con la
      pista grande, las imágenes en alta, los 8 jugadores sin encimarse (16:9 y cuadrada) y sin botones. La música
-     solo en la tele: el teléfono no tiene botón de música.
+     solo en la tele: el teléfono no tiene botón de música. Los efectos sí: el teléfono oye lo suyo y la tele, la partida.
   6. En línea, con un Firebase de mentira en la página (tests/fakes/firebase.js): crear una mesa, agregar a la
      compu, empezar y jugar una mano completa; abrir la mesa por su enlace.
 
@@ -264,8 +264,20 @@ with sync_playwright() as p:
     tap("#menu"); page.wait_for_selector(".sheet[data-sheet='gameMenu'] [data-music='volume']")
     page.eval_on_selector(".sheet [data-music='volume']", "r => { r.value = '70'; r.dispatchEvent(new Event('input', { bubbles: true })); }")
     ch_music_vol = '"volume":0.7' in music_pref()
+    sfx_btn = lambda: page.inner_text(".game.chihuahuas .gbar [data-sfx='toggle']") if page.query_selector(".game.chihuahuas .gbar [data-sfx='toggle']") else ""
+    sfx_pref = lambda: page.evaluate("localStorage.getItem('juegos.chihuahuas.sfx')") or ""
+    ch_sfx_on = sfx_btn() == "🔔"
+    page.wait_for_selector(".sheet[data-sheet='gameMenu'] [data-sfx='volume']")
+    page.eval_on_selector(".sheet [data-sfx='volume']", "r => { r.value = '80'; r.dispatchEvent(new Event('input', { bubbles: true })); }")
+    ch_sfx_vol = '"volume":0.8' in sfx_pref() and '"volume":0.7' in music_pref()
     tap("#menuclose"); page.wait_for_timeout(200)
+    music_heard = music_btn()
+    tap(".gbar [data-sfx='toggle']"); page.wait_for_timeout(200)
+    ch_sfx_mute = sfx_btn() == "🔕" and '"muted":true' in sfx_pref() and music_btn() == music_heard and '"muted":false' in music_pref()
+    tap(".gbar [data-sfx='toggle']"); page.wait_for_timeout(200)
+    ch_sfx_back = sfx_btn() == "🔔" and '"muted":false' in sfx_pref()
     ch_music_req = any("marimba-jaroche.mp3" in u for u in requests)
+    ch_sfx_req = any("tazon-sacudir.mp3" in u for u in requests)
     page.wait_for_timeout(3000)  # la salida: los perros entran a la pista
     ch_dogs = len(page.query_selector_all(".game.chihuahuas .rider:not(.pending)")) == 5
     ch_acts = {"roll": 0, "ticket": 0, "tile": 0, "final": 0, "advice": 0}
@@ -415,6 +427,7 @@ with sync_playwright() as p:
     on.click("#start"); on.wait_for_selector(".game.chihuahuas.phone", timeout=10000)
     ch_phone_only = not on.query_selector(".game.chihuahuas .board, .game.chihuahuas .players") and "tele" in on.inner_text(".tvnote")
     ch_phone_quiet = not on.query_selector(".game.chihuahuas [data-music]")
+    ch_phone_sfx = bool(on.query_selector(".game.chihuahuas [data-sfx='toggle']"))
     # Esperar el turno propio (la compu la mueve este mismo teléfono) y poner el tapete con la tira de números
     on.wait_for_selector(".game.chihuahuas.phone #tilebtn:not([disabled])", timeout=90000)
     on.click("#tilebtn"); on.wait_for_selector(".spacepick [data-pick]")
@@ -445,6 +458,7 @@ with sync_playwright() as p:
             tile: !!document.querySelector(`.chihuahuas.tv .cell[data-space="${picked}"] .tile`),
             tvClass: document.documentElement.classList.contains("tv"),
             music: !!document.querySelector(".chihuahuas.tv .gbar [data-music='volume']") && !!document.querySelector(".chihuahuas.tv .gbar [data-music='toggle']"),
+            sfx: !!document.querySelector(".chihuahuas.tv .gbar [data-sfx='volume']") && !!document.querySelector(".chihuahuas.tv .gbar [data-sfx='toggle']"),
             boardPx: Math.round(board.width),
           };
         }""", picked)
@@ -491,6 +505,11 @@ if not ch_music_on: problems.append("Carrera: la música no sonó después de to
 if not ch_music_mute: problems.append("Carrera: el botón de música no la calló (o no se recordó)")
 if not ch_music_back: problems.append("Carrera: el botón de música no la regresó")
 if not ch_music_vol: problems.append("Carrera: el volumen del menú no se recordó")
+if not ch_sfx_on: problems.append("Carrera: los efectos no estaban encendidos")
+if not ch_sfx_mute: problems.append("Carrera: el botón de efectos no los calló, o de paso calló la música")
+if not ch_sfx_back: problems.append("Carrera: el botón de efectos no los regresó")
+if not ch_sfx_vol: problems.append("Carrera: el volumen de los efectos no se recordó aparte del de la música")
+if not ch_sfx_req: problems.append("Carrera: no se pidió ningún efecto")
 if not ch_dogs: problems.append("Carrera: no se ven los 5 perros en la pista")
 if not ch_hist: problems.append("Carrera: la ventana de jugadas no muestra el historial")
 if min(ch_acts.values()) < 1: problems.append(f"Carrera: faltó alguna jugada {ch_acts}")
@@ -509,7 +528,9 @@ if not tv_left: problems.append("Skull con tele: al volver al teléfono sigue en
 if not ch_tv_wait: problems.append("Carrera con tele: la espera no tiene la portada o el código")
 if not ch_phone_only: problems.append("Carrera con tele: el teléfono muestra la pista o los jugadores")
 if not ch_phone_quiet: problems.append("Carrera con tele: el teléfono tiene música (debe sonar solo la tele)")
+if not ch_phone_sfx: problems.append("Carrera con tele: el teléfono no tiene el botón de efectos")
 if not (ch_tv["music"] and ch_tv_sq["music"]): problems.append("Carrera con tele: la tele no tiene botón y volumen de música")
+if not (ch_tv["sfx"] and ch_tv_sq["sfx"]): problems.append("Carrera con tele: la tele no tiene botón y volumen de efectos")
 if not ch_strip: problems.append("Carrera con tele: el teléfono no ofrece casillas para el tapete")
 if not ch_phone_turn: problems.append("Carrera con tele: no se pudo poner el tapete desde el teléfono")
 if not ch_phone_small: problems.append("Carrera con tele: el teléfono bajó imágenes de la tele")
@@ -529,13 +550,13 @@ print(f"La Pata: turnos jugados {pata_turns}, estilos cargados {sorted(set(pata_
 print(f"Panal: puestos {panal_places}, movidos {panal_moves}, reglas {panal_rules}, tutorial {panal_tut}.")
 print(f"La Viuda: reglas {viuda_rules}, turnos {viuda_acts}, manos {viuda_hands}.")
 print(f"Skull: reglas {skull_rules}, tutorial {skull_tut_steps + skull_tut_done} pasos, discos {skull_places}, apuestas {skull_bids}, volteos {skull_flips}, rondas {skull_rounds}.")
-print(f"Carrera: música {ch_music_req}/{ch_music_on}/{ch_music_mute}/{ch_music_back}/{ch_music_vol}, reglas {ch_rules}, perros {ch_dogs}, historial {ch_hist}, jugadas {ch_acts}, etapas {ch_legs}.")
+print(f"Carrera: música {ch_music_req}/{ch_music_on}/{ch_music_mute}/{ch_music_back}/{ch_music_vol}, efectos {ch_sfx_req}/{ch_sfx_on}/{ch_sfx_mute}/{ch_sfx_back}/{ch_sfx_vol}, reglas {ch_rules}, perros {ch_dogs}, historial {ch_hist}, jugadas {ch_acts}, etapas {ch_legs}.")
 print(f"Damas chinas: reglas {cc_rules}, jugadas {cc_moves}, estilos cargados {cc_styles}.")
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
 print(f"Tele: aviso {tv_hint}, espera {tv_wait}, teléfono {tv_phone}, tablero {tv_board}, salir {tv_left}.")
-print(f"Carrera con tele: espera {ch_tv_wait}, teléfono {ch_phone_only} (sin música {ch_phone_quiet}), casillas {ch_strip}, tapete {ch_phone_turn}, tele 16:9 {ch_tv}, cuadrada {ch_tv_sq}.")
+print(f"Carrera con tele: espera {ch_tv_wait}, teléfono {ch_phone_only} (sin música {ch_phone_quiet}, con efectos {ch_phone_sfx}), casillas {ch_strip}, tapete {ch_phone_turn}, tele 16:9 {ch_tv}, cuadrada {ch_tv_sq}.")
 print(f"En línea: mesa {code}, fichas tiradas {online_moves}, mano terminada {online_finished}, en la lista {in_list}, se reabre por enlace {reopened}.")
 if problems:
     print("PROBLEMAS:\n- " + "\n- ".join(problems)); sys.exit(1)

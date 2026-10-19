@@ -1,0 +1,4 @@
+/* Controles de los efectos de sonido (modules/sfx). Los colores salen de las variables del sitio. */
+.sfxbtn{width:38px;min-height:36px;height:36px;padding:0;font-size:18px;flex:none;line-height:1}
+.sfxvol{display:flex;align-items:center;gap:10px;width:100%}
+.sfxvol input[type=range]{flex:1;min-width:80px;height:36px;accent-color:var(--accent,currentColor);touch-action:pan-x}

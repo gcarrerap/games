@@ -23,8 +23,8 @@ sin repetir la misma dos veces seguidas, con botón de silencio y volumen que se
 
 - Si el navegador rechaza el audio (no ha habido toque), no hay error: el botón queda en 🔇 y al tocarlo se intenta de nuevo.
 - En iPhone el volumen por código no siempre se respeta. El silencio sí: pausa el audio en vez de bajarlo a 0.
-- El service worker (`sw.js`) deja pasar el audio sin guardarlo: se pide por pedazos (`Range` → `206`) y una respuesta
-  parcial no se puede guardar. Sin conexión no hay música.
+- El service worker (`sw.js`) deja pasar la música sin guardarla: se pide por pedazos (`Range` → `206`) y una respuesta
+  parcial no se puede guardar. Sin conexión no hay música. Los efectos cortos (`modules/sfx`) sí se guardan: se piden enteros.
 
 **Uso** (la Carrera de Chihuahuas, `games/chihuahuas/ui/index.js`): crear el reproductor al montar la mesa con las
 canciones del juego y `ctx.prefs`, `armOnGesture(document, music)`, poner `musicButton`/`musicControls` donde quepan,
