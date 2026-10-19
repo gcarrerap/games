@@ -5,6 +5,7 @@ import { createSfx, armOnGesture as armSfx, SFX_STYLES } from "../../../modules/
 import { renderTable, paintClock } from "./table.js";
 import { stopFx } from "./fx.js";
 import { stopParty } from "./party.js";
+import { stopCover } from "./cover.js";
 import { playPress } from "./sound.js";
 import { SONGS } from "../music/index.js";
 import { CLIPS, gapFor } from "../sfx/index.js";
@@ -81,7 +82,7 @@ export function tick(ctx, clock) { if (ui) paintClock(clock); }
 export function unmount() {
   document.removeEventListener("click", onPress, true);
   document.removeEventListener("keydown", onCellKey, true);
-  if (ui) { stopParty(ui); stopMusic(); stopSfx(); stopFx(ui); clearTimeout(ui.holdTimer); (ui.scrollTimers || []).forEach(clearTimeout); }
+  if (ui) { stopParty(ui); stopMusic(); stopSfx(); stopFx(ui); stopCover(ui); clearTimeout(ui.holdTimer); (ui.scrollTimers || []).forEach(clearTimeout); }
   if (ui && ui.el) ui.el.innerHTML = "";
   ui = null;
   unloadStyles("chihuahuas");

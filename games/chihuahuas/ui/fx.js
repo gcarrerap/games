@@ -9,21 +9,19 @@
 import { SHOW, showMs, rollSteps, positions, RULES } from "../engine/index.js";
 import { dogViews } from "./art.js";
 import { facingAt, facingStep } from "./facing.js";
+import { INTRO, introMs } from "../timing.js";
 
 const reduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const now = () => performance.now();
 
-// Tiempos de la salida: cada perro entra a su casilla, uno tras otro
-const INTRO = { gap: 420, run: 650 };
-const introMs = (n) => n * INTRO.gap + INTRO.run + 300;
-
 // Decide si hay que empezar una animación con este dibujo. first: es el primer dibujo de la mesa (al abrirla no se
-// repite la última tirada, salvo la salida de una partida que apenas empieza).
-export function startFx(ui, st, { first, refresh }) {
+// repite la última tirada). intro: empieza la salida de una partida nueva (la mesa la pide al quitarse la portada,
+// ver cover.js; los tiempos de la salida están en ../timing.js).
+export function startFx(ui, st, { first, refresh, intro = false }) {
   if (reduced()) { ui.fx = null; return; }
   let fx = null;
   const start = (st.hist || [])[0];
-  if (first && st.seq === 0 && start && start.kind === "start" && start.start) {
+  if (intro && st.seq === 0 && start && start.kind === "start" && start.start) {
     fx = { kind: "intro", seq: st.seq, start: now(), ms: introMs(start.start.length), order: start.start };
   } else if (!first && st.last && st.last.kind === "roll") {
     fx = { kind: "roll", seq: st.seq, start: now(), ms: showMs(st.last), last: st.last };

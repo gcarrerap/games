@@ -5,8 +5,9 @@
 // kind: "hueso"|"aspiradora" } poner tu tapete · { type: "final", which: "winner"|"loser", dog } apuesta final en
 // secreto · { type: "next" } la siguiente etapa (cualquier asiento, en la pausa entre etapas).
 import manifest from "./manifest.js";
-import { validConfig, newGame, legalActions, apply as applyMove, autoAction, currentSeats, view, isPlaying, RULES, showMs } from "./engine/index.js";
+import { validConfig, newGame, legalActions, apply as applyMove, autoAction, currentSeats, view, isPlaying, RULES, showMs, ND } from "./engine/index.js";
 import { decide, advise, STYLES } from "./ai/index.js";
+import { startMs } from "./timing.js";
 
 function setup(config, { now, rnd }) {
   const c = { n: config.n, timer: config.timer !== false };
@@ -15,6 +16,9 @@ function setup(config, { now, rnd }) {
 }
 
 const timerOn = (st) => st.config.timer !== false;
+// El primer turno de una partida (nadie ha movido: seq 0) cuenta lo que tarda el arranque en la mesa: la portada y la
+// salida de los perros (timing.js). Así el primer jugador no pierde tiempo de su reloj ni la compu juega debajo.
+const lead = (st) => (st.seq === 0 ? startMs(ND) : 0);
 
 export default {
   ...manifest,
@@ -26,14 +30,15 @@ export default {
   isOver: (st) => st.phase === "over",
   result: (st) => ({ coins: st.coins.slice(), champions: st.final ? st.final.champions.slice() : [], rank: st.final ? st.final.rank.slice() : [], legs: st.leg }),
   timing: {
-    turnMs: (st) => (isPlaying(st) && timerOn(st) ? RULES.turnMs : null),
+    turnMs: (st) => (isPlaying(st) && timerOn(st) ? RULES.turnMs + lead(st) : null),
     autoAction: (st) => autoAction(st),
   },
   bots: {
     profiles: Object.entries(STYLES).map(([id, s]) => ({ id, name: s.name })),
     decide: (v, seat, profile, { rnd }) => decide(v, seat, profile, rnd),
-    // Espera a que la mesa termine de mostrar la última jugada (el perro corriendo) y deja un momento para leerla
-    thinkMs: (v) => 1700 + showMs(v.last),
+    // Espera a que la mesa termine de mostrar la última jugada (el perro corriendo, o la portada y la salida al
+    // empezar) y deja un momento para leerla
+    thinkMs: (v) => 1700 + showMs(v.last) + lead(v),
     heavy: true, // recorre todas las formas de terminar la etapa: mejor en el hilo aparte
   },
   advise: (v, seat, { rnd }) => advise(v, seat, rnd),
