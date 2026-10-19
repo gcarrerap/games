@@ -6,6 +6,7 @@ import { nameOf, inHand, onMat, flipTargets, legalActions, FLOWER, SKULL } from 
 import { discSVG, discName } from "./disc.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
+import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
 import { rulesHelp } from "./rules.js";
 import { renderTutorial, openTutorial, tutorialSeen } from "./tutorial.js";
 import { fullscreenButton, wireFullscreen } from "../../../platform/ui/tv.js";
@@ -25,9 +26,11 @@ function renderMenu(ctx, st) {
     <details class="help"><summary>Reglas</summary>${rulesHelp()}</details>
     <button id="menututorial">Tutorial: cómo jugar</button>
     <details class="help"><summary>Jugadas (${st.log.length})</summary><div class="log">${st.log.slice().reverse().map((l) => `<div>${esc(l)}</div>`).join("")}</div></details>
+    ${modeMenu(ctx)}
     <button id="back">← Salir</button>
     <button class="primary big-cta" id="menuclose">Volver al juego</button>`);
   $("#menuclose", ctx.modal).onclick = closeOverlay;
+  wireModeMenu(ctx.modal, ctx);
   $("#menututorial", ctx.modal).onclick = () => openTutorial(ctx);
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };
 }
@@ -194,6 +197,7 @@ export function renderTable(app, ctx, ui) {
   if (display === "tv") {
     app.innerHTML = `
       <header class="gbar">
+        <button class="menubtn" id="menu" aria-label="Menú de la partida" aria-haspopup="dialog"><span></span><span></span><span></span></button>
         <div class="gtitle">Skull</div>
         ${fullscreenButton()}
         <div class="bar-info">Mesa <b>${esc(ctx.table.code)}</b> · Ronda <b>${st.round}</b></div>
@@ -203,8 +207,11 @@ export function renderTable(app, ctx, ui) {
         ${felt}
       </div>`;
     wireFullscreen(app);
+    // El menú, para cambiar de modo desde aquí (un Monitor con asiento puede volver a Teléfono o Control)
+    $("#menu", app).onclick = () => openOverlay("gameMenu");
     // En la tele nadie toca nada: el resultado de la ronda se muestra sin botones (se sigue desde un teléfono)
-    if (st.phase === "pause" || st.phase === "over") renderResult(ctx, st, seat, { tv: true });
+    if (overlay() && overlay().id === "gameMenu") renderMenu(ctx, st);
+    else if (st.phase === "pause" || st.phase === "over") renderResult(ctx, st, seat, { tv: true });
     else ctx.modal.innerHTML = "";
     return;
   }

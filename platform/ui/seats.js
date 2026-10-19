@@ -46,10 +46,10 @@ export function renderSeats(app, { state, actions }) {
   app.className = "shell";
   app.innerHTML = `
     <header class="shell-head"><button class="ghost" id="back">← Mesas</button>
-      <div><h1>Mesa ${esc(t.code)}</h1><small>${esc(game.name)} · ${esc((mode && (mode.label || mode.id)) || "")}${t.config.timer === false ? " · sin límite de tiempo" : ""}${game.tv && t.config.tv ? " · con tele" : ""}${optionLabels(game, t.config).map((x) => " · " + esc(x)).join("")}</small></div></header>
+      <div><h1>Mesa ${esc(t.code)}</h1><small>${esc(game.name)} · ${esc((mode && (mode.label || mode.id)) || "")}${t.config.timer === false ? " · sin límite de tiempo" : ""}${optionLabels(game, t.config).map((x) => " · " + esc(x)).join("")}</small></div></header>
     ${state.me.name ? "" : `<section class="panel"><label class="field-label" for="nm">Tu nombre en la mesa</label><input type="text" id="nm" maxlength="16" placeholder="Ej. Barbara" autocomplete="nickname"></section>`}
     <ul class="seatlist">${t.seats.map(row).join("")}</ul>
-    ${game.tv && t.config.tv ? `<section class="panel tvinfo"><h2>La tele como tablero</h2><p class="hint">${tvHowTo(game, t.code)} Tu teléfono queda para tus cosas y para tirar cuando te toca.</p></section>` : ""}
+    <section class="panel tvinfo"><h2>Teléfono, control o monitor</h2><p class="hint">Durante la partida, cada aparato escoge su modo en el menú del juego: <b>Teléfono</b> (tablero y lo tuyo), <b>Control</b> (solo lo tuyo) o <b>Monitor</b> (el tablero para todos, sin tirar). ${tvHowTo(game, t.code)}</p></section>
     ${teamsHint(game, t) ? `<p class="hint center">${esc(teamsHint(game, t))}</p>` : ""}
     <section class="panel">
       <p class="hint">${full ? "Todos sentados. Cualquiera que esté sentado puede empezar." : `Falta${missing === 1 ? "" : "n"} ${missing}.`}${t.seats.some((x) => x && x.bot) ? " A la compu la mueve el teléfono de quien está en el asiento más bajo." : ""}</p>

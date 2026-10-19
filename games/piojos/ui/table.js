@@ -4,6 +4,7 @@
 import { RULES, isLouse, bustChance, nameOf } from "../engine/index.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
+import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
 import { dieSVG, blankDieSVG } from "./dice.js";
 
 const pct = (p) => `${Math.round(p * 100)}%`;
@@ -26,9 +27,11 @@ function renderMenu(ctx, st) {
     <p class="hint">Meta: ${st.config.goal} puntos · ${st.config.n} jugadores</p>
     <details class="help" open><summary>Cómo se juega</summary>${rulesHelp(st.config.goal)}</details>
     <details class="help"><summary>Jugadas (${st.log.length})</summary><div class="log">${st.log.slice().reverse().map((l) => `<div>${esc(l)}</div>`).join("")}</div></details>
+    ${modeMenu(ctx)}
     <button id="back">← Salir</button>
     <button class="primary big-cta" id="menuclose">Volver al juego</button>`);
   $("#menuclose", ctx.modal).onclick = closeOverlay;
+  wireModeMenu(ctx.modal, ctx);
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };
 }
 

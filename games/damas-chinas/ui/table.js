@@ -4,6 +4,7 @@
 import { legalActions, destinations, arrived, nameOf, COLORS, RULES } from "../engine/index.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
+import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
 import { boardSVG } from "./board.js";
 import { rulesHelp } from "./rules.js";
 
@@ -20,9 +21,11 @@ function renderMenu(ctx, st) {
     <p class="hint">${st.config.n} jugadores · ${st.moves} jugadas</p>
     <details class="help"><summary>Reglas</summary>${rulesHelp()}</details>
     <details class="help"><summary>Jugadas (${st.log.length})</summary><div class="log">${st.log.slice().reverse().map((l) => `<div>${esc(l)}</div>`).join("")}</div></details>
+    ${modeMenu(ctx)}
     <button id="back">← Salir</button>
     <button class="primary big-cta" id="menuclose">Volver al juego</button>`);
   $("#menuclose", ctx.modal).onclick = closeOverlay;
+  wireModeMenu(ctx.modal, ctx);
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };
 }
 

@@ -144,7 +144,7 @@ export default {
     heavy: true,                              // decide() puede tardar: va al hilo aparte
   },
   advise(view, seat, { rnd }),
-  tv: true,                                 // la mesa en línea se puede jugar con la tele como tablero (§5)
+  remote: true,                             // dibuja el modo Control (ctx.display "phone"); todos tienen Monitor (§5)
 
   // --- Interfaz (se carga al abrir el juego) ---
   ui: () => import("./ui/index.js"),        // → { mount(el, ctx), update(ctx), unmount(), tick?(ctx, clock) }
@@ -172,7 +172,8 @@ export default {
   | `advice`, `askAdvice()`, `closeAdvice()` | el consejo, calculado por la plataforma con tu vista |
   | `practice`, `peek()`, `setSeatBot(seat, profile)` | solo en práctica: el estado completo (para "ver manos") y cambiar el bot de un asiento |
   | `prefs` | preferencias del dispositivo para este juego (`juegos.<id>.*`) |
-  | `display` | `"tv"` en la tele de la mesa, `"phone"` en los teléfonos sentados de una mesa con tele, `"full"` en todo lo demás (§5, "La tele como tablero") |
+  | `display` | `"tv"` en Monitor, `"phone"` en Control (si el juego declara `remote`), `"full"` en todo lo demás (§5, "Modos del aparato") |
+  | `mode`, `modes`, `setMode(m)` | el modo de este aparato, los que puede escoger y cómo cambiarlo; el menú del juego pone `modeMenu(ctx)` (`platform/ui/modes.js`) |
   | `modal`, `refresh()`, `setDragging(on)` | dónde van las ventanas (`platform/ui/sheet.js`), volver a dibujar, no redibujar mientras arrastras |
 
   El juego no toca el store ni las acciones de la plataforma: todo pasa por `ctx`.
@@ -208,15 +209,23 @@ juegos-mesas/{code}
 - **Salir** de una mesa te deja sentado; "Levantarme" libera el asiento. Las mesas que nadie toca se borran solas.
 - **Limitaciones conocidas:** el estado completo (manos de todos) vive en Firestore, así que alguien con herramientas podría verlo; y si nadie de la mesa tiene el juego abierto, la compu no mueve. Un servidor propio (Cloud Functions, o FastAPI con WebSockets) resolvería las dos cosas. Como las reglas son puras y el contrato es el mismo, ese cambio quedaría contenido en `platform/services/` y `platform/app/`. Queda como decisión aparte.
 
-### La tele como tablero
+### Modos del aparato (Teléfono, Control y Monitor)
 
-Un juego que declara `tv: true` ofrece al crear la mesa en línea **"La tele como tablero"** (`config.tv`). Una tele, o cualquier aparato grande, abre la mesa con `#/<juego>/<CÓDIGO>/tele` (en el lobby, el botón **Tele** de la mesa) y muestra la mesa a todos; cada quien usa su teléfono solo para lo suyo y para tirar cuando le toca.
+Cada aparato que entra a una mesa en línea escoge **su** modo; ya no es una opción de la mesa. La lógica pura está en `platform/app/table.js` (`deviceModes`, `deviceMode`, `displayFor`), el estado en la sesión (`want`, `mode()`, `modes()`, `setMode(m)`) y la interfaz común en `platform/ui/modes.js`.
 
-- **La tele solo mira.** No tiene asiento aunque en ese aparato se haya sentado alguien (`mySeat()` es -1), así que no juega, no mueve a la compu, no resuelve el reloj, no graba y no entra a la llamada. Ve lo mismo que quien mira sin jugar: `view(state, -1)`, sin nada oculto.
-- **Lo que pone la plataforma** (`platform/ui/tv.js`): la espera mientras se sientan (el código grande, quién está, cómo entrar desde el teléfono), la clase `html.tv` para agrandar las ventanas, pantalla completa y mantener la pantalla encendida (Wake Lock). Los teléfonos de una mesa con tele ven en la pantalla de asientos cómo abrirla.
-- **Lo que pone cada juego:** su mesa con `ctx.display`. En `"tv"`, todo lo público, grande y sin botones de juego (las pausas y la revancha se piden desde un teléfono). En `"phone"`, solo lo de ese asiento: su mano, sus botones y lo mínimo para decidir (por ejemplo, en Skull, de quién voltear se escoge por nombre). `"full"` es la mesa de siempre; un juego que no declara `tv` nunca recibe otra cosa.
-- **Para agregarla a otro juego:** `tv: true` en su manifiesto y los dos dibujos en su interfaz. Lo que la tele no debe ver lo decide `view` como siempre. Opcional: `tvCover`, una imagen 16:9 de fondo para la espera (la Carrera pone su portada).
-- **La tienen:** Skull y la Carrera de Chihuahuas (en el teléfono, la casilla del tapete se escoge por número). Las imágenes grandes que solo usa la tele van en llaves aparte del banco del juego (`@tv` en la Carrera), para que el teléfono no las baje.
+| Modo | `ctx.display` | Ve | Juega | Necesita asiento |
+|---|---|---|---|---|
+| **Teléfono** (`"mobile"`) | `"full"` | el tablero y lo suyo | sí | sí |
+| **Control** (`"remote"`) | `"phone"` si el juego declara `remote: true`; si no, `"full"` | solo lo suyo (o igual que Teléfono) | sí | sí |
+| **Monitor** (`"monitor"`) | `"tv"` | el tablero y las jugadas de todos, sin nada oculto (`view(state, -1)`) | no | no |
+
+- **Sin asiento solo hay Monitor.** Quien entra sin sentarse queda en Monitor durante la partida; mientras se sientan ve los asientos para poder sentarse (la espera de la tele solo sale si pidió Monitor).
+- **Sentado en Monitor conserva su asiento** pero no tira (`play` se niega con un aviso) ni pide consejo hasta volver a Teléfono o Control. La compu, el reloj y la grabación los sigue atendiendo como si mirara su teléfono sin tirar (la sesión usa el asiento real, `seatedAt()`, para eso; `mySeat()` es -1 en Monitor). Si le toca, la plataforma muestra un aviso con botones para cambiar de modo (`renderModeBar`).
+- **Se cambia desde el menú de la partida**, sin salir de la mesa: cada juego pone `${modeMenu(ctx)}` en su menú y `wireModeMenu(ctx.modal, ctx)`. Una prueba (`tests/platform/modes.test.js`) lo exige a todos los juegos del registro. Un juego con dibujo de Monitor aparte también pone ahí el botón del menú.
+- **Por defecto:** sentado, Teléfono; sin asiento, Monitor. El modo escogido se recuerda por aparato y por mesa (`juegos.modos`, las últimas 30). Quien pierde su asiento pasa a Monitor solo. En práctica solo hay Teléfono.
+- **La tele:** cualquier aparato abre la mesa en Monitor con `#/<juego>/<CÓDIGO>/tele` (en el lobby, el botón **📺 Monitor** de cada mesa). La plataforma pone la espera mientras se sientan (el código grande, quién está, y un botón para sentarse y jugar en ese aparato), `html.tv` para agrandar las ventanas, pantalla completa y Wake Lock (`platform/ui/tv.js`). Un Monitor sin asiento no mueve a la compu, no resuelve el reloj, no graba y no entra a la llamada.
+- **Lo que pone cada juego:** su mesa con `ctx.display`. Todos tienen Monitor sin hacer nada: con `seat` -1 su mesa de siempre ya es la de quien mira. Un juego puede dibujar `"tv"` aparte (todo lo público, grande, sin botones de juego, más el botón del menú) y, con `remote: true`, `"phone"` (solo lo de ese asiento y lo mínimo para decidir; por ejemplo, en Skull de quién voltear se escoge por nombre). Opcional: `tvCover`, una imagen 16:9 de fondo para la espera.
+- **Dibujos propios de Monitor y Control:** Skull y la Carrera de Chihuahuas (en Control, la casilla del tapete se escoge por número). Las imágenes grandes que solo usa el Monitor van en llaves aparte del banco del juego (`@tv` en la Carrera), para que el teléfono no las baje. Los demás juegos usan su mesa de siempre en los tres modos: en Control también se ve el tablero, porque en ellos el tablero es lo que se necesita para decidir (por ejemplo, en damas chinas y panal se escoge pieza y destino tocando el tablero).
 
 ### Convivir con Noli, La Pata y myDomino
 
@@ -276,6 +285,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 11 ✅ | Damas chinas: tablero de estrella (coordenadas hexagonales), pasos y saltos encadenados, regla contra el bloqueo, compu con tres estilos y mesa en SVG que gira para que tu punta quede abajo. Sin azar; no tocó `platform/` ni `modules/`. |
 | 12 ✅ | La tele como tablero (§5): opción de la mesa en línea, ruta `/tele`, `ctx.display`, pantalla de espera, Wake Lock. Skull es el primero que la usa: la tele con los tapetes de todos y el teléfono solo con lo tuyo. |
 | 13 ✅ | Carrera de Chihuahuas (estilo Camel Up, 2–8): perros que se apilan, boletos de etapa, tapete de hueso o aspiradora y apuestas secretas; compu con probabilidades exactas de la etapa y carreras simuladas, y consejo. Mesa solo para teléfono con las ilustraciones de Petra (#33, elegidas e integradas en el #34); la tele va en el #35. No tocó `platform/` ni `modules/`. |
+| 14 ✅ | Modos del aparato (§5, #57): cada aparato escoge Teléfono, Control o Monitor desde el menú de la partida, en todos los juegos. Reemplaza la opción de mesa "La tele como tablero" (`tv`); los dibujos de tele y teléfono de Skull y la Carrera quedan como Monitor y Control. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 

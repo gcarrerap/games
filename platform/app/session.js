@@ -11,6 +11,7 @@
 import { createStore } from "./store.js";
 import {
   newTable, sit, leaveSeat, addBot, removeBot, setBotProfile, start, act, turnKey, botSeats, humanSeats, mySeat as seatOf,
+  deviceMode, deviceModes, DEVICE_MODES,
 } from "./table.js";
 import { clockStatus, timeoutAction } from "./clock.js";
 import { optionValues } from "../core/contract.js";
@@ -22,6 +23,7 @@ export const PRACTICE_CODE = "PRÁCTICA";
 export const BOT_NAMES = ["Lupe", "Toño", "Chuy", "Meche", "Pancho", "Licha", "Beto"];
 export const BACKUP_MS = 4000; // en línea, los teléfonos de respaldo esperan esto antes de mover a la compu
 const CODE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const MODES_KEPT = 30; // cuántas mesas recuerda este aparato con su modo
 
 // deps: { now(), schedule(fn, ms) → id, cancel(id), random() → [0,1), loadGame(id) → Promise<módulo>,
 //         botDecide(game, view, seat, profile, seed) → Promise<acción>, advise(game, view, seat, seed) → Promise,
@@ -41,7 +43,8 @@ export function createSession(deps) {
     db: null, online: auth ? "connecting" : "off", // "connecting" | "on" | "off"
     tables: [], updated: {}, // mesas abiertas del juego (lobby) y cuándo se guardó cada una
     table: null, practice: false, code: null,
-    tv: false, // este aparato es la tele de la mesa: muestra el tablero a todos, no juega (docs/ARCHITECTURE.md §5)
+    want: null, // el modo que pidió este aparato para la mesa abierta: "mobile" | "remote" | "monitor" | null (el de siempre)
+                // El que queda depende de si tiene asiento: mode() (docs/ARCHITECTURE.md §5, "Modos del aparato")
     err: "",
     seen: { key: null, at: 0 }, // cuándo vio este teléfono el turno actual (para el reloj)
     advice: null, // { key, data } — data null mientras se calcula
@@ -62,8 +65,24 @@ export function createSession(deps) {
       : (e && e.message) || "Algo falló, intenta otra vez.");
   const fail = (e) => set({ err: message(e) });
   const isGoogle = () => !!(s.user && !s.user.isAnonymous);
-  // La tele nunca tiene asiento, aunque en ese aparato se haya sentado alguien: solo mira.
-  const me = () => (s.practice ? 0 : s.tv ? -1 : s.table ? seatOf(s.table, s.me.id) : -1);
+  // El asiento de este aparato en la mesa abierta, juegue o no ahora
+  const seated = () => (s.practice ? 0 : s.table ? seatOf(s.table, s.me.id) : -1);
+  // El modo que queda: el pedido si se puede (sin asiento, solo Monitor; en práctica, solo Teléfono)
+  const mode = () => deviceMode({ requested: s.want, seated: seated() >= 0, practice: s.practice });
+  const modes = () => deviceModes({ seated: seated() >= 0, practice: s.practice });
+  // El asiento con el que juega: en Monitor ninguno, aunque esté sentado (no tira ni pide consejo). La compu, el
+  // reloj y la grabación siguen con seated(): un sentado en Monitor los atiende igual que mirando su teléfono.
+  const me = () => (mode() === "monitor" ? -1 : seated());
+  // Cada aparato recuerda su modo por mesa, para volver igual al recargar
+  const savedModes = () => { const m = prefs.getJSON("modos", {}); return m && typeof m === "object" ? m : {}; };
+  function setMode(m) {
+    if (!DEVICE_MODES.includes(m) || s.practice || !s.code) return;
+    const all = savedModes(); delete all[s.code]; all[s.code] = m;
+    const keys = Object.keys(all); for (const k of keys.slice(0, Math.max(0, keys.length - MODES_KEPT))) delete all[k];
+    prefs.setJSON("modos", all);
+    set({ want: m, err: "" });
+    afterChange();
+  }
 
   // ---------- Conexión y sesión ----------
   async function connect() {
@@ -103,12 +122,12 @@ export function createSession(deps) {
 
   function goPortal() {
     closeTable(); stopList();
-    set({ screen: "portal", gameId: null, game: null, table: null, practice: false, code: null, tv: false, err: "", advice: null, tables: [] });
+    set({ screen: "portal", gameId: null, game: null, table: null, practice: false, code: null, want: null, err: "", advice: null, tables: [] });
   }
 
   async function openGame(id) {
     closeTable(); stopList();
-    set({ screen: "lobby", gameId: id, game: null, table: null, practice: false, code: null, tv: false, loading: true, err: "", advice: null, tables: [] });
+    set({ screen: "lobby", gameId: id, game: null, table: null, practice: false, code: null, want: null, loading: true, err: "", advice: null, tables: [] });
     try {
       const game = await loadGame(id);
       if (s.gameId !== id) return;
@@ -121,7 +140,7 @@ export function createSession(deps) {
   // para dejar tu lugar está "Levantarme". Las mesas que nadie vuelve a tocar se borran solas (cleanup.js).
   function leave() {
     closeTable();
-    set({ screen: "lobby", table: null, practice: false, code: null, tv: false, err: "", advice: null });
+    set({ screen: "lobby", table: null, practice: false, code: null, want: null, err: "", advice: null });
     watchList();
   }
 
@@ -169,7 +188,7 @@ export function createSession(deps) {
     const profiles = game.bots ? game.bots.profiles.map((x) => x.id) : [];
     const def = profiles.includes(saved.defaultBot) ? saved.defaultBot : profiles[Math.min(1, profiles.length - 1)];
     const bots = Array.from({ length: 8 }, (_, i) => (profiles.includes(saved.bots && saved.bots[i]) ? saved.bots[i] : def));
-    return { mode: mode.id, timer: saved.timer !== false, bots, options: optionValues(game, saved.options || {}), tv: !!game.tv && saved.tv === true };
+    return { mode: mode.id, timer: saved.timer !== false, bots, options: optionValues(game, saved.options || {}) };
   }
   function savePractice(patch) {
     gamePrefs(s.game.id).setJSON("practice", { ...practiceSettings(), ...patch });
@@ -178,8 +197,6 @@ export function createSession(deps) {
   const newSeed = () => Math.floor(random() * 2 ** 31).toString(36);
   // Lo que se escoge aparte del modo: el reloj (si el juego tiene) y las opciones del juego (game.options)
   const optionsFor = (game, settings) => ({ ...optionValues(game, settings.options || {}), ...(game.timing ? { timer: settings.timer !== false } : {}) });
-  // En línea, además: si la mesa se juega con la tele como tablero (solo si el juego lo admite, game.tv)
-  const onlineOptionsFor = (game, settings) => ({ ...optionsFor(game, settings), ...(game.tv && settings.tv ? { tv: true } : {}) });
 
   function startPractice(settings = practiceSettings()) {
     const game = s.game; if (!game) return;
@@ -190,7 +207,7 @@ export function createSession(deps) {
       t = sit(t, 0, { id: s.me.id, name: s.me.name || "Tú" });
       for (let i = 1; i < t.seats.length; i++) t = addBot(t, i, { profile: settings.bots[i - 1], name: BOT_NAMES[(i - 1) % BOT_NAMES.length] });
       t = start(game, t, now());
-      set({ screen: "table", table: t, practice: true, code: null, tv: false, err: "", advice: null });
+      set({ screen: "table", table: t, practice: true, code: null, want: null, err: "", advice: null });
       afterChange();
     } catch (e) { fail(e); }
   }
@@ -207,7 +224,7 @@ export function createSession(deps) {
         if (!(await s.db.doc(`${TABLES}/${c}`).get()).exists) code = c;
       }
       if (!code) throw new Error("No se pudo crear la mesa, intenta otra vez.");
-      let t = newTable(game, { code, mode: settings.mode, options: onlineOptionsFor(game, settings), host: s.me.id, seed: newSeed(), now: now(), version });
+      let t = newTable(game, { code, mode: settings.mode, options: optionsFor(game, settings), host: s.me.id, seed: newSeed(), now: now(), version });
       t = sit(t, 0, { id: s.me.id, name: s.me.name });
       await saveNewTable(s.db, t);
       return code;
@@ -215,14 +232,15 @@ export function createSession(deps) {
   }
 
   // Abre una mesa en línea y la escucha. Cada cambio guardado (de cualquier teléfono) llega aquí.
-  // { tv: true }: este aparato es la tele de la mesa. Solo mira (sin asiento, sin mover a la compu, sin grabar, sin
-  // entrar a la llamada) y el juego dibuja el tablero para que todos lo vean (ctx.display = "tv").
-  function openTable(code, { tv = false } = {}) {
+  // { monitor: true } (la ruta .../tele): este aparato entra en Monitor, aunque haya pedido otro modo antes.
+  // Si no, entra en el modo que recordaba para esa mesa, o en el de siempre.
+  function openTable(code, { monitor = false } = {}) {
     if (!s.db || !s.game) { set({ err: s.online === "connecting" ? "Conectando…" : "Sin conexión con las mesas en línea." }); return; }
     closeTable(); stopList();
     const gameId = s.game.id;
-    set({ screen: "table", table: null, practice: false, code, tv: !!tv, err: "", advice: null });
-    if (call && s.db.fs && !tv) call.watch(code);
+    const want = monitor ? "monitor" : (DEVICE_MODES.includes(savedModes()[code]) ? savedModes()[code] : null);
+    set({ screen: "table", table: null, practice: false, code, want, err: "", advice: null });
+    if (call && s.db.fs) call.watch(code);
     unsubTable = watchTable(s.db, code, (t) => {
       if (s.code !== code) return;
       if (!t) { set({ table: null, err: "Esta mesa ya no existe." }); return; }
@@ -265,6 +283,10 @@ export function createSession(deps) {
   // ---------- Jugar ----------
   // Tu jugada. En línea solo cuenta si la mesa sigue en el turno que viste (otro teléfono pudo adelantarse).
   function play(action) {
+    if (s.table && mode() === "monitor" && seated() >= 0) {
+      set({ err: "Estás en Monitor: cambia a Teléfono o Control para tirar." });
+      return Promise.resolve(false);
+    }
     const seat = me(); if (seat < 0 || !s.table) return Promise.resolve(false);
     const key = turnKey(s.table);
     return run((t) => (turnKey(t) === key ? act(s.game, t, seat, action, now()) : SKIP));
@@ -289,7 +311,7 @@ export function createSession(deps) {
   // las demás personas sentadas son respaldo (esperan BACKUP_MS más) por si ese teléfono no está.
   function botRole(t) {
     if (s.practice) return "primary";
-    const mine = me(); if (mine < 0) return null;
+    const mine = seated(); if (mine < 0) return null;
     return humanSeats(t)[0] === mine ? "primary" : "backup";
   }
   function stopBots() { if (botTimer !== null) cancel(botTimer); botTimer = null; botKey = null; }
@@ -327,7 +349,7 @@ export function createSession(deps) {
     const t = s.table, game = s.game;
     if (!t || !game || s.screen !== "table") return null;
     if (turnKey(t) !== s.seen.key) s.seen = { key: turnKey(t), at: now() };
-    return clockStatus(game, t, { seenAt: s.seen.at, now: now(), me: me(), practice: s.practice });
+    return clockStatus(game, t, { seenAt: s.seen.at, now: now(), me: seated(), practice: s.practice });
   }
   let firing = null;
   function tick() {
@@ -346,7 +368,7 @@ export function createSession(deps) {
   function saveGame(t) {
     if (!s.db || !t.rec) return;
     const id = `${t.game}-${t.code}-${t.created}-${t.round}`.replace(/[^A-Za-z0-9_-]/g, "");
-    if (saved.has(id) || (!s.practice && me() < 0)) return;
+    if (saved.has(id) || (!s.practice && seated() < 0)) return;
     saved.add(id);
     const rec = { ...t.rec, meta: { ...t.rec.meta, mode: s.practice ? "practice" : "online" } };
     saveRecording(s.db, id, rec).catch(() => {}); // ya la guardó otro teléfono, o sin conexión: no pasa nada
@@ -369,7 +391,7 @@ export function createSession(deps) {
   return {
     store,
     actions: {
-      connect, googleIn, googleOut, setName, setError, isGoogle, mySeat: me, call,
+      connect, googleIn, googleOut, setName, setError, isGoogle, mySeat: me, seatedAt: seated, mode, modes, setMode, call,
       goPortal, openGame, leave,
       practiceSettings, savePractice, startPractice,
       createTable, openTable, sitAt, standUp, addBotAt, removeBotAt, setSeatBot, startGame,

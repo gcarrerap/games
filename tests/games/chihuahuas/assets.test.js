@@ -45,6 +45,6 @@ test("cada imagen de la tele es la versión en alta de una del teléfono", () =>
 });
 
 test("la pantalla de espera de la tele usa la portada en alta", () => {
-  assert.equal(manifest.tv, true);
+  assert.equal(manifest.remote, true);
   assert.equal(manifest.tvCover, BANK["portada@tv"].href);
 });

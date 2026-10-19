@@ -58,3 +58,10 @@ details.help .cpu{margin-bottom:12px}
 /* En la tele las ventanas (por ejemplo, el resultado de una ronda) también crecen */
 html.tv .sheet{max-width:min(900px,92vw);font-size:clamp(16px,1.6vw,26px)}
 html.tv .sheet h2{font-size:1.6em}
+
+/* Modos del aparato (platform/ui/modes.js): el bloque del menú y el aviso de Monitor cuando te toca */
+.modepick .seg.col button{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.modepick .seg.col button small{opacity:.75;font-weight:normal}
+.modebar{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;bottom:max(12px,env(safe-area-inset-bottom));z-index:60;display:flex;flex-wrap:wrap;align-items:center;gap:8px;max-width:calc(100vw - 32px);padding:10px 14px;border-radius:14px;background:var(--accent,#c0392b);color:#fff;box-shadow:0 6px 24px rgba(0,0,0,.35);font-weight:600}
+.modebar button{background:#fff;color:#222;border:0;border-radius:10px;padding:8px 12px;font-weight:700}
+.tvwait .tvplay{margin-top:1em}

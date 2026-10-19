@@ -4,6 +4,7 @@ import { P, TARGET, canDraw, canPass, ends, hasPozo, legalPlays, nameOf, pts, te
 import { deduce } from "../ai/index.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
+import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
 import { modeLabel, scoreLabels, seatPos, teamColor } from "./labels.js";
 import { chainSVG } from "./svg/chain.js";
 import { tileSVG } from "./svg/tile.js";
@@ -34,9 +35,11 @@ function renderGameMenu(ctx, ui, st, seat) {
       <div class="val">${v}<small> / ${TARGET}</small></div><div class="bar"><i style="width:${Math.min(100, v)}%"></i></div></div>`).join("")}</div>
     ${ctx.practice ? `<button id="reveal" class="${ui.reveal ? "primary" : ""}" aria-pressed="${ui.reveal}">${ui.reveal ? "Ocultar manos" : "Ver manos (evaluar)"}</button>` : ""}
     <details class="help"><summary>Jugadas (${st.log.length})</summary><div class="log">${st.log.slice().reverse().map((l) => `<div>${esc(l)}</div>`).join("")}</div></details>
+    ${modeMenu(ctx)}
     <button id="back">← Salir</button>
     <button class="primary big-cta" id="menuclose">Volver al juego</button>`);
   $("#menuclose", ctx.modal).onclick = closeOverlay;
+  wireModeMenu(ctx.modal, ctx);
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };
   $("#reveal", ctx.modal)?.addEventListener("click", () => { ui.reveal = !ui.reveal; ctx.refresh(); });
 }
