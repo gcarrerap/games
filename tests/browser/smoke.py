@@ -161,7 +161,7 @@ with sync_playwright() as p:
 
     # ---------- Cucharas en práctica (tiempo real) ----------
     page.evaluate("location.hash = '#/cucharas'"); page.wait_for_selector("#practice")
-    cu_no_timer = page.query_selector("[data-timer]") is None  # el ritmo es una opción de la mesa, no el reloj
+    cu_no_timer = page.query_selector("[data-timer]") is None  # sin límite de tiempo
     page.click("[data-mode='4']"); page.click("#practice")
     page.wait_for_selector(".game.cucharas .cuslots", timeout=10000)
     cu_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
@@ -173,12 +173,10 @@ with sync_playwright() as p:
         if page.query_selector(".custatus .good") and tap("[data-spoon]"): continue
         st = page.inner_text(".custatus")
         try:
-            if "Toma una carta" in st:
-                full = page.query_selector_all("button.cus:not(.empty):not(.own)")
-                if full: full[k % len(full)].click(timeout=500); cu_swaps += 1
-            elif "espacio vacío" in st:
-                tap("button.cus.empty")
-            elif "Escoge" in st:
+            if "Ahora toca" in st:
+                table = page.query_selector_all("button.cus")
+                if table: table[k % len(table)].click(timeout=500); cu_swaps += 1
+            elif "Toca una carta tuya" in st:
                 hand = page.query_selector_all("button.cuc")
                 if hand: hand[k % len(hand)].click(timeout=500)
         except PWError: pass
@@ -623,7 +621,7 @@ if not cu_no_timer: problems.append("Cucharas: el lobby ofrece escoger el reloj"
 if set(cu_styles) != {"cucharas"}: problems.append(f"Cucharas: estilos cargados {cu_styles}")
 if cu_slots != 6: problems.append(f"Cucharas: {cu_slots} espacios con 4 jugadores (debían ser 6)")
 if cu_spoons0 != 3: problems.append(f"Cucharas: {cu_spoons0} cucharas al empezar con 4 jugadores (debían ser 3)")
-if cu_swaps < 2: problems.append(f"Cucharas: solo se pudieron tomar {cu_swaps} cartas de la mesa")
+if cu_swaps < 2: problems.append(f"Cucharas: solo se pudieron cambiar {cu_swaps} cartas")
 if not cu_round: problems.append("Cucharas: no terminó ninguna ronda (o no se vieron las manos)")
 if not cu_rules: problems.append("Cucharas: el menú no tiene las reglas")
 if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {piojos_styles}")

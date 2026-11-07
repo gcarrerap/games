@@ -1,15 +1,15 @@
-// Reglas de Cucharas: el reparto (pókers, espacios y huecos), soltar antes de tomar, nunca más de 4, las cucharas
-// (la primera con o sin póker), las fichas al terminar la ronda, el ritmo y lo que ve cada asiento.
+// Reglas de Cucharas: el reparto (pókers, espacios y huecos), el cambio en un paso, nunca más de 4, las cucharas
+// (la primera con o sin póker), las fichas al terminar la ronda, la mesa abierta o tapada y lo que ve cada asiento.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { newGame, apply, legalActions, view, isPoker, aliveSeats, nextDeadline, RULES } from "../../../games/cucharas/engine/index.js";
+import { newGame, apply, legalActions, view, isPoker, aliveSeats, HIDDEN } from "../../../games/cucharas/engine/index.js";
 import { decide, target } from "../../../games/cucharas/ai/index.js";
 import game from "../../../games/cucharas/index.js";
 import { seededRandom } from "../../../modules/random/index.js";
 import { rankOf } from "../../../modules/cards/index.js";
 
 const NAMES = ["Ana", "Noe", "Gui", "Bar", "Rod", "Abi", "Fer", "Emi"];
-const fresh = (n = 4, pace = "normal", seed = 1) => newGame({ n, pace }, NAMES.slice(0, n), { rnd: seededRandom(seed), now: 0 });
+const fresh = (n = 4, table = "open", seed = 1) => newGame({ n, table }, NAMES.slice(0, n), { rnd: seededRandom(seed), now: 0 });
 const act = (st, seat, a, now = st.t) => apply(st, seat, a, { rnd: seededRandom(`${st.seq}`), now });
 const holes = (st) => st.slots.map((c, i) => (c === null ? i : -1)).filter((i) => i >= 0);
 const full = (st) => st.slots.map((c, i) => (c !== null ? i : -1)).filter((i) => i >= 0);
@@ -44,34 +44,38 @@ test("reparto: vivos + 1 pókers, 4 cartas a cada quien sin póker, 4 en la mesa
   }
 });
 
-test("cambiar: primero se suelta en un hueco y luego se toma de otro espacio; nunca más de 4", () => {
+test("cambiar: tu carta va a un hueco y tomas la que escogiste; siempre 4 en la mano y 4 en la mesa", () => {
   let st = fresh(4);
-  const c = st.hands[0][0];
-  const [h] = holes(st);
-  assert.throws(() => act(st, 0, { type: "take", slot: full(st)[0] }), /más de 4/);
-  assert.throws(() => act(st, 0, { type: "discard", c, slot: full(st)[0] }), /no está vacío/);
-  st = act(st, 0, { type: "discard", c, slot: h });
-  assert.equal(st.hands[0].length, 3);
-  assert.equal(st.slots[h], c);
-  assert.throws(() => act(st, 0, { type: "discard", c: st.hands[0][0], slot: holes(st)[0] }), /toma una carta/);
-  assert.throws(() => act(st, 0, { type: "take", slot: h }), /acabas de soltar/);
-  assert.ok(!legalActions(st, 0).some((a) => a.type === "take" && a.slot === h));
-  const k = full(st).find((i) => i !== h);
-  const got = st.slots[k];
-  st = act(st, 0, { type: "take", slot: k });
+  const c = st.hands[0][0], k = full(st)[0], got = st.slots[k];
+  const emptyBefore = holes(st);
+  st = act(st, 0, { type: "swap", c, slot: k });
   assert.equal(st.hands[0].length, 4);
-  assert.ok(st.hands[0].includes(got));
+  assert.ok(st.hands[0].includes(got) && !st.hands[0].includes(c));
   assert.equal(st.slots[k], null);
-  assert.equal(full(st).length, 4, "siempre quedan 4 cartas en la mesa");
+  assert.ok(emptyBefore.includes(st.slots.indexOf(c)), "la tuya cae en un hueco que estaba vacío");
+  assert.equal(full(st).length, 4);
+  assert.throws(() => act(st, 0, { type: "swap", c, slot: full(st)[0] }), /no la tienes/);
+  assert.throws(() => act(st, 0, { type: "swap", c: st.hands[0][0], slot: holes(st)[0] }), /ya no hay carta/);
 });
 
-test("otro sí puede tomar la carta que alguien acaba de soltar", () => {
+test("otro puede tomar la carta que alguien acaba de soltar", () => {
   let st = fresh(4);
-  const c = st.hands[0][0], [h] = holes(st);
-  st = act(st, 0, { type: "discard", c, slot: h });
-  st = act(st, 1, { type: "discard", c: st.hands[1][0], slot: holes(st)[0] });
-  st = act(st, 1, { type: "take", slot: h });
+  const c = st.hands[0][0];
+  st = act(st, 0, { type: "swap", c, slot: full(st)[0] });
+  st = act(st, 1, { type: "swap", c: st.hands[1][0], slot: st.slots.indexOf(c) });
   assert.ok(st.hands[1].includes(c));
+});
+
+test("mesa tapada: la vista solo dice dónde hay carta; el cambio funciona igual", () => {
+  let st = fresh(4, "closed");
+  const v = view(st, 0);
+  assert.ok(v.slots.every((c) => c === null || c === HIDDEN));
+  assert.equal(v.slots.filter((c) => c === HIDDEN).length, 4);
+  assert.deepEqual(v.hand, st.hands[0], "tu mano sí la ves");
+  const k = full(st)[0], got = st.slots[k];
+  st = act(st, 0, { type: "swap", c: st.hands[0][0], slot: k });
+  assert.ok(st.hands[0].includes(got));
+  assert.ok(view(fresh(4, "open"), 0).slots.every((c) => c !== HIDDEN));
 });
 
 test("cuchara: sin póker y sin que nadie haya tomado, se puede pero cuenta como falso; con póker no hay duda", () => {
@@ -81,7 +85,7 @@ test("cuchara: sin póker y sin que nadie haya tomado, se puede pero cuenta como
   assert.equal(st.firstPoker, true);
   assert.ok(legalActions(st, 0).some((a) => a.type === "spoon"));
   assert.deepEqual(legalActions(st, 2), [], "con cuchara ya no juegas");
-  assert.throws(() => act(st, 2, { type: "discard", c: st.hands[2][0], slot: holes(st)[0] }), /Ya tomaste/);
+  assert.throws(() => act(st, 2, { type: "swap", c: st.hands[2][0], slot: full(st)[0] }), /Ya tomaste/);
 });
 
 test("fin de ronda: el primero con póker gana ficha (sin pasar de 3) y el que se queda sin cuchara pierde", () => {
@@ -139,30 +143,6 @@ test("si nadie quedara con fichas, los dos siguen con 1", () => {
   assert.equal(st.phase, "between");
 });
 
-test("ritmo: si no cambias a tiempo la mesa cambia por ti; con póker no; en Tranquilo nunca", () => {
-  let st = fresh(4, "normal");
-  const pace = RULES.pace.normal;
-  assert.equal(nextDeadline(st), pace.idleMs);
-  const before = st.hands[0].slice();
-  st = act(st, 0, { type: "tick" }, pace.idleMs - 1);
-  assert.deepEqual(st.hands[0], before, "antes de tiempo no pasa nada");
-  st = act(st, 0, { type: "tick" }, pace.idleMs);
-  assert.ok(st.hands.every((h) => h.length === 4));
-  assert.equal(full(st).length, 4);
-  assert.notDeepEqual(st.hands[0], before, "la mesa cambió por él");
-  // Soltar y no tomar: a los pendMs la mesa toma por ti
-  st = act(st, 1, { type: "discard", c: st.hands[1][0], slot: holes(st)[0] }, 7000);
-  assert.equal(nextDeadline(st), 7000 + pace.pendMs);
-  st = act(st, 0, { type: "tick" }, 7000 + pace.pendMs);
-  assert.equal(st.hands[1].length, 4);
-  // Con póker nadie cambia por ti
-  let pk = givePoker(fresh(4, "normal"), 3);
-  const mine = pk.hands[3].slice();
-  pk = act(pk, 0, { type: "tick" }, pace.idleMs);
-  assert.deepEqual(pk.hands[3], mine);
-  assert.equal(nextDeadline(fresh(4, "calm")), null);
-});
-
 test("lo que ve cada asiento: su mano, la mesa; nada de manos ajenas ni de quién tomó cuchara", () => {
   let st = givePoker(fresh(4), 1);
   st = act(st, 1, { type: "spoon" });
@@ -184,10 +164,24 @@ test("la compu: con póker toma cuchara; junta el número que más tiene; nunca 
   for (let k = 0; k < 30; k++) {
     const v = view(st, 2);
     const a = decide(v, 2, "atento", seededRandom(k));
-    if (a.type === "discard") {
-      assert.notEqual(rankOf(a.c), target(v.hand, v.slots), "no suelta del número que junta");
-    }
+    if (a.type === "swap") assert.notEqual(rankOf(a.c), target(v.hand, v.slots), "no suelta del número que junta");
     st = act(st, 2, a, st.t + 500);
     if (st.phase !== "play" || st.spoonBy.length) break;
   }
+});
+
+test("la compu con la mesa tapada cambia a ciegas y nunca suelta del número que junta", () => {
+  const st = fresh(5, "closed");
+  for (let k = 0; k < 20; k++) {
+    const v = view(st, 1);
+    const a = decide(v, 1, "normal", seededRandom(k));
+    assert.equal(a.type, "swap");
+    assert.notEqual(rankOf(a.c), target(v.hand, v.slots));
+    assert.notEqual(v.slots[a.slot], null);
+  }
+});
+
+test("no hay límite de tiempo: el juego no declara reloj ni opción de ritmo", () => {
+  assert.equal(game.timing, undefined);
+  assert.deepEqual(game.options.map((o) => o.id), ["table"]);
 });

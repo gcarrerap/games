@@ -1,10 +1,11 @@
-// La compu de Cucharas. Solo recibe la vista: su mano, la mesa (boca arriba), cuántas cucharas quedan y si ella ya
-// tiene. Nunca sabe quién tomó cuchara.
+// La compu de Cucharas. Solo recibe la vista: su mano, la mesa, cuántas cucharas quedan y si ella ya tiene. Nunca
+// sabe quién tomó cuchara.
 //
 // - Con póker: toma cuchara (qué tan rápido lo dice thinkMs).
 // - Si ya faltan cucharas: se da cuenta con una probabilidad por vistazo (`notice`); los distraídos tardan más.
-// - Si no: junta el número del que tiene más (en empate, el que más se ve en la mesa). Suelta su carta más sola y
-//   toma una del número que junta; si no hay ninguna que le sirva, a veces cambia de todos modos para mover la mano.
+// - Si no: junta el número del que tiene más (en empate, el que más se ve en la mesa) y cambia su carta más sola.
+//   Con la mesa abierta toma una del número que junta (o de otro del que ya tiene dos); si no hay ninguna que le
+//   sirva, a veces cambia de todos modos para mover la mano. Con la mesa tapada toma a ciegas.
 // - Nunca toma cuchara sin póker si nadie ha tomado (no blufea).
 import { rankOf } from "../../../modules/cards/index.js";
 import { isPoker, countRanks } from "../engine/index.js";
@@ -16,7 +17,7 @@ export const STYLES = {
 };
 const style = (profile) => STYLES[profile] || STYLES.normal;
 const pick = (arr, rnd) => arr[Math.floor(rnd() * arr.length)];
-const TICK = { type: "tick" };
+const WAIT = { type: "wait" };
 
 // El número que conviene juntar: el que más tiene; en empate, el que más se ve en la mesa
 export function target(hand, slots) {
@@ -34,27 +35,22 @@ export function decide(v, seat, profile, rnd) {
 
   const goal = target(v.hand, v.slots);
   const counts = countRanks(v.hand);
-  if (v.pend >= 0) {
-    // Le falta tomar: una del número que junta, si no una de otro que ya tiene dos, si no cualquiera
-    const opts = v.slots.map((c, i) => (c && i !== v.pend ? i : -1)).filter((i) => i >= 0);
-    const best = opts.find((i) => rankOf(v.slots[i]) === goal)
-      ?? opts.find((i) => (counts[rankOf(v.slots[i])] || 0) >= 2);
-    return { type: "take", slot: best ?? pick(opts, rnd) };
-  }
-  const holes = v.slots.map((c, i) => (c ? -1 : i)).filter((i) => i >= 0);
-  if (!holes.length) return TICK;
-  const useful = v.slots.some((c) => c && (rankOf(c) === goal || (counts[rankOf(c)] || 0) >= 2));
-  if (!useful && rnd() >= s.shuffle) return TICK;
+  const full = v.slots.map((c, i) => (c ? i : -1)).filter((i) => i >= 0);
+  if (!full.length || !v.slots.includes(null)) return WAIT;
   const spare = v.hand.filter((c) => rankOf(c) !== goal);
   const fewest = Math.min(...spare.map((c) => counts[rankOf(c)]));
-  return { type: "discard", c: pick(spare.filter((c) => counts[rankOf(c)] === fewest), rnd), slot: pick(holes, rnd) };
+  const give = pick(spare.filter((c) => counts[rankOf(c)] === fewest), rnd);
+  if (v.config.table === "closed") return { type: "swap", c: give, slot: pick(full, rnd) };
+  const best = full.find((i) => rankOf(v.slots[i]) === goal)
+    ?? full.find((i) => rankOf(v.slots[i]) !== rankOf(give) && (counts[rankOf(v.slots[i])] || 0) >= 2);
+  if (best !== undefined) return { type: "swap", c: give, slot: best };
+  if (rnd() >= s.shuffle) return WAIT;
+  return { type: "swap", c: give, slot: pick(full, rnd) };
 }
 
-// Cuánto tarda: su velocidad con un poco de azar por asiento y acción; tomar después de soltar es más rápido
+// Cuánto tarda: su velocidad con un poco de azar por asiento y acción
 export function thinkMs(v, seat, now, profile) {
   const s = style(profile);
   const jitter = 0.75 + (((v.seq * 7 + seat * 13) % 10) / 20); // 0.75 … 1.2
-  let ms = s.speed * jitter;
-  if (v.pend >= 0) ms *= 0.5;
-  return Math.round(ms);
+  return Math.round(s.speed * jitter);
 }
