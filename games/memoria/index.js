@@ -1,9 +1,9 @@
 // Memoria Veloz conforme al contrato de juego (platform/core/contract.js). Solo adapta: las reglas viven en engine/
 // y la compu en ai/.
 //
-// Acciones: { type: "open", i } abrir una carta · { type: "back", i } regresarla · { type: "backAll" } regresar las
-// dos · { type: "claim" } reclamar el par · { type: "timer", seat } ponerle timer a otro · { type: "tick" } resolver
-// los timers vencidos (lo aplica la plataforma al llegar la hora; cualquier asiento puede).
+// Acciones: { type: "open", i } abrir una carta (si es la pareja de la que ya tenías, el par es tuyo) ·
+// { type: "timer", seat } ponerle timer a otro · { type: "tick" } resolver los timers vencidos (lo aplica la
+// plataforma al llegar la hora; cualquier asiento puede). Una carta abierta no se regresa.
 //
 // Es un juego en tiempo real (`realtime` en el manifiesto): no hay turnos, todos los asientos pueden actuar siempre
 // (currentSeats da todos) y la plataforma aplica cada acción sobre el estado más reciente, sin descartarla porque

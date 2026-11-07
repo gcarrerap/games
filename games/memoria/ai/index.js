@@ -3,8 +3,8 @@
 //
 // Recordar: cada carta vista se recuerda con una probabilidad que baja con las acciones que han pasado desde que la
 // vio (estilo: `mem` al verla, `fade` por acción). Con eso decide:
-//   - Con dos iguales abiertas: las reclama.
-//   - Con una abierta: si recuerda dónde está su pareja (y está libre), la abre; si no, abre una que no ha visto.
+//   - Con una abierta: si recuerda dónde está su pareja y está libre, la abre (el par es suyo). Si su pareja la tiene
+//     otro, espera a que se libere. Si no, abre una que no ha visto (o, si ya vio todas, una que no recuerda).
 //   - Sin cartas: si recuerda un par completo libre, abre una; si alguien lleva rato con cartas abiertas y puede,
 //     le pone timer; si no, abre una que no ha visto.
 // Congelada, o sin nada que hacer, espera (`tick`). Qué tan rápido actúa lo dice thinkMs.
@@ -40,15 +40,15 @@ export function decide(v, seat, profile, rnd) {
   const unseen = free.filter((i) => !seen.has(i));
   const explore = () => (unseen.length ? pick(unseen, rnd) : free.length ? pick(free, rnd) : -1);
 
-  if (mine.length === 2) return v.cards[mine[0]].f === v.cards[mine[1]].f ? { type: "claim" } : { type: "backAll" };
-
   if (mine.length === 1) {
     const f = v.cards[mine[0]].f;
     const match = free.find((i) => known.get(i) === f);
     if (match !== undefined) return { type: "open", i: match };
-    // Si cree saber qué hay en todas las libres y ninguna es su pareja, mejor la suelta
-    const i = unseen.length ? pick(unseen, rnd) : free.filter((j) => !known.has(j)).length ? pick(free.filter((j) => !known.has(j)), rnd) : -1;
-    return i >= 0 ? { type: "open", i } : { type: "back", i: mine[0] };
+    // Su pareja la tiene abierta otro: espera a que se libere
+    if (v.memory.some((m) => m.f === f && m.i !== mine[0] && v.cards[m.i].hold >= 0 && v.cards[m.i].hold !== seat)) return TICK;
+    const unknown = free.filter((j) => !known.has(j));
+    const i = unseen.length ? pick(unseen, rnd) : unknown.length ? pick(unknown, rnd) : free.length ? pick(free, rnd) : -1;
+    return i >= 0 ? { type: "open", i } : TICK;
   }
 
   // Sin cartas abiertas: un par que recuerda completo
@@ -70,14 +70,13 @@ export function decide(v, seat, profile, rnd) {
   return i >= 0 ? { type: "open", i } : TICK;
 }
 
-// Cuánto tarda: su velocidad, un poco al azar por asiento y acción, más rápido con una carta abierta y para reclamar, y si está congelada,
+// Cuánto tarda: su velocidad, un poco al azar por asiento y acción, más rápido con una carta abierta, y si está congelada,
 // hasta que se le quite
 export function thinkMs(v, seat, now, profile) {
   const s = style(profile);
   const jitter = 0.75 + (((v.seq * 7 + seat * 13) % 10) / 20); // 0.75 … 1.2
   let ms = s.speed * jitter;
-  if (v.mine.length === 2) ms *= 0.5; // reclamar es inmediato
-  else if (v.mine.length === 1) ms *= 0.6; // ya está buscando la pareja
+  if (v.mine.length === 1) ms *= 0.6; // ya está buscando la pareja
   const frozenLeft = (v.frozen[seat] || 0) - now;
   if (frozenLeft > 0) ms = Math.max(ms, frozenLeft + 50);
   return Math.round(ms);

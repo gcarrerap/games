@@ -8,7 +8,7 @@
 }}
 :root[data-theme="dark"]{ --mback:#21564a; --mback-2:#163f35; --mface:#f1ead8; --mface-edge:#a99e84; }
 
-.game.memoria{height:100%;max-width:560px;margin:0 auto;padding:6px 8px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;overflow:hidden;
+.game.memoria{height:100%;min-height:0;max-width:560px;margin:0 auto;padding:6px 8px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;overflow:hidden;
   touch-action:manipulation;-webkit-user-select:none;user-select:none}
 .memoria .gbar{display:flex;align-items:center;gap:10px;min-height:40px}
 .memoria .menubtn{width:40px;height:40px;min-height:40px;padding:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;flex:none}
@@ -34,34 +34,36 @@
 .mstatus{text-align:center;font-weight:800;font-size:14px;min-height:1.5em;flex:none}
 .mstatus small{font-weight:600;color:var(--muted)}
 .mstatus .warn{color:var(--warn)}
+.mstatus .good{color:var(--ok)}
 
-/* El tablero: tan grande como quepa a lo ancho y a lo alto */
-.mgrid{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:5px;align-content:start;margin:0 auto;
-  width:min(100%,calc((100dvh - 250px) * var(--cols) / var(--rows) * .8));flex:none}
-.mc{aspect-ratio:4/5;min-height:0;width:100%;padding:0;border-radius:8px;border:2px solid var(--mback-line);
+/* El tablero: ocupa lo que sobra entre los jugadores y los botones; ui/table.js (fitBoard) escoge las columnas y el
+   tamaño de carta (--cw) para que quepa completo y los botones siempre se vean */
+.mboard{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;align-content:center;justify-content:center;--cw:48px}
+.mc{aspect-ratio:4/5;min-height:0;width:var(--cw);padding:0;border-radius:8px;border:2px solid var(--mback-line);
   background:repeating-linear-gradient(45deg,var(--mback),var(--mback) 6px,var(--mback-2) 6px,var(--mback-2) 12px);
-  display:flex;align-items:center;justify-content:center;font-size:min(8vw,4.2dvh,40px);line-height:1;color:inherit;
+  display:flex;align-items:center;justify-content:center;font-size:calc(var(--cw) * .58);line-height:1;color:inherit;
   box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .12s,background .12s;box-sizing:border-box}
 button.mc:active{transform:scale(.94)}
 .mc.up{background:var(--mface);border-color:var(--mface-edge)}
 .mc.up.mine{border:3px solid var(--pc);animation:flip .18s ease-out}
 .mc.held{border:3px solid var(--pc);background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--pc) 70%,var(--mback)),color-mix(in srgb,var(--pc) 70%,var(--mback)) 6px,color-mix(in srgb,var(--pc) 50%,var(--mback-2)) 6px,color-mix(in srgb,var(--pc) 50%,var(--mback-2)) 12px);
   box-shadow:0 0 0 2px color-mix(in srgb,var(--pc) 35%,transparent);transform:translateY(-2px)}
+.mc.fresh{border:3px solid var(--pc);animation:pop .5s ease-out}
 .mc.missed{border-color:var(--warn);opacity:.75}
-.mc.gone{background:transparent;border:1px dashed color-mix(in srgb,var(--pc) 45%,transparent);box-shadow:none;opacity:.35;font-size:min(5vw,2.6dvh,24px)}
+.mc.gone{background:transparent;border:1px dashed color-mix(in srgb,var(--pc) 45%,transparent);box-shadow:none;opacity:.35;font-size:calc(var(--cw) * .36)}
 .mc.nope{animation:nope .3s}
 .mgrid.frozen .mc:not(.missed):not(.gone){filter:saturate(.3) brightness(.85)}
 @keyframes flip{from{transform:rotateY(90deg)}to{transform:none}}
+@keyframes pop{40%{transform:scale(1.15)}}
 @keyframes nope{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
 
-.mactions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;min-height:48px;align-items:center;flex:none}
-.mactions .big{min-height:46px;padding-inline:18px;font-weight:800}
+.mactions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;min-height:24px;align-items:center;flex:none}
+.mactions p{margin:0}
 
 /* Monitor: el tablero grande para todos */
 .game.memoria.tv{max-width:none}
 .memoria.tv .mplayers{grid-template-columns:repeat(4,1fr)}
-.memoria.tv .mgrid{width:min(100%,calc((100dvh - 160px) * var(--cols) / var(--rows) * .8))}
-.memoria.tv .mc{font-size:min(5vw,6dvh)}
 
 .res .dot{vertical-align:middle}
-@media (prefers-reduced-motion:reduce){.mc.up.mine,.mc.nope{animation:none}}
+@media (prefers-reduced-motion:reduce){.mc.up.mine,.mc.nope,.mc.fresh{animation:none}}

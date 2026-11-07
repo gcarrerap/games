@@ -1,5 +1,4 @@
-// La mesa de Memoria Veloz: los jugadores (pares, cartas abiertas, timers), el tablero de cartas y los botones
-// Reclamar / Regresar. Dibuja con ctx.view y juega con ctx.act().
+// La mesa de Memoria Veloz: los jugadores (pares, cartas abiertas, timers con su botón ⏱) y el tablero de cartas. Dibuja con ctx.view y juega con ctx.act().
 //
 // Tiempo: congelado, timers y recarga se cuentan con la hora del estado (`view.t`, la de la última acción) más lo
 // que ha pasado en este teléfono desde que la vio. Así no importa si los relojes de los teléfonos no coinciden.
@@ -21,9 +20,16 @@ const nowOf = (ui, v) => v.t + (performance.now() - ui.seenAt);
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const who = (v, s, seat) => (s === seat ? "Tú" : nameOf(v, s));
 
+// Tu último par, si lo acabas de juntar: se resalta un momento
+const FRESH_MS = 1500;
+function freshPair(v, seat, now) {
+  const e = v.log[v.log.length - 1];
+  return seat >= 0 && e && e.type === "claim" && e.seat === seat && now - e.t < FRESH_MS ? e : null;
+}
+
 // Lo que cambia con el tiempo (sin que cambie el estado): si cambia, se redibuja
 function timeSig(v, seat, now) {
-  const parts = [seat >= 0 && isFrozen(v, seat, now) ? secs(v.frozen[seat] - now) : 0];
+  const parts = [seat >= 0 && isFrozen(v, seat, now) ? secs(v.frozen[seat] - now) : 0, freshPair(v, seat, now) ? 1 : 0];
   parts.push(seat >= 0 ? (canTimer(v, seat, now) ? "ok" : secs(v.cool[seat] - now)) : "");
   for (const tm of v.timers) parts.push(tm ? secs(tm.end - now) : "-");
   return parts.join("|");
@@ -38,20 +44,43 @@ export function wire(ui) {
     if (card) {
       e.preventDefault();
       const i = +card.dataset.card, c = v.cards[i];
-      if (c.hold === seat) ctx.act({ type: "back", i });
-      else if (c.hold < 0 && c.won < 0 && v.mine.length < RULES.maxOpen && !isFrozen(v, seat, nowOf(ui, v))) ctx.act({ type: "open", i });
+      if (c.hold < 0 && c.won < 0 && v.mine.length < RULES.maxOpen && !isFrozen(v, seat, nowOf(ui, v))) ctx.act({ type: "open", i });
       else card.classList.add("nope"), setTimeout(() => card.classList.remove("nope"), 300);
     } else if (btn && !btn.disabled) {
       e.preventDefault();
       const a = btn.dataset.act;
       if (a === "timer") ctx.act({ type: "timer", seat: +btn.dataset.seat });
-      else ctx.act({ type: a });
     }
   };
   const click = (e) => { if (e.target.closest("#menu")) openOverlay("gameMenu"); };
   ui.el.addEventListener("pointerdown", down);
   ui.el.addEventListener("click", click);
-  ui.unwire = () => { ui.el.removeEventListener("pointerdown", down); ui.el.removeEventListener("click", click); };
+  // Si cambia el tamaño de la pantalla (girar el teléfono, aparece la barra del navegador), se reacomoda el tablero
+  const ro = typeof ResizeObserver === "function" ? new ResizeObserver(() => fitBoard(ui.el)) : null;
+  ro?.observe(ui.el);
+  ui.unwire = () => { ui.el.removeEventListener("pointerdown", down); ui.el.removeEventListener("click", click); ro?.disconnect(); };
+}
+
+// El tablero ocupa el espacio que dejan los jugadores, el aviso y los botones (que así siempre se ven): escoge
+// cuántas columnas dan las cartas más grandes en ese espacio, y les da tamaño en píxeles.
+const GAP = 5, RATIO = 0.8; // ancho / alto de una carta
+export function bestLayout(n, W, H) {
+  let best = { cols: 6, w: 0 };
+  for (let cols = 3; cols <= 12; cols++) {
+    const rows = Math.ceil(n / cols);
+    if (rows * cols - n >= cols) continue;
+    const w = Math.min((W - GAP * (cols - 1)) / cols, ((H - GAP * (rows - 1)) / rows) * RATIO);
+    // Entre dos casi iguales, la que deja menos huecos al final
+    if (w > best.w + 0.5 || (Math.abs(w - best.w) <= 0.5 && n % cols === 0 && n % best.cols !== 0)) best = { cols, w };
+  }
+  return { cols: best.cols, w: Math.max(16, Math.floor(best.w)) };
+}
+function fitBoard(app) {
+  const box = app.querySelector(".mboard"), grid = app.querySelector(".mgrid");
+  if (!box || !grid) return;
+  const { cols, w } = bestLayout(grid.children.length, box.clientWidth, box.clientHeight);
+  grid.style.gridTemplateColumns = `repeat(${cols}, ${w}px)`;
+  grid.style.setProperty("--cw", `${w}px`);
 }
 
 function renderMenu(ctx, v) {
@@ -103,19 +132,20 @@ function statusHTML(v, seat, now, tv) {
   if (isFrozen(v, seat, now)) return `<span class="warn">❄️ No era pareja: congelado ${secs(v.frozen[seat] - now)} s</span>`;
   const tm = v.timers[seat];
   if (tm) return `<span class="warn">⏱ ${esc(nameOf(v, tm.by))} te puso timer: ${secs(tm.end - now)} s</span>`;
-  const mine = v.mine;
-  if (mine.length === 2) return v.cards[mine[0]].f === v.cards[mine[1]].f ? "¡Son iguales! Reclámalas" : "";
-  if (mine.length === 1) return "Abre otra, o toca la tuya para regresarla";
+  const fresh = freshPair(v, seat, now);
+  if (fresh) return `<span class="good">¡Par! ${faceOf(fresh.f)}</span>`;
+  if (v.mine.length === 1) return "Ahora busca su pareja";
   const t = activeTimerBy(v, seat);
   const timerTxt = t >= 0 ? `tu timer corre sobre ${esc(nameOf(v, t))}` : now < v.cool[seat] ? `tu timer se recarga en ${secs(v.cool[seat] - now)} s` : "";
   return `Toca una carta${timerTxt ? ` · <small>${timerTxt}</small>` : ""}`;
 }
 
-function cardHTML(v, seat, i, now, tv) {
+function cardHTML(v, seat, i, now, tv, fresh) {
   const c = v.cards[i];
   const miss = seat >= 0 && v.miss && v.miss.until > now ? v.miss.cards.indexOf(i) : -1;
+  if (c.won >= 0 && fresh && fresh.cards.includes(i)) return `<div class="mc up fresh" style="--pc:${COLORS[c.won]}" aria-label="¡Tu par!"><span>${faceOf(c.f)}</span></div>`;
   if (c.won >= 0) return `<div class="mc gone" style="--pc:${COLORS[c.won]}" aria-label="Reclamada"><span>${faceOf(c.f)}</span></div>`;
-  if (c.hold === seat && seat >= 0) return `<button class="mc up mine" data-card="${i}" style="--pc:${COLORS[seat]}" aria-label="Tu carta: regresarla"><span>${faceOf(c.f)}</span></button>`;
+  if (c.hold === seat && seat >= 0) return `<button class="mc up mine" data-card="${i}" style="--pc:${COLORS[seat]}" aria-label="Tu carta abierta"><span>${faceOf(c.f)}</span></button>`;
   if (c.hold >= 0) return `<div class="mc held" style="--pc:${COLORS[c.hold]}" aria-label="Abierta por ${esc(nameOf(v, c.hold))}"></div>`;
   if (miss >= 0) return `<button class="mc up missed" data-card="${i}" aria-label="No era pareja"><span>${faceOf(v.miss.faces[miss])}</span></button>`;
   return tv || seat < 0 ? `<div class="mc"></div>` : `<button class="mc" data-card="${i}" aria-label="Carta ${i + 1}"></button>`;
@@ -126,11 +156,8 @@ export function renderTable(app, ctx, ui) {
   if (v.seq !== ui.seenSeq) { ui.seenSeq = v.seq; ui.seenAt = performance.now(); }
   const now = nowOf(ui, v);
   ui.sig = timeSig(v, seat, now);
-  const n = v.cards.length, cols = tv ? (n > 36 ? 12 : 9) : 6, rows = Math.ceil(n / cols);
-  const playing = v.phase === "play";
   const frozen = seat >= 0 && isFrozen(v, seat, now);
-  const mine = v.mine;
-  const canClaim = mine.length === 2 && v.cards[mine[0]].f === v.cards[mine[1]].f;
+  const fresh = freshPair(v, seat, now);
 
   app.className = `game memoria ${tv ? "tv" : ""}`;
   app.innerHTML = `
@@ -141,17 +168,15 @@ export function renderTable(app, ctx, ui) {
     </header>
     <section class="mplayers" aria-label="Jugadores">${playersHTML(v, seat, now, tv)}</section>
     <div class="mstatus" aria-live="polite">${statusHTML(v, seat, now, tv)}</div>
-    <section class="mgrid ${frozen ? "frozen" : ""}" style="--cols:${cols};--rows:${rows}" aria-label="Cartas">
-      ${v.cards.map((_, i) => cardHTML(v, seat, i, now, tv)).join("")}
-    </section>
+    <div class="mboard"><section class="mgrid ${frozen ? "frozen" : ""}" aria-label="Cartas">
+      ${v.cards.map((_, i) => cardHTML(v, seat, i, now, tv, fresh)).join("")}
+    </section></div>
     <section class="mactions">
-      ${playing && seat >= 0 && !tv && mine.length === 2 ? `
-        <button class="big" data-act="backAll">Regresar las dos</button>
-        ${canClaim ? `<button class="primary big" data-act="claim">¡Reclamar!</button>` : ""}` : ""}
       ${seat < 0 ? `<p class="hint center">Estás mirando la mesa.</p>` : ""}
       ${ctx.err ? `<p class="err" role="alert">${esc(ctx.err)}</p>` : ""}
     </section>`;
 
+  fitBoard(app);
   const ov = overlay();
   if (ov && ov.id === "gameMenu") renderMenu(ctx, v);
   else if (v.phase === "over") renderResult(ctx, v, seat);

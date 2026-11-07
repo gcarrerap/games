@@ -5,7 +5,8 @@ consola:
      quitan al cambiar de juego.
   3. Piojos en práctica: tirar y plantarse varios turnos contra la compu; solo sus estilos quedan cargados.
   3-. Memoria Veloz en práctica (tiempo real): el lobby no ofrece reloj; 48 cartas con 3 jugadores; abrir cartas
-     mientras la compu juega a la vez (se ven sus cartas abiertas con su color); las reglas en el menú.
+     mientras la compu juega a la vez (se ven sus cartas abiertas con su color); el tablero cabe sin scroll también
+     en un teléfono chaparro; las reglas en el menú.
   3a. Panal en práctica: el botón "Reglas"; la primera lección del tutorial ("Aprender"); poner bichos y moverlos tocando la reserva, la colmena y las casillas
      marcadas; solo sus estilos quedan cargados.
   3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar (el paño
@@ -137,11 +138,15 @@ with sync_playwright() as p:
     page.wait_for_selector(".game.memoria .mgrid", timeout=10000)
     mem_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
     mem_cards = len(page.query_selector_all(".mgrid .mc"))
+    # Los botones de abajo se ven sin hacer scroll, también en un teléfono chaparro
+    mem_fits = page.evaluate("() => document.querySelector('.mactions').getBoundingClientRect().bottom <= innerHeight + 1")
+    page.set_viewport_size({"width": 375, "height": 560}); page.wait_for_timeout(300)
+    mem_fits = mem_fits and page.evaluate("() => document.querySelector('.mactions').getBoundingClientRect().bottom <= innerHeight + 1")
+    page.set_viewport_size({"width": 390, "height": 844}); page.wait_for_timeout(200)
     mem_opened = mem_bot_held = False
     for k in range(40):
         if page.query_selector(".sheet #again"): break
-        if tap("[data-act=claim]"): pass
-        elif not page.query_selector(".mgrid.frozen"):
+        if not page.query_selector(".mgrid.frozen"):
             cards = page.query_selector_all("button.mc:not(.up)")
             if cards:
                 try: cards[(k * 7) % len(cards)].click(timeout=500)
@@ -576,6 +581,7 @@ if piojos_rolls < 3: problems.append(f"Piojos: solo se tiraron {piojos_rolls} ve
 if not mem_no_timer: problems.append("Memoria Veloz: el lobby ofrece escoger el reloj")
 if mem_styles != ["memoria"]: problems.append(f"Memoria Veloz: estilos cargados {mem_styles}")
 if mem_cards != 48: problems.append(f"Memoria Veloz: {mem_cards} cartas con 3 jugadores (debían ser 48)")
+if not mem_fits: problems.append("Memoria Veloz: los botones quedan abajo de la pantalla")
 if not mem_opened: problems.append("Memoria Veloz: no se pudo abrir ninguna carta")
 if not mem_bot_held: problems.append("Memoria Veloz: nunca se vio una carta abierta por la compu")
 if not mem_rules: problems.append("Memoria Veloz: el menú no tiene las reglas")

@@ -5,10 +5,10 @@ El juego de pares, pero **sin turnos**: de 1 a 4 jugadores juegan al mismo tiemp
 ## Reglas
 
 - **Tablero:** 18 pares con 1–2 jugadores, 24 pares con 3–4.
-- **Cartas abiertas:** cada quien puede tener hasta 2 a la vez. Mientras la tiene abierta, solo él ve su cara y solo él la puede tomar; los demás la ven marcada con su color, sin la cara.
-- **Con una abierta:** la regresa (tocándola) o abre otra. **Con dos iguales:** las reclama, o regresa una o las dos. Al regresar, la carta vuelve boca abajo a su lugar.
-- **Si la segunda no es pareja:** las dos se regresan solas y queda **congelado 2 s** (no abre cartas ni pone timers). Solo él vio las caras.
-- **Timer:** le pones uno de **5 s** a otro que tenga cartas abiertas; al acabarse se le regresan. Si las regresa o reclama antes, vence sin acción. Un timer a la vez sobre cada jugador; puedes poner otro **10 s** después de que el tuyo terminó (no se acumulan).
+- **Abrir:** abres una carta y luego otra. Mientras la tienes abierta, solo tú ves su cara y solo tú la puedes tomar; los demás la ven marcada con tu color, sin la cara. **Una carta abierta no se regresa** (si no, ganaría quien abre y cierra cartas sin armar pares).
+- **Si la segunda es pareja:** el par es tuyo en ese momento (sin botón de reclamar) y sale del juego.
+- **Si no es pareja:** las dos se regresan solas a su lugar y quedas **congelado 2 s** (no abres cartas ni pones timers). Solo tú viste las caras.
+- **Timer:** le pones uno de **5 s** a otro que tenga una carta abierta; al acabarse se le regresa. Si antes junta su par o falla, vence sin acción. Un timer a la vez sobre cada jugador; puedes poner otro **10 s** después de que el tuyo terminó (no se acumulan).
 - **Fin:** cuando no quedan pares. Gana quien tenga más; en empate, quien llegó primero a ese número.
 
 El issue con las reglas acordadas es el #83.
@@ -17,9 +17,9 @@ El issue con las reglas acordadas es el #83.
 games/memoria/
 ├── manifest.js   # id, nombre, 1–4 jugadores, realtime
 ├── index.js      # conforme al contrato; el "reloj" son los timers (timing → tick)
-├── engine/       # reglas (puro): abrir, regresar, reclamar, congelado, timers, desempate, la vista
+├── engine/       # reglas (puro): abrir, par al instante, congelado, timers, desempate, la vista
 ├── ai/           # la compu: despistado, normal y memorión (recuerdan con olvido; también ponen timers)
-├── ui/           # la mesa: jugadores con ⏱, el tablero, Reclamar / Regresar las dos; faces.js (las caras)
+├── ui/           # la mesa: jugadores con ⏱ y el tablero (se acomoda al espacio libre); faces.js (las caras)
 └── styles/
 ```
 

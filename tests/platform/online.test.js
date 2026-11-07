@@ -342,8 +342,10 @@ test("tiempo real: jugadas al mismo tiempo cuentan las dos; la misma carta solo 
   await Promise.all([A.a.play({ type: "open", i: 0 }), B.a.play({ type: "open", i: 1 })]);
   assert.deepEqual([A.st.table.state.cards[0].hold, A.st.table.state.cards[1].hold], [0, 1]);
   assert.equal(A.st.table.turn, 2);
-  // Los dos sueltan su carta y van por la misma: solo la toma uno; al otro se le rechaza
-  await A.a.play({ type: "back", i: 0 }); await B.a.play({ type: "back", i: 1 });
+  // En otra mesa, los dos van por la misma carta: solo la toma uno; al otro se le rechaza
+  const code2 = await A.a.createTable({ mode: "2", bots: [] });
+  A.a.openTable(code2); B.a.openTable(code2);
+  await B.a.sitAt(1); await A.a.startGame();
   const oks = await Promise.all([A.a.play({ type: "open", i: 5 }), B.a.play({ type: "open", i: 5 })]);
   const holder = A.st.table.state.cards[5].hold;
   assert.ok(holder === 0 || holder === 1);
