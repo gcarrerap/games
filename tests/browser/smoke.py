@@ -159,6 +159,40 @@ with sync_playwright() as p:
     mem_rules = "congelado" in page.inner_text(".sheet")
     tap("#menuclose"); page.wait_for_timeout(200)
 
+    # ---------- Cucharas en práctica (tiempo real) ----------
+    page.evaluate("location.hash = '#/cucharas'"); page.wait_for_selector("#practice")
+    cu_no_timer = page.query_selector("[data-timer]") is None  # el ritmo es una opción de la mesa, no el reloj
+    page.click("[data-mode='4']"); page.click("#practice")
+    page.wait_for_selector(".game.cucharas .cuslots", timeout=10000)
+    cu_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+    cu_slots = len(page.query_selector_all(".cuslots .cus"))
+    cu_spoons0 = len(page.query_selector_all(".cuspoons .cuspoon"))
+    cu_swaps = 0; cu_round = False
+    for k in range(60):
+        if page.query_selector(".sheet #next, .sheet #again"): cu_round = True; break
+        if page.query_selector(".custatus .good") and tap("[data-spoon]"): continue
+        st = page.inner_text(".custatus")
+        try:
+            if "Toma una carta" in st:
+                full = page.query_selector_all("button.cus:not(.empty):not(.own)")
+                if full: full[k % len(full)].click(timeout=500); cu_swaps += 1
+            elif "espacio vacío" in st:
+                tap("button.cus.empty")
+            elif "Escoge" in st:
+                hand = page.query_selector_all("button.cuc")
+                if hand: hand[k % len(hand)].click(timeout=500)
+        except PWError: pass
+        page.wait_for_timeout(250)
+    if not cu_round:
+        tap("[data-spoon]"); page.wait_for_timeout(4000)
+        cu_round = page.query_selector(".sheet .curesult") is not None
+    shot("10c-cucharas")
+    if page.query_selector(".sheet .curesult"):
+        tap("#next"); page.wait_for_timeout(500)
+    tap("#menu"); page.wait_for_selector(".sheet[data-sheet='gameMenu']")
+    cu_rules = "cuchara" in page.inner_text(".sheet").lower()
+    tap("#menuclose"); page.wait_for_timeout(200)
+
     # ---------- Panal en práctica ----------
     page.evaluate("location.hash = '#/panal'"); page.wait_for_selector("#practice")
     page.click("[data-timer='0']"); page.click("#practice")
@@ -585,6 +619,13 @@ if not mem_fits: problems.append("Memoria Veloz: los botones quedan abajo de la 
 if not mem_opened: problems.append("Memoria Veloz: no se pudo abrir ninguna carta")
 if not mem_bot_held: problems.append("Memoria Veloz: nunca se vio una carta abierta por la compu")
 if not mem_rules: problems.append("Memoria Veloz: el menú no tiene las reglas")
+if not cu_no_timer: problems.append("Cucharas: el lobby ofrece escoger el reloj")
+if set(cu_styles) != {"cucharas"}: problems.append(f"Cucharas: estilos cargados {cu_styles}")
+if cu_slots != 6: problems.append(f"Cucharas: {cu_slots} espacios con 4 jugadores (debían ser 6)")
+if cu_spoons0 != 3: problems.append(f"Cucharas: {cu_spoons0} cucharas al empezar con 4 jugadores (debían ser 3)")
+if cu_swaps < 2: problems.append(f"Cucharas: solo se pudieron tomar {cu_swaps} cartas de la mesa")
+if not cu_round: problems.append("Cucharas: no terminó ninguna ronda (o no se vieron las manos)")
+if not cu_rules: problems.append("Cucharas: el menú no tiene las reglas")
 if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {piojos_styles}")
 if panal_places < 5: problems.append(f"Panal: solo se pusieron {panal_places} bichos")
 if panal_moves < 1: problems.append("Panal: no se pudo mover ningún bicho")
@@ -668,6 +709,7 @@ print(f"Carrera: música {ch_music_req}/{ch_music_on}/{ch_music_mute}/{ch_music_
 print(f"Damas chinas: reglas {cc_rules}, jugadas {cc_moves}, estilos cargados {cc_styles}.")
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Memoria Veloz: {mem_cards} cartas, abrió cartas {mem_opened}, la compu abrió cartas {mem_bot_held}, estilos {mem_styles}.")
+print(f"Cucharas: {cu_slots} espacios, {cu_spoons0} cucharas, cartas tomadas {cu_swaps}, ronda {cu_round}, reglas {cu_rules}, estilos {cu_styles}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
 print(f"Tele: aviso {tv_hint}, espera {tv_wait}, teléfono {tv_phone}, tablero {tv_board}, salir {tv_left}.")
