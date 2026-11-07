@@ -4,7 +4,7 @@
 // Recordar: cada carta vista se recuerda con una probabilidad que baja con las acciones que han pasado desde que la
 // vio (estilo: `mem` al verla, `fade` por acción). Con eso decide:
 //   - Con una abierta: si recuerda dónde está su pareja y está libre, la abre (el par es suyo). Si su pareja la tiene
-//     otro, espera a que se libere. Si no, abre una que no ha visto (o, si ya vio todas, una que no recuerda).
+//     otro, le pone timer (o espera a poder ponérselo). Si ya no hay libres, timer a quien tenga una abierta. Si no, abre una que no ha visto (o, si ya vio todas, una que no recuerda).
 //   - Sin cartas: si recuerda un par completo libre, abre una; si alguien lleva rato con cartas abiertas y puede,
 //     le pone timer; si no, abre una que no ha visto.
 // Congelada, o sin nada que hacer, espera (`tick`). Qué tan rápido actúa lo dice thinkMs.
@@ -18,6 +18,7 @@ export const STYLES = {
 const style = (profile) => STYLES[profile] || STYLES.normal;
 const pick = (arr, rnd) => arr[Math.floor(rnd() * arr.length)];
 const TICK = { type: "tick" };
+const timerOn = (v, seat, target) => (canTimer(v, seat, v.t) && v.counts[target] > 0 && !v.timers[target] ? { type: "timer", seat: target } : null);
 
 // Lo que recuerda ahora: { carta: cara }
 export function recall(v, s, rnd) {
@@ -44,11 +45,14 @@ export function decide(v, seat, profile, rnd) {
     const f = v.cards[mine[0]].f;
     const match = free.find((i) => known.get(i) === f);
     if (match !== undefined) return { type: "open", i: match };
-    // Su pareja la tiene abierta otro: espera a que se libere
-    if (v.memory.some((m) => m.f === f && m.i !== mine[0] && v.cards[m.i].hold >= 0 && v.cards[m.i].hold !== seat)) return TICK;
+    // Su pareja la tiene abierta otro: le pone timer para que se la suelte, o espera a que se libere
+    const blocker = v.memory.find((m) => m.f === f && m.i !== mine[0] && v.cards[m.i].hold >= 0 && v.cards[m.i].hold !== seat);
+    if (blocker) return timerOn(v, seat, v.cards[blocker.i].hold) || TICK;
     const unknown = free.filter((j) => !known.has(j));
     const i = unseen.length ? pick(unseen, rnd) : unknown.length ? pick(unknown, rnd) : free.length ? pick(free, rnd) : -1;
-    return i >= 0 ? { type: "open", i } : TICK;
+    if (i >= 0) return { type: "open", i };
+    // No queda ninguna libre: alguien tiene su pareja; le pone timer a quien tenga una abierta
+    return v.counts.map((c, o) => (o !== seat && c > 0 ? timerOn(v, seat, o) : null)).find(Boolean) || TICK;
   }
 
   // Sin cartas abiertas: un par que recuerda completo

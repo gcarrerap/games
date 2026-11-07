@@ -134,18 +134,33 @@ function statusHTML(v, seat, now, tv) {
   if (tm) return `<span class="warn">⏱ ${esc(nameOf(v, tm.by))} te puso timer: ${secs(tm.end - now)} s</span>`;
   const fresh = freshPair(v, seat, now);
   if (fresh) return `<span class="good">¡Par! ${faceOf(fresh.f)}</span>`;
+  // Sin cartas libres solo queda esperar o quitarle su carta a alguien con el timer
+  const anyFree = v.cards.some((c) => c.hold < 0 && c.won < 0);
+  const others = v.counts.some((c, s) => s !== seat && c > 0);
+  if (!anyFree && others) return `<span class="warn">No quedan cartas libres: ponle ⏱ a quien tenga una abierta</span>`;
   if (v.mine.length === 1) return "Ahora busca su pareja";
   const t = activeTimerBy(v, seat);
   const timerTxt = t >= 0 ? `tu timer corre sobre ${esc(nameOf(v, t))}` : now < v.cool[seat] ? `tu timer se recarga en ${secs(v.cool[seat] - now)} s` : "";
   return `Toca una carta${timerTxt ? ` · <small>${timerTxt}</small>` : ""}`;
 }
 
-function cardHTML(v, seat, i, now, tv, fresh) {
+// Cómo se ve cada carta. La mesa se redibuja completa con cada jugada de cualquiera, así que la animación (voltear,
+// resaltar el par) solo se pone cuando la carta acaba de cambiar a ese dibujo; si no, se repetiría a cada rato.
+function cardKind(v, seat, i, now, fresh) {
+  const c = v.cards[i];
+  if (c.won >= 0) return fresh && fresh.cards.includes(i) ? "fresh" : "gone";
+  if (c.hold === seat && seat >= 0) return "mine";
+  if (c.hold >= 0) return "held";
+  return seat >= 0 && v.miss && v.miss.until > now && v.miss.cards.includes(i) ? "missed" : "down";
+}
+
+function cardHTML(v, seat, i, now, tv, fresh, anim) {
   const c = v.cards[i];
   const miss = seat >= 0 && v.miss && v.miss.until > now ? v.miss.cards.indexOf(i) : -1;
-  if (c.won >= 0 && fresh && fresh.cards.includes(i)) return `<div class="mc up fresh" style="--pc:${COLORS[c.won]}" aria-label="¡Tu par!"><span>${faceOf(c.f)}</span></div>`;
+  const a = anim ? " anim" : "";
+  if (c.won >= 0 && fresh && fresh.cards.includes(i)) return `<div class="mc up fresh${a}" style="--pc:${COLORS[c.won]}" aria-label="¡Tu par!"><span>${faceOf(c.f)}</span></div>`;
   if (c.won >= 0) return `<div class="mc gone" style="--pc:${COLORS[c.won]}" aria-label="Reclamada"><span>${faceOf(c.f)}</span></div>`;
-  if (c.hold === seat && seat >= 0) return `<button class="mc up mine" data-card="${i}" style="--pc:${COLORS[seat]}" aria-label="Tu carta abierta"><span>${faceOf(c.f)}</span></button>`;
+  if (c.hold === seat && seat >= 0) return `<button class="mc up mine${a}" data-card="${i}" style="--pc:${COLORS[seat]}" aria-label="Tu carta abierta"><span>${faceOf(c.f)}</span></button>`;
   if (c.hold >= 0) return `<div class="mc held" style="--pc:${COLORS[c.hold]}" aria-label="Abierta por ${esc(nameOf(v, c.hold))}"></div>`;
   if (miss >= 0) return `<button class="mc up missed" data-card="${i}" aria-label="No era pareja"><span>${faceOf(v.miss.faces[miss])}</span></button>`;
   return tv || seat < 0 ? `<div class="mc"></div>` : `<button class="mc" data-card="${i}" aria-label="Carta ${i + 1}"></button>`;
@@ -158,6 +173,9 @@ export function renderTable(app, ctx, ui) {
   ui.sig = timeSig(v, seat, now);
   const frozen = seat >= 0 && isFrozen(v, seat, now);
   const fresh = freshPair(v, seat, now);
+  const kinds = v.cards.map((_, i) => cardKind(v, seat, i, now, fresh));
+  const prev = ui.kinds || [];
+  ui.kinds = kinds;
 
   app.className = `game memoria ${tv ? "tv" : ""}`;
   app.innerHTML = `
@@ -169,7 +187,7 @@ export function renderTable(app, ctx, ui) {
     <section class="mplayers" aria-label="Jugadores">${playersHTML(v, seat, now, tv)}</section>
     <div class="mstatus" aria-live="polite">${statusHTML(v, seat, now, tv)}</div>
     <div class="mboard"><section class="mgrid ${frozen ? "frozen" : ""}" aria-label="Cartas">
-      ${v.cards.map((_, i) => cardHTML(v, seat, i, now, tv, fresh)).join("")}
+      ${v.cards.map((_, i) => cardHTML(v, seat, i, now, tv, fresh, prev.length > 0 && prev[i] !== kinds[i])).join("")}
     </section></div>
     <section class="mactions">
       ${seat < 0 ? `<p class="hint center">Estás mirando la mesa.</p>` : ""}

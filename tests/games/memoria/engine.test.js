@@ -156,7 +156,7 @@ test("la vista: tus caras abiertas sí, las de otros no (solo quién la tiene); 
   assert.equal(JSON.stringify(v1).includes(`"f":${st.cards[x].f},"hold":0`), false);
 });
 
-test("la compu: busca la pareja que recuerda, espera si la tiene otro y espera congelada", () => {
+test("la compu: busca la pareja que recuerda, le pone timer a quien la tiene y espera congelada", () => {
   let st = fresh(2);
   const [x, y] = pairOf(st);
   // Ya vio y (lo abrió con otra y falló); con x abierta va directo por y
@@ -165,8 +165,10 @@ test("la compu: busca la pareja que recuerda, espera si la tiene otro y espera c
   st = act(st, 1, { type: "open", i: w }, 0);
   st = act(st, 1, { type: "open", i: x }, 3000);
   assert.deepEqual(decide(view(st, 1), 1, "memorion", () => 0), { type: "open", i: y });
-  // Si su pareja la tiene abierta otro, espera
+  // Si su pareja la tiene abierta otro, le pone timer; si no puede (ya tiene uno corriendo), espera
   st = act(st, 0, { type: "open", i: y }, 3100);
+  assert.deepEqual(decide(view(st, 1), 1, "memorion", () => 0), { type: "timer", seat: 0 });
+  st = act(st, 1, { type: "timer", seat: 0 }, 3200);
   assert.deepEqual(decide(view(st, 1), 1, "memorion", () => 0), { type: "tick" });
   // Congelada: espera, y su tiempo de pensar llega hasta que se le quite
   const z = other(st, st.cards[x].f, [x, y]);
@@ -188,4 +190,20 @@ test("el tablero escoge las columnas que dan las cartas más grandes en el espac
   assert.equal(bestLayout(48, 360, 600).cols, 6, "alto: 6 columnas");
   assert.equal(bestLayout(48, 360, 330).cols, 8, "chaparro: más columnas");
   assert.equal(bestLayout(48, 1600, 800).cols, 12, "tele: muchas columnas");
+});
+
+test("al final, si el último par queda repartido entre dos, la compu le pone timer al otro y se destraba", () => {
+  // Quedan solo x e y (el mismo par): el asiento 0 tiene x, la compu (1) tiene y
+  let st = fresh(2);
+  const [x, y] = pairOf(st);
+  st = { ...st, cards: st.cards.map((c, i) => (i === x || i === y ? c : { ...c, won: 0 })) };
+  st = act(st, 0, { type: "open", i: x }, 1000);
+  st = act(st, 1, { type: "open", i: y }, 1000);
+  assert.deepEqual(decide(view(st, 1), 1, "normal", () => 0), { type: "timer", seat: 0 });
+  st = act(st, 1, { type: "timer", seat: 0 }, 1200);
+  st = act(st, 1, { type: "tick" }, 1200 + RULES.timerMs);
+  assert.equal(st.cards[x].hold, -1, "el timer le regresó su carta");
+  // Ahora la compu recuerda dónde está x (lo vio antes) o la abre por ser la única libre: el par es suyo
+  st = act(st, 1, decide(view(st, 1), 1, "normal", () => 0), 1200 + RULES.timerMs + 100);
+  assert.equal(st.phase, "over");
 });
