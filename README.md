@@ -21,6 +21,8 @@ El sitio tiene tres tipos de piezas:
 | Skull | `games/skull/` | 3–6 | Faroleo con flores y una calavera. Práctica contra la compu y mesas en línea, con dibujos propios de Monitor y Control. Con música de fondo |
 | Damas chinas | `games/damas-chinas/` | 2, 3, 4 o 6 | Canicas en la estrella. Práctica contra la compu y mesas en línea |
 | Carrera de Chihuahuas | `games/chihuahuas/` | 2–8 | Apuestas en una carrera de perros que se apilan (estilo Camel Up). Práctica contra la compu y mesas en línea, con dibujos propios de Monitor y Control |
+| Memoria Veloz | `games/memoria/` | 1–4 | Pares sin turnos: gana el más rápido. Práctica contra la compu y mesas en línea |
+| Cucharas | `games/cucharas/` | 3–8 | Arma un póker cambiando cartas con la mesa, sin turnos; el que se queda sin cuchara pierde ficha. Práctica contra la compu y mesas en línea |
 
 En cualquier mesa en línea, cada aparato escoge desde el menú de la partida cómo la usa: **Teléfono** (el tablero y lo tuyo), **Control** (solo lo tuyo) o **Monitor** (el tablero para todos, como tele, sin tirar).
 

@@ -12,6 +12,7 @@ import skull from "./skull/manifest.js";
 import damasChinas from "./damas-chinas/manifest.js";
 import chihuahuas from "./chihuahuas/manifest.js";
 import memoria from "./memoria/manifest.js";
+import cucharas from "./cucharas/manifest.js";
 
 export const GAMES = [
   { ...domino, load: () => import("./domino/index.js") },
@@ -24,6 +25,7 @@ export const GAMES = [
   { ...damasChinas, load: () => import("./damas-chinas/index.js") },
   { ...chihuahuas, load: () => import("./chihuahuas/index.js") },
   { ...memoria, load: () => import("./memoria/index.js") },
+  { ...cucharas, load: () => import("./cucharas/index.js") },
 ];
 
 export const findGame = (id) => GAMES.find((g) => g.id === id) || null;
