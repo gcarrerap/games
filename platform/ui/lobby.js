@@ -49,7 +49,7 @@ export function renderLobby(app, { state, actions }) {
     <section class="panel">
       <span class="field-label">Modo</span>
       <div class="seg col" role="group" aria-label="Modo">${game.modes.map((m) => `<button data-mode="${esc(m.id)}" aria-pressed="${m.id === cfg.mode}">${esc(m.label || m.id)}</button>`).join("")}</div>
-      ${game.timing ? `<span class="field-label">Tiempo por turno</span>
+      ${game.timing && !game.realtime ? `<span class="field-label">Tiempo por turno</span>
       <div class="seg" role="group" aria-label="Tiempo por turno"><button data-timer="1" aria-pressed="${cfg.timer}">Con reloj</button><button data-timer="0" aria-pressed="${!cfg.timer}">Sin límite</button></div>` : ""}
       ${(game.options || []).map((o) => `<span class="field-label">${esc(o.label)}</span>
       <div class="seg col" role="group" aria-label="${esc(o.label)}">${o.choices.map((c) => `<button data-opt="${esc(o.id)}" data-val="${esc(c.id)}" aria-pressed="${cfg.options[o.id] === c.id}">${esc(c.label)}</button>`).join("")}</div>

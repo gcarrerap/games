@@ -4,6 +4,8 @@ consola:
   2. La Pata en práctica: varios turnos (robar y descartar), el registro y el consejo; los estilos del dominó se
      quitan al cambiar de juego.
   3. Piojos en práctica: tirar y plantarse varios turnos contra la compu; solo sus estilos quedan cargados.
+  3-. Memoria Veloz en práctica (tiempo real): el lobby no ofrece reloj; 48 cartas con 3 jugadores; abrir cartas
+     mientras la compu juega a la vez (se ven sus cartas abiertas con su color); las reglas en el menú.
   3a. Panal en práctica: el botón "Reglas"; la primera lección del tutorial ("Aprender"); poner bichos y moverlos tocando la reserva, la colmena y las casillas
      marcadas; solo sus estilos quedan cargados.
   3b. La Viuda en práctica: el botón "Reglas" abre las reglas; tomar o pasar a ciegas, cambiar una carta, tocar (el paño
@@ -127,6 +129,30 @@ with sync_playwright() as p:
         elif tap("#roll"): piojos_rolls += 1
         page.wait_for_timeout(300)
     shot("10-piojos-turnos")
+
+    # ---------- Memoria Veloz en práctica (tiempo real) ----------
+    page.evaluate("location.hash = '#/memoria'"); page.wait_for_selector("#practice")
+    mem_no_timer = page.query_selector("[data-timer]") is None  # el reloj es parte de las reglas: no se escoge
+    page.click("[data-mode='3']"); page.click("#practice")
+    page.wait_for_selector(".game.memoria .mgrid", timeout=10000)
+    mem_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+    mem_cards = len(page.query_selector_all(".mgrid .mc"))
+    mem_opened = mem_bot_held = False
+    for k in range(40):
+        if page.query_selector(".sheet #again"): break
+        if tap("[data-act=claim]"): pass
+        elif not page.query_selector(".mgrid.frozen"):
+            cards = page.query_selector_all("button.mc:not(.up)")
+            if cards:
+                try: cards[(k * 7) % len(cards)].click(timeout=500)
+                except PWError: pass
+        mem_opened = mem_opened or page.query_selector(".mc.up.mine, .mc.missed") is not None
+        mem_bot_held = mem_bot_held or page.query_selector(".mc.held") is not None
+        page.wait_for_timeout(250)
+    shot("10a-memoria")
+    tap("#menu"); page.wait_for_selector(".sheet[data-sheet='gameMenu']")
+    mem_rules = "congelado" in page.inner_text(".sheet")
+    tap("#menuclose"); page.wait_for_timeout(200)
 
     # ---------- Panal en práctica ----------
     page.evaluate("location.hash = '#/panal'"); page.wait_for_selector("#practice")
@@ -547,6 +573,12 @@ if not cont_online_rule: problems.append("Continental en línea: la pantalla de 
 if cont_online_buy: problems.append("Continental en línea: con 'no se compra' apareció el botón de comprar")
 if pata_turns < 4: problems.append(f"La Pata: solo se jugaron {pata_turns} turnos")
 if piojos_rolls < 3: problems.append(f"Piojos: solo se tiraron {piojos_rolls} veces")
+if not mem_no_timer: problems.append("Memoria Veloz: el lobby ofrece escoger el reloj")
+if mem_styles != ["memoria"]: problems.append(f"Memoria Veloz: estilos cargados {mem_styles}")
+if mem_cards != 48: problems.append(f"Memoria Veloz: {mem_cards} cartas con 3 jugadores (debían ser 48)")
+if not mem_opened: problems.append("Memoria Veloz: no se pudo abrir ninguna carta")
+if not mem_bot_held: problems.append("Memoria Veloz: nunca se vio una carta abierta por la compu")
+if not mem_rules: problems.append("Memoria Veloz: el menú no tiene las reglas")
 if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {piojos_styles}")
 if panal_places < 5: problems.append(f"Panal: solo se pusieron {panal_places} bichos")
 if panal_moves < 1: problems.append("Panal: no se pudo mover ningún bicho")
@@ -629,6 +661,7 @@ print(f"Skull: reglas {skull_rules}, tutorial {skull_tut_steps + skull_tut_done}
 print(f"Carrera: música {ch_music_req}/{ch_music_on}/{ch_music_mute}/{ch_music_back}/{ch_music_vol}, efectos {ch_sfx_req}/{ch_sfx_on}/{ch_sfx_mute}/{ch_sfx_back}/{ch_sfx_vol}, reglas {ch_rules}, perros {ch_dogs}, historial {ch_hist}, jugadas {ch_acts}, etapas {ch_legs}.")
 print(f"Damas chinas: reglas {cc_rules}, jugadas {cc_moves}, estilos cargados {cc_styles}.")
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
+print(f"Memoria Veloz: {mem_cards} cartas, abrió cartas {mem_opened}, la compu abrió cartas {mem_bot_held}, estilos {mem_styles}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
 print(f"Tele: aviso {tv_hint}, espera {tv_wait}, teléfono {tv_phone}, tablero {tv_board}, salir {tv_left}.")

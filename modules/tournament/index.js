@@ -28,7 +28,7 @@ export function playGame(game, profiles, { config, seed = 1, t0 = 0, maxSteps = 
     if (seats.length) {
       // Si varios pueden actuar, actúa primero el que menos espera (por ejemplo, quién sale en parejas)
       seat = seats.length === 1 || !game.bots.thinkMs ? seats[0]
-        : seats.map((s) => ({ s, w: game.bots.thinkMs(game.view(state, s), s, now) })).sort((a, b) => a.w - b.w)[0].s;
+        : seats.map((s) => ({ s, w: game.bots.thinkMs(game.view(state, s), s, now, profiles[s]) })).sort((a, b) => a.w - b.w)[0].s;
       action = choose(game.view(state, seat), seat, profiles[seat], { rnd: seededRandom(`${seed}:bot:${step}`) }, state);
       if (!action) throw new Error(`${game.id}: la compu del asiento ${seat} no decidió`);
     } else {
