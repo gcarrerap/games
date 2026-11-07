@@ -30,8 +30,7 @@
 .cus{padding:0;min-height:0;aspect-ratio:44/62;width:100%;border-radius:7px;background:transparent;border:none;display:block;transition:transform .12s}
 .cus svg.card,.cuc svg.card{width:100%;height:auto}
 .cus.empty{border:2px dashed var(--cuslot-line);box-sizing:border-box}
-button.cus.empty{cursor:pointer}
-.cus.own{opacity:.55}
+.cus.pick{box-shadow:0 0 0 2px var(--accent);border-radius:7px}
 button.cus:active{transform:scale(.94)}
 .cuspoons{width:28px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:flex-end}
 .cuspoon{width:28px;height:28px;min-height:28px;padding:0;border:none;background:transparent;font-size:17px;line-height:1;opacity:.6;filter:saturate(.5)}
@@ -39,13 +38,11 @@ button.cus:active{transform:scale(.94)}
 
 .custatus{text-align:center;font-weight:800;font-size:14px;min-height:1.5em;flex:none;margin-top:auto}
 .custatus .good{color:var(--accent)}
-.cuclock{color:var(--muted);font-weight:700}
 
 /* Tu mano: cuatro cartas grandes; la escogida sube */
 .cuhand{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 auto;width:min(100%,calc((100dvh - 360px) * 4 * 44 / 62 * .95),440px);flex:none;padding-bottom:8px}
 .cuc{padding:0;min-height:0;border:none;background:transparent;border-radius:8px;display:block;transition:transform .12s}
 .cuc.sel{transform:translateY(-12px);filter:drop-shadow(0 4px 6px rgba(0,0,0,.35))}
-.cuc.gap{aspect-ratio:44/62;border:2px dashed var(--line);box-sizing:border-box}
 .cuhand.frozen{filter:saturate(.4)}
 .nope{animation:cunope .3s}
 @keyframes cunope{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
