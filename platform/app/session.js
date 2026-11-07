@@ -57,6 +57,9 @@ export function createSession(deps) {
     me: () => s.me, prefs, onChange: () => store.notify(),
   }) : null;
   let botTimer = null, botKey = null, unsubTable = null, unsubList = null, lastCleanup = 0;
+  // Juegos en tiempo real (game.realtime): cada asiento de la compu tiene su propio temporizador
+  const rtTimers = new Map(); // asiento → id del temporizador
+  let rtGen = 0; // cambia al dejar de mover la compu, para que un temporizador viejo no siga
   const saved = new Set(); // partidas ya grabadas desde este teléfono
 
   const set = (patch) => store.set(patch);
@@ -196,7 +199,8 @@ export function createSession(deps) {
   }
   const newSeed = () => Math.floor(random() * 2 ** 31).toString(36);
   // Lo que se escoge aparte del modo: el reloj (si el juego tiene) y las opciones del juego (game.options)
-  const optionsFor = (game, settings) => ({ ...optionValues(game, settings.options || {}), ...(game.timing ? { timer: settings.timer !== false } : {}) });
+  // (En un juego en tiempo real el reloj es parte de las reglas: no se escoge.)
+  const optionsFor = (game, settings) => ({ ...optionValues(game, settings.options || {}), ...(game.timing && !game.realtime ? { timer: settings.timer !== false } : {}) });
 
   function startPractice(settings = practiceSettings()) {
     const game = s.game; if (!game) return;
@@ -282,12 +286,18 @@ export function createSession(deps) {
 
   // ---------- Jugar ----------
   // Tu jugada. En línea solo cuenta si la mesa sigue en el turno que viste (otro teléfono pudo adelantarse).
+  // En un juego en tiempo real (game.realtime) no hay turnos: la jugada se aplica sobre lo último guardado de la
+  // misma partida, y solo se rechaza si ahí ya no se vale (por ejemplo, otro abrió esa carta primero).
   function play(action) {
     if (s.table && mode() === "monitor" && seated() >= 0) {
       set({ err: "Estás en Monitor: cambia a Teléfono o Control para tirar." });
       return Promise.resolve(false);
     }
     const seat = me(); if (seat < 0 || !s.table) return Promise.resolve(false);
+    if (s.game.realtime) {
+      const round = s.table.round;
+      return run((t) => (t.status === "playing" && t.round === round ? act(s.game, t, seat, action, now()) : SKIP));
+    }
     const key = turnKey(s.table);
     return run((t) => (turnKey(t) === key ? act(s.game, t, seat, action, now()) : SKIP));
   }
@@ -314,9 +324,14 @@ export function createSession(deps) {
     const mine = seated(); if (mine < 0) return null;
     return humanSeats(t)[0] === mine ? "primary" : "backup";
   }
-  function stopBots() { if (botTimer !== null) cancel(botTimer); botTimer = null; botKey = null; }
+  function stopBots() {
+    if (botTimer !== null) cancel(botTimer); botTimer = null; botKey = null;
+    stopRealtimeBots();
+  }
+  function stopRealtimeBots() { for (const id of rtTimers.values()) cancel(id); rtTimers.clear(); rtGen++; }
 
   function scheduleBot() {
+    if (s.game && s.game.realtime) { scheduleRealtimeBots(); return; }
     const t = s.table, game = s.game;
     const key = turnKey(t);
     if (botKey !== key) stopBots();
@@ -326,7 +341,7 @@ export function createSession(deps) {
     const ready = game.currentSeats(t.state).filter((x) => mine.has(x));
     if (!ready.length) return;
     // Si varios bots pueden actuar (salir en parejas), actúa primero el que menos espera
-    const waits = ready.map((seat) => ({ seat, ms: game.bots.thinkMs ? game.bots.thinkMs(game.view(t.state, seat), seat, now()) : 600 }));
+    const waits = ready.map((seat) => ({ seat, ms: game.bots.thinkMs ? game.bots.thinkMs(game.view(t.state, seat), seat, now(), t.seats[seat].profile) : 600 }));
     waits.sort((a, b) => a.ms - b.ms);
     const { seat, ms } = waits[0];
     botKey = key;
@@ -340,6 +355,38 @@ export function createSession(deps) {
       try { await mutate((x) => (turnKey(x) === key ? act(game, x, seat, action, now()) : SKIP)); }
       catch (e) { console.warn("No se pudo guardar la jugada de la compu:", e); botKey = null; }
     }, Math.max(0, ms) + (role === "backup" ? BACKUP_MS : 0));
+  }
+
+  // En tiempo real cada asiento de la compu actúa por su cuenta, sin esperar a que nadie más tire: al terminar una
+  // jugada programa la siguiente (thinkMs), decidiendo con lo último que ve en ese momento. Un cambio de la mesa no
+  // cancela lo programado; si la jugada ya no se vale cuando llega, se descarta y vuelve a pensar. En línea la mueve
+  // solo el teléfono principal: sin turnos, un respaldo jugaría por ella dos veces.
+  function scheduleRealtimeBots() {
+    const t = s.table, game = s.game;
+    if (!t || !game || !game.bots || t.status !== "playing" || botRole(t) !== "primary") { if (rtTimers.size) stopRealtimeBots(); return; }
+    const mine = new Set(botSeats(t));
+    for (const seat of game.currentSeats(t.state)) {
+      if (!mine.has(seat) || rtTimers.has(seat)) continue;
+      const profile = t.seats[seat].profile, round = t.round, gen = rtGen;
+      const ms = game.bots.thinkMs ? game.bots.thinkMs(game.view(t.state, seat), seat, now(), profile) : 600;
+      const id = schedule(async () => {
+        if (gen !== rtGen || rtTimers.get(seat) !== id) return;
+        const t2 = s.table;
+        const same = (x) => x && x.status === "playing" && x.round === round;
+        if (!same(t2)) { rtTimers.delete(seat); return; }
+        let action = null;
+        try { action = await botDecide(game, game.view(t2.state, seat), seat, profile, `${t2.rec.seed}:bot:${t2.turn}:${seat}`); }
+        catch (e) { console.warn("La compu no pudo decidir:", e); }
+        if (action && gen === rtGen) {
+          try { await mutate((x) => (same(x) ? act(game, x, seat, action, now()) : SKIP)); }
+          catch { /* otro se adelantó: vuelve a pensar con lo nuevo */ }
+        }
+        if (gen !== rtGen) return;
+        rtTimers.delete(seat);
+        scheduleRealtimeBots();
+      }, Math.max(0, ms));
+      rtTimers.set(seat, id);
+    }
   }
 
   // ---------- Reloj ----------

@@ -12,9 +12,10 @@ import { seededRandom } from "../../modules/random/index.js";
 import nim from "../modules/fixtures/nim.js";
 import domino from "../../games/domino/index.js";
 import skull from "../../games/skull/index.js";
+import memoria from "../../games/memoria/index.js";
 import { displayFor, deviceMode, deviceModes } from "../../platform/app/table.js";
 
-const GAMES = { nim, domino, skull };
+const GAMES = { nim, domino, skull, memoria };
 
 // Un mundo: un Firestore, un reloj y una cola de temporizadores compartidos por todos los teléfonos
 function world() {
@@ -328,4 +329,50 @@ test("modos del aparato: en práctica no se cambia", async () => {
   A.a.setMode("monitor");
   assert.equal(A.a.mode(), "mobile");
   assert.equal(A.seat(), 0);
+});
+
+// Juegos en tiempo real (Memoria Veloz): sin turnos, dos teléfonos tocan a la vez con lo que vio cada uno y cuentan
+// las dos jugadas; solo se rechaza la que ya no se vale (la misma carta, abierta primero por otro).
+test("tiempo real: jugadas al mismo tiempo cuentan las dos; la misma carta solo la toma el primero", async () => {
+  const w = world(), A = w.phone("A"), B = w.phone("B");
+  await ready(A, "memoria", "Ana"); await ready(B, "memoria", "Beto");
+  const code = await A.a.createTable({ mode: "2", bots: [] });
+  A.a.openTable(code); B.a.openTable(code);
+  await B.a.sitAt(1); await A.a.startGame();
+  await Promise.all([A.a.play({ type: "open", i: 0 }), B.a.play({ type: "open", i: 1 })]);
+  assert.deepEqual([A.st.table.state.cards[0].hold, A.st.table.state.cards[1].hold], [0, 1]);
+  assert.equal(A.st.table.turn, 2);
+  // Los dos sueltan su carta y van por la misma: solo la toma uno; al otro se le rechaza
+  await A.a.play({ type: "back", i: 0 }); await B.a.play({ type: "back", i: 1 });
+  const oks = await Promise.all([A.a.play({ type: "open", i: 5 }), B.a.play({ type: "open", i: 5 })]);
+  const holder = A.st.table.state.cards[5].hold;
+  assert.ok(holder === 0 || holder === 1);
+  assert.deepEqual(oks, holder === 0 ? [true, false] : [false, true]);
+});
+
+test("tiempo real: el timer vence solo (lo resuelve el reloj) y la compu juega sin esperar turnos", async () => {
+  const w = world(), A = w.phone("A"), B = w.phone("B");
+  await ready(A, "memoria", "Ana"); await ready(B, "memoria", "Beto");
+  const code = await A.a.createTable({ mode: "3", bots: [] });
+  A.a.openTable(code); B.a.openTable(code);
+  await B.a.sitAt(1); await A.a.addBotAt(2, "normal"); await A.a.startGame();
+  await B.a.play({ type: "open", i: 3 });
+  await A.a.play({ type: "timer", seat: 1 });
+  assert.ok(A.st.table.state.timers[1]);
+  // Pasa el tiempo como en la app: cada 250 ms corre lo programado (la compu) y el reloj de cada teléfono
+  const start = w.now;
+  const movers = new Set();
+  const flush = () => new Promise((r) => setImmediate(r));
+  while (w.now - start < 6000) {
+    w.advance(250);
+    while ([...w.timers.values()].some((x) => x.at <= w.now)) movers.add(await w.runNext());
+    A.a.tick(); B.a.tick();
+    await flush();
+  }
+  const st = A.st.table.state;
+  assert.equal(st.timers[1], null, "venció");
+  assert.notEqual(st.cards[3].hold, 1, "y le regresó la carta");
+  assert.ok(st.log.some((e) => e.type === "timeout" && e.seat === 1));
+  assert.deepEqual([...movers], ["A"], "la compu la mueve solo el teléfono principal");
+  assert.ok(A.st.table.rec.actions.filter((x) => x.seat === 2).length >= 3, "la compu jugó varias veces");
 });

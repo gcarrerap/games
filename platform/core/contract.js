@@ -13,8 +13,9 @@
  * @property {{id: string, name: string}[]} profiles
  * @property {(view: object, seat: number, profile: string, ctx: {rnd: () => number}) => object|null} decide
  *   La acción que toma ese asiento (null si no le toca).
- * @property {(view: object, seat: number, now: number) => number} [thinkMs]
+ * @property {(view: object, seat: number, now: number, profile: string) => number} [thinkMs]
  *   Cuánto espera antes de actuar. Si varios asientos pueden actuar a la vez, actúa primero el de menor espera.
+ *   profile: el perfil de la compu de ese asiento (por ejemplo, para que unos sean más rápidos que otros).
  * @property {boolean} [heavy]  decide() puede tardar: correrlo en un hilo aparte.
  */
 
@@ -53,6 +54,11 @@
  * @property {(config: object, seat: number) => number|null} [teamOf]
  *   El equipo de un asiento con esa configuración (0, 1, …), o null si se juega individual. Lo usa la pantalla
  *   de asientos para mostrar quién va con quién.
+ * @property {boolean} [realtime]
+ *   Sin turnos: todos actúan a la vez y gana el más rápido (Memoria Veloz). currentSeats da todos los que pueden
+ *   actuar; la plataforma aplica cada jugada sobre el estado más reciente (no la descarta porque otro se adelantó) y
+ *   mueve a cada asiento de la compu con su propio temporizador. timing, si lo hay, es parte de las reglas: el lobby
+ *   no ofrece "sin límite" (docs/ARCHITECTURE.md §4, "Juegos en tiempo real").
  * @property {boolean} [remote]
  *   El juego dibuja el modo Control (ctx.display "phone"): solo lo de ese asiento, sin el tablero. Sin remote, Control
  *   se juega con la mesa de siempre ("full"). Monitor (ctx.display "tv") lo tienen todos (docs/ARCHITECTURE.md §5).
@@ -93,7 +99,7 @@ export function validateGame(g) {
     if (!Array.isArray(g.options)) errs.push("options: lista de opciones");
     else for (const o of g.options) {
       if (!o || typeof o.id !== "string" || !o.id || typeof o.label !== "string") { errs.push("options: cada opción con id y label"); continue; }
-      if (["n", "timer", "names", "code", "tv", "remote"].includes(o.id)) errs.push(`options.${o.id}: ese nombre ya lo usa la plataforma`);
+      if (["n", "timer", "names", "code", "tv", "remote", "realtime"].includes(o.id)) errs.push(`options.${o.id}: ese nombre ya lo usa la plataforma`);
       if (!Array.isArray(o.choices) || o.choices.length < 2 || o.choices.some((c) => !c || typeof c.id !== "string" || typeof c.label !== "string")) errs.push(`options.${o.id}: al menos dos choices con id y label`);
       else if (!o.choices.some((c) => c.id === o.default)) errs.push(`options.${o.id}: default no es una de sus choices`);
     }
@@ -103,6 +109,7 @@ export function validateGame(g) {
   if (g.bots && g.bots.thinkMs && typeof g.bots.thinkMs !== "function") errs.push("bots.thinkMs: es una función");
   if (g.tv !== undefined) errs.push("tv: ya no existe; todos los juegos tienen Monitor (usa remote si dibujas Control)");
   if (g.remote !== undefined && typeof g.remote !== "boolean") errs.push("remote: true o false");
+  if (g.realtime !== undefined && typeof g.realtime !== "boolean") errs.push("realtime: true o false");
   if (g.tvCover !== undefined && typeof g.tvCover !== "string") errs.push("tvCover: la dirección de una imagen");
   if (g.teamOf && typeof g.teamOf !== "function") errs.push("teamOf: es una función");
   if (g.timing && (typeof g.timing.turnMs !== "function" || typeof g.timing.autoAction !== "function")) errs.push("timing: turnMs y autoAction son funciones");

@@ -8,6 +8,7 @@ import { seededRandom } from "../../modules/random/index.js";
 import nim from "../modules/fixtures/nim.js";
 import domino from "../../games/domino/index.js";
 import continental from "../../games/continental/index.js";
+import memoria from "../../games/memoria/index.js";
 
 function memPrefs() {
   const all = new Map();
@@ -18,7 +19,7 @@ function memPrefs() {
   return { all, prefs: make("juegos."), gamePrefs: (id) => make(`juegos.${id}.`) };
 }
 
-function harness(games = { nim, domino, continental }) {
+function harness(games = { nim, domino, continental, memoria }) {
   let clock = 1_000_000, nextId = 1;
   const timers = new Map();
   const { prefs, gamePrefs, all } = memPrefs();
@@ -212,4 +213,27 @@ test("continental: la compu compra y juega; te preguntan si compras cuando te to
   assert.equal(h.st.err, "");
   assert.ok(bought, "te tocó pedir el descarte alguna vez");
   assert.ok(h.st.table.state.roundNo >= 2);
+});
+
+// Un juego en tiempo real: tocar seguido no deja a la compu sin jugar (cada bot tiene su propio temporizador), y
+// en la mesa no se escoge "sin límite".
+test("tiempo real en práctica: la compu juega aunque tú toques sin parar, y termina la partida", async () => {
+  const h = harness();
+  await h.a.openGame("memoria");
+  h.a.startPractice({ ...h.a.practiceSettings(), mode: "3", bots: ["normal", "memorion"] });
+  assert.equal("timer" in h.st.table.config, false, "el reloj es parte de las reglas");
+  assert.equal(h.timers.size, 2, "un temporizador por cada compu");
+  // Tú abres y regresas una carta cada 200 ms durante 6 s: la compu igual juega
+  for (let k = 0; k < 30; k++) {
+    h.advance(200);
+    const st = h.st.table.state;
+    const free = st.cards.findIndex((c) => c.hold < 0 && c.won < 0);
+    await h.a.play(st.held[0].length ? { type: "back", i: st.held[0][0] } : { type: "open", i: free });
+    while ([...h.timers.values()].some((x) => x.at <= h.now)) await h.runNext();
+  }
+  const bots = h.st.table.rec.actions.filter((x) => x.seat > 0);
+  assert.ok(bots.length >= 6, `la compu jugó ${bots.length} veces`);
+  for (let i = 0; i < 5000 && h.st.table.status === "playing"; i++) { h.a.tick(); if (!(await h.runNext())) h.advance(250); }
+  assert.equal(h.st.table.status, "over");
+  assert.equal(h.timers.size, 0, "al terminar no queda nada programado");
 });

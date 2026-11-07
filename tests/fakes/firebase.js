@@ -20,7 +20,8 @@ export function fakeFirestore() {
     for (const fn of docListeners.get(path) || []) fn(snapOf(path));
     for (const l of [...colListeners]) if (inCol(path, l.name)) l.ok(colSnap(l));
   };
-  const write = (path, data) => { if (data === null) docs.delete(path); else docs.set(path, structuredClone(data)); notify(path); };
+  const versions = new Map(); // path -> cuántas veces se ha escrito (para las transacciones)
+  const write = (path, data) => { versions.set(path, (versions.get(path) || 0) + 1); if (data === null) docs.delete(path); else docs.set(path, structuredClone(data)); notify(path); };
   function ref(path) { return {
     path,
     get: async () => snapOf(path),
@@ -42,16 +43,21 @@ export function fakeFirestore() {
     writes: 0,
     doc: (path) => ref(path),
     collection: (name) => query({ name }),
+    // Como Firestore: si otro guardó un documento leído antes de terminar, se vuelve a correr con lo nuevo
     async runTransaction(fn) {
-      const pending = [];
-      const tx = {
-        get: async (r) => snapOf(r.path),
-        set: (r, data) => { pending.push([r.path, data]); },
-        delete: (r) => { pending.push([r.path, null]); },
-      };
-      const out = await fn(tx);
-      for (const [p, d] of pending) { fs.writes++; write(p, d); }
-      return out;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const pending = [], read = new Map();
+        const tx = {
+          get: async (r) => { read.set(r.path, versions.get(r.path) || 0); return snapOf(r.path); },
+          set: (r, data) => { pending.push([r.path, data]); },
+          delete: (r) => { pending.push([r.path, null]); },
+        };
+        const out = await fn(tx);
+        if ([...read].some(([p, v]) => (versions.get(p) || 0) !== v)) continue;
+        for (const [p, d] of pending) { fs.writes++; write(p, d); }
+        return out;
+      }
+      throw Object.assign(new Error("Demasiados cambios a la vez."), { code: "aborted" });
     },
     _docs: docs,
   };

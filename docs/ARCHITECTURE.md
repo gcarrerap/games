@@ -159,6 +159,13 @@ export default {
   regla de compra del Continental.
 - **Acciones y estado son JSON simple** (`{ type: "play", tile: "6-4", side: "L" }`), sin clases ni `Map`. Viajan a Firestore, al Worker y a la grabación sin conversión.
 - **`currentSeats` devuelve una lista** para juegos donde varios actúan a la vez (salir en parejas en el dominó, votar en un juego estilo Dixit). Si varios bots pueden actuar, actúa primero el de menor `thinkMs`.
+- **Juegos en tiempo real** (`realtime: true`, Memoria Veloz). Sin turnos: `currentSeats` da todos los que pueden actuar,
+  y la plataforma aplica cada jugada sobre el estado más reciente de la misma partida en lugar de descartarla porque
+  otro se adelantó (solo se rechaza si ahí ya no se vale). Cada asiento de la compu tiene su propio temporizador
+  (`thinkMs` recibe el perfil para que unos sean más rápidos) y decide con lo último que ve; en línea la mueve solo el
+  teléfono principal, porque sin turnos un respaldo jugaría dos veces por ella. Lo que pasa con el tiempo (un timer que
+  vence) se hace con `timing`: `turnMs` es lo que falta (negativo si ya venció) y `autoAction` la acción que lo
+  resuelve; el lobby no ofrece "sin límite". Cada toque es una escritura en Firestore: ver los límites en §5.
 - **Pausas.** `currentSeats` vacío sin que `isOver` sea cierto es una pausa: nadie está obligado, pero `legalActions` puede ofrecer algo (en el dominó, `{ type: "next" }` entre manos). La interfaz lo muestra como botón; un torneo lo toma solo.
 - **El reloj es una acción.** Al vencerse el tiempo, la plataforma aplica `timing.autoAction(state, seat)` como cualquier otra acción. Así queda grabada y se repite igual.
 - **`view` es la frontera de la privacidad.** La compu y la interfaz solo reciben la vista. En el dominó, una prueba compara las decisiones de cinco perfiles de la compu (incluidos los que deducen y simulan) con su vista y con el estado completo: son idénticas.
@@ -209,6 +216,10 @@ juegos-mesas/{code}
 - **La compu en línea** la mueve el teléfono de la persona sentada en el asiento más bajo; las demás personas sentadas son respaldo y esperan 4 s más. Quien solo mira no la mueve.
 - **Grabación:** al terminar una partida, cada teléfono sentado intenta guardarla en `juegos-grabaciones` con un id fijo; las reglas solo dejan crearla una vez.
 - **Salir** de una mesa te deja sentado; "Levantarme" libera el asiento. Las mesas que nadie toca se borran solas.
+- **Tiempo real en Firestore:** en un juego `realtime` cada toque de cada jugador es una transacción sobre la misma
+  mesa. Firestore aguanta del orden de una escritura por segundo sostenida por documento (más, en ráfagas, con
+  reintentos) y cobra lecturas por cada teléfono que la escucha. Para una mesa familiar alcanza; si se queda corto,
+  es otra razón para el servidor propio de abajo.
 - **Limitaciones conocidas:** el estado completo (manos de todos) vive en Firestore, así que alguien con herramientas podría verlo; y si nadie de la mesa tiene el juego abierto, la compu no mueve. Un servidor propio (Cloud Functions, o FastAPI con WebSockets) resolvería las dos cosas. Como las reglas son puras y el contrato es el mismo, ese cambio quedaría contenido en `platform/services/` y `platform/app/`. Queda como decisión aparte.
 
 ### Modos del aparato (Teléfono, Control y Monitor)
@@ -288,6 +299,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 12 ✅ | La tele como tablero (§5): opción de la mesa en línea, ruta `/tele`, `ctx.display`, pantalla de espera, Wake Lock. Skull es el primero que la usa: la tele con los tapetes de todos y el teléfono solo con lo tuyo. |
 | 13 ✅ | Carrera de Chihuahuas (estilo Camel Up, 2–8): perros que se apilan, boletos de etapa, tapete de hueso o aspiradora y apuestas secretas; compu con probabilidades exactas de la etapa y carreras simuladas, y consejo. Mesa solo para teléfono con las ilustraciones de Petra (#33, elegidas e integradas en el #34); la tele va en el #35. No tocó `platform/` ni `modules/`. |
 | 14 ✅ | Modos del aparato (§5, #57): cada aparato escoge Teléfono, Control o Monitor desde el menú de la partida, en todos los juegos. Reemplaza la opción de mesa "La tele como tablero" (`tv`); los dibujos de tele y teléfono de Skull y la Carrera quedan como Monitor y Control. |
+| 15 ✅ | Memoria Veloz (#83): el juego de pares sin turnos, de 1 a 4, con congelado al fallar y timers entre jugadores. Primer juego en tiempo real: el contrato agrega `realtime` (la jugada se aplica sobre lo último, cada bot con su temporizador, `thinkMs` con el perfil) y el Firestore de mentira de las pruebas reintenta transacciones como el de verdad. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 
