@@ -28,42 +28,24 @@ test("el tablero: 18 pares con 1 o 2 jugadores, 24 con 3 o 4; cada cara dos vece
   }
 });
 
-test("abrir: hasta 2 cartas; una abierta por otro no se puede tomar", () => {
+test("abrir: una abierta por otro no se puede tomar, y la tuya no se regresa", () => {
   let st = fresh(2);
-  const [x, y] = pairOf(st);
+  const [x] = pairOf(st);
   st = act(st, 0, { type: "open", i: x });
   assert.equal(st.cards[x].hold, 0);
   assert.throws(() => act(st, 1, { type: "open", i: x }), /otro/);
   assert.throws(() => act(st, 0, { type: "open", i: x }), /ya la tienes/);
-  st = act(st, 0, { type: "open", i: y });
-  const z = other(st, st.cards[x].f);
-  assert.throws(() => act(st, 0, { type: "open", i: z }), /Solo puedes tener 2/);
+  for (const type of ["back", "backAll", "claim"]) assert.throws(() => act(st, 0, { type, i: x }), /no existe/);
+  assert.deepEqual([...new Set(legalActions(st, 0).map((a) => a.type))].sort(), ["open", "tick"]);
 });
 
-test("regresar una o las dos: vuelven boca abajo a su lugar", () => {
-  let st = fresh(2);
-  const [x, y] = pairOf(st);
-  st = act(st, 0, { type: "open", i: x });
-  st = act(st, 0, { type: "open", i: y });
-  st = act(st, 0, { type: "back", i: x });
-  assert.deepEqual([st.cards[x].hold, st.held[0]], [-1, [y]]);
-  assert.throws(() => act(st, 0, { type: "back", i: x }), /no la tienes/);
-  st = act(st, 0, { type: "open", i: x });
-  st = act(st, 0, { type: "backAll" });
-  assert.deepEqual(st.held[0], []);
-  assert.ok(st.cards.every((c) => c.hold === -1));
-  assert.equal(st.cards[x].f, fresh(2).cards[x].f, "la carta sigue en su posición");
-});
-
-test("reclamar: solo dos iguales; el par sale del juego y suma", () => {
+test("si la segunda es pareja, el par es tuyo al instante y sale del juego", () => {
   let st = fresh(2);
   const [x, y] = pairOf(st);
   st = act(st, 1, { type: "open", i: x });
-  assert.ok(!legalActions(st, 1).some((a) => a.type === "claim"));
   st = act(st, 1, { type: "open", i: y }, 500);
-  assert.ok(legalActions(st, 1).some((a) => a.type === "claim"));
-  st = act(st, 1, { type: "claim" }, 700);
-  assert.deepEqual([st.cards[x].won, st.cards[y].won, st.pairs[1], st.reached[1]], [1, 1, 1, 700]);
+  assert.deepEqual([st.cards[x].won, st.cards[y].won, st.pairs[1], st.reached[1], st.held[1]], [1, 1, 1, 500, []]);
+  assert.deepEqual(st.log.at(-1), { type: "claim", seat: 1, f: st.cards[x].f, cards: [x, y], t: 500 });
   assert.throws(() => act(st, 0, { type: "open", i: x }), /ya se reclamó/);
 });
 
@@ -105,23 +87,23 @@ test("timer: solo a quien tiene cartas abiertas; al vencer, el tick le regresa l
   assert.equal(game.timing.turnMs(st), null);
 });
 
-test("timer: si regresa sus cartas o reclama antes, vence sin acción y la recarga empieza ahí", () => {
+test("timer: si junta su par o falla antes, vence sin acción y la recarga empieza ahí", () => {
   let st = fresh(2);
   const [x, y] = pairOf(st);
   st = act(st, 1, { type: "open", i: x }, 1000);
   st = act(st, 0, { type: "timer", seat: 1 }, 1500);
-  st = act(st, 1, { type: "open", i: y }, 2000);
-  assert.ok(st.timers[1], "con una carta todavía abierta sigue corriendo");
-  st = act(st, 1, { type: "claim" }, 3000);
+  st = act(st, 1, { type: "open", i: y }, 3000);
   assert.equal(st.timers[1], null);
   assert.equal(st.cool[0], 3000 + RULES.cooldownMs);
   // No se acumulan: mientras se recarga no puede poner otro
-  st = act(st, 1, { type: "open", i: other(st, st.cards[x].f, [x, y]) }, 4000);
+  const a = other(st, st.cards[x].f, [x, y]);
+  st = act(st, 1, { type: "open", i: a }, 4000);
   assert.ok(!canTimer(st, 0, 5000));
   assert.throws(() => act(st, 0, { type: "timer", seat: 1 }, 5000), /no se recarga/);
   st = act(st, 0, { type: "timer", seat: 1 }, 13000);
   assert.ok(st.timers[1]);
-  st = act(st, 1, { type: "backAll" }, 14000);
+  const b = st.cards.findIndex((c, i) => c.won < 0 && i !== a && c.f !== st.cards[a].f);
+  st = act(st, 1, { type: "open", i: b }, 14000); // falla
   assert.deepEqual([st.timers[1], st.cool[0]], [null, 14000 + RULES.cooldownMs]);
 });
 
@@ -148,7 +130,6 @@ test("al reclamar el último par termina; gana quien tiene más pares y en empat
     const [x, y] = pairOf(st, f);
     st = act(st, seat, { type: "open", i: x }, now++);
     st = act(st, seat, { type: "open", i: y }, now++);
-    st = act(st, seat, { type: "claim" }, now++);
   });
   assert.equal(st.phase, "over");
   assert.deepEqual(st.pairs, [9, 9]);
@@ -175,16 +156,18 @@ test("la vista: tus caras abiertas sí, las de otros no (solo quién la tiene); 
   assert.equal(JSON.stringify(v1).includes(`"f":${st.cards[x].f},"hold":0`), false);
 });
 
-test("la compu: reclama sus iguales, busca la pareja que recuerda y espera congelada", () => {
+test("la compu: busca la pareja que recuerda, espera si la tiene otro y espera congelada", () => {
   let st = fresh(2);
   const [x, y] = pairOf(st);
-  // Ya vio y (lo abrió y lo regresó); con x abierta va directo por y
-  st = act(st, 1, { type: "open", i: y });
-  st = act(st, 1, { type: "back", i: y });
-  st = act(st, 1, { type: "open", i: x });
+  // Ya vio y (lo abrió con otra y falló); con x abierta va directo por y
+  const w = other(st, st.cards[x].f);
+  st = act(st, 1, { type: "open", i: y }, 0);
+  st = act(st, 1, { type: "open", i: w }, 0);
+  st = act(st, 1, { type: "open", i: x }, 3000);
   assert.deepEqual(decide(view(st, 1), 1, "memorion", () => 0), { type: "open", i: y });
-  st = act(st, 1, { type: "open", i: y });
-  assert.deepEqual(decide(view(st, 1), 1, "despistado", () => 0.99), { type: "claim" });
+  // Si su pareja la tiene abierta otro, espera
+  st = act(st, 0, { type: "open", i: y }, 3100);
+  assert.deepEqual(decide(view(st, 1), 1, "memorion", () => 0), { type: "tick" });
   // Congelada: espera, y su tiempo de pensar llega hasta que se le quite
   const z = other(st, st.cards[x].f, [x, y]);
   let s2 = act(fresh(2), 0, { type: "open", i: x }, 1000);
@@ -198,4 +181,11 @@ test("la compu le pone timer a quien lleva rato con cartas abiertas", () => {
   st = act(st, 0, { type: "open", i: 0 }, 1000);
   const v = { ...view(st, 1), t: 1000 + 4000 };
   assert.deepEqual(decide(v, 1, "normal", () => 0), { type: "timer", seat: 0 });
+});
+
+test("el tablero escoge las columnas que dan las cartas más grandes en el espacio que hay", async () => {
+  const { bestLayout } = await import("../../../games/memoria/ui/table.js");
+  assert.equal(bestLayout(48, 360, 600).cols, 6, "alto: 6 columnas");
+  assert.equal(bestLayout(48, 360, 330).cols, 8, "chaparro: más columnas");
+  assert.equal(bestLayout(48, 1600, 800).cols, 12, "tele: muchas columnas");
 });

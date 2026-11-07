@@ -223,12 +223,12 @@ test("tiempo real en práctica: la compu juega aunque tú toques sin parar, y te
   h.a.startPractice({ ...h.a.practiceSettings(), mode: "3", bots: ["normal", "memorion"] });
   assert.equal("timer" in h.st.table.config, false, "el reloj es parte de las reglas");
   assert.equal(h.timers.size, 2, "un temporizador por cada compu");
-  // Tú abres y regresas una carta cada 200 ms durante 6 s: la compu igual juega
+  // Tú abres una carta cada 200 ms durante 6 s (fallando y quedando congelado): la compu igual juega
   for (let k = 0; k < 30; k++) {
     h.advance(200);
     const st = h.st.table.state;
-    const free = st.cards.findIndex((c) => c.hold < 0 && c.won < 0);
-    await h.a.play(st.held[0].length ? { type: "back", i: st.held[0][0] } : { type: "open", i: free });
+    const free = st.cards.findIndex((c, i) => c.hold < 0 && c.won < 0 && i !== st.held[0][0]);
+    await h.a.play({ type: "open", i: free });
     while ([...h.timers.values()].some((x) => x.at <= h.now)) await h.runNext();
   }
   const bots = h.st.table.rec.actions.filter((x) => x.seat > 0);

@@ -1,11 +1,12 @@
 // Reglas de Memoria Veloz: el juego de pares, pero sin turnos. Todos juegan a la vez y gana el más rápido.
 // Funciones puras: estado entra, estado sale. El azar llega como ctx.rnd y la hora como ctx.now.
 //
-// - Cada quien puede tener hasta 2 cartas abiertas. Mientras la tiene abierta, solo él ve su cara y solo él la toma.
-// - Con una abierta: la regresa o abre otra. Con dos iguales: regresa una, las dos, o las reclama.
-// - Si la segunda no es pareja, las dos se regresan solas y queda congelado RULES.freezeMs.
-// - Timer: le pones a otro que tiene cartas abiertas RULES.timerMs; al acabarse se le regresan. Si las regresa o
-//   reclama antes, vence sin acción. Puedes poner otro RULES.cooldownMs después de que el tuyo terminó.
+// - Abres una carta y luego otra. Mientras la tienes abierta, solo tú ves su cara y solo tú la tomas. Una carta
+//   abierta no se puede regresar (si no, gana quien abre y cierra sin armar pares).
+// - Si la segunda es pareja, el par es tuyo en ese momento. Si no, las dos se regresan solas y quedas congelado
+//   RULES.freezeMs.
+// - Timer: le pones a otro que tiene una carta abierta RULES.timerMs; al acabarse se le regresa. Si antes junta su
+//   par o falla, vence sin acción. Puedes poner otro RULES.cooldownMs después de que el tuyo terminó.
 // - Un par reclamado sale del juego. Gana quien tenga más pares; en empate, quien llegó primero a ese número.
 //
 // Tiempo: `t` es la hora de la última acción (nunca retrocede, aunque los relojes de los teléfonos no coincidan).
@@ -105,11 +106,6 @@ export function legalActions(st, seat) {
     if (held.length < RULES.maxOpen) st.cards.forEach((c, i) => { if (isFree(c)) out.push({ type: "open", i }); });
     if (canTimer(st, seat, st.t)) st.held.forEach((h, s) => { if (s !== seat && h.length && !st.timers[s]) out.push({ type: "timer", seat: s }); });
   }
-  for (const i of held) out.push({ type: "back", i });
-  if (held.length === 2) {
-    out.push({ type: "backAll" });
-    if (st.cards[held[0]].f === st.cards[held[1]].f) out.push({ type: "claim" });
-  }
   out.push({ type: "tick" });
   return out;
 }
@@ -136,7 +132,8 @@ export function apply(st0, seat, action, { now = 0 } = {}) {
       held.push(a.i);
       st.seen[seat][a.i] = st.seq;
       st.miss[seat] = null;
-      if (held.length === 2 && st.cards[held[0]].f !== c.f) {
+      if (held.length === 2 && st.cards[held[0]].f === c.f) claim(st, seat);
+      else if (held.length === 2) {
         // No es pareja: las dos se regresan solas y queda congelado
         const pair = held.slice();
         for (const i of pair) returnCard(st, seat, i);
@@ -145,31 +142,6 @@ export function apply(st0, seat, action, { now = 0 } = {}) {
         afterReturn(st, seat);
         note(st, { type: "miss", seat });
       }
-      break;
-    }
-    case "back": {
-      if (!held.includes(a.i)) throw new Error("Esa carta no la tienes abierta.");
-      returnCard(st, seat, a.i);
-      afterReturn(st, seat);
-      break;
-    }
-    case "backAll": {
-      if (!held.length) throw new Error("No tienes cartas abiertas.");
-      for (const i of held.slice()) returnCard(st, seat, i);
-      afterReturn(st, seat);
-      break;
-    }
-    case "claim": {
-      if (held.length !== 2) throw new Error("Necesitas dos cartas abiertas.");
-      const [x, y] = held;
-      if (st.cards[x].f !== st.cards[y].f) throw new Error("No son iguales.");
-      for (const i of [x, y]) { st.cards[i].won = seat; st.cards[i].hold = -1; st.cards[i].at = 0; }
-      st.held[seat] = [];
-      st.pairs[seat]++;
-      st.reached[seat] = st.t;
-      endTimer(st, seat, st.t);
-      note(st, { type: "claim", seat, f: st.cards[x].f });
-      if (remaining(st) === 0) finish(st);
       break;
     }
     case "timer": {
@@ -198,6 +170,18 @@ export function apply(st0, seat, action, { now = 0 } = {}) {
       throw new Error("Esa acción no existe.");
   }
   return st;
+}
+
+// La segunda carta es pareja de la primera: el par sale del juego y es suyo
+function claim(st, seat) {
+  const [x, y] = st.held[seat];
+  for (const i of [x, y]) { st.cards[i].won = seat; st.cards[i].hold = -1; st.cards[i].at = 0; }
+  st.held[seat] = [];
+  st.pairs[seat]++;
+  st.reached[seat] = st.t;
+  endTimer(st, seat, st.t);
+  note(st, { type: "claim", seat, f: st.cards[x].f, cards: [x, y] });
+  if (remaining(st) === 0) finish(st);
 }
 
 function finish(st) {
