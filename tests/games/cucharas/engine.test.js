@@ -1,8 +1,9 @@
-// Reglas de Cucharas: el reparto (pókers, espacios y huecos), el cambio en un paso, nunca más de 4, las cucharas
-// (la primera con o sin póker), las fichas al terminar la ronda, la mesa abierta o tapada y lo que ve cada asiento.
+// Reglas de Cucharas: el reparto (pókers de sobra según cuántos juegan, sin huecos), el cambio en su lugar, las
+// cucharas (cada una en su lugar, repartidas; la primera con o sin póker), las fichas al terminar la ronda, la mesa
+// abierta o tapada y lo que ve cada asiento.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { newGame, apply, legalActions, view, isPoker, aliveSeats, HIDDEN } from "../../../games/cucharas/engine/index.js";
+import { newGame, apply, legalActions, view, isPoker, aliveSeats, HIDDEN, RULES, spreadSpots, validConfig } from "../../../games/cucharas/engine/index.js";
 import { decide, target } from "../../../games/cucharas/ai/index.js";
 import game from "../../../games/cucharas/index.js";
 import { seededRandom } from "../../../modules/random/index.js";
@@ -32,49 +33,47 @@ function givePoker(st, seat) {
   return s2;
 }
 
-test("reparto: vivos + 1 pókers, 4 cartas a cada quien sin póker, 4 en la mesa y max(6, vivos+2) espacios", () => {
-  for (let n = 3; n <= 8; n++) {
+test("reparto: pókers de sobra 1 (2–4), 2 (5–8), 3 (9–10); la mesa llena, sin huecos", () => {
+  const extra = { 2: 1, 3: 1, 4: 1, 5: 2, 6: 2, 7: 2, 8: 2, 9: 3, 10: 3 };
+  for (let n = 2; n <= 10; n++) {
     const st = fresh(n);
-    assert.equal(st.ranks.length, n + 1);
-    assert.equal(st.slots.length, Math.max(6, n + 2));
-    assert.equal(full(st).length, 4);
+    assert.equal(st.ranks.length, n + extra[n], `${n} jugadores`);
+    assert.equal(st.slots.length, 4 * extra[n]);
+    assert.ok(st.slots.every((c) => c !== null), "sin huecos");
     assert.ok(st.hands.every((h) => h.length === 4 && !isPoker(h)));
-    const all = [...st.hands.flat(), ...st.slots.filter(Boolean)];
-    assert.equal(new Set(all).size, (n + 1) * 4);
+    assert.equal(new Set([...st.hands.flat(), ...st.slots]).size, (n + extra[n]) * 4);
   }
+  assert.ok(!validConfig({ n: 11, table: "open" }), "con 11 harían falta 14 números y la baraja tiene 13");
+  assert.ok(validConfig({ n: 2, table: "open" }));
 });
 
-test("cambiar: tu carta va a un hueco y tomas la que escogiste; siempre 4 en la mano y 4 en la mesa", () => {
+test("cambiar: se intercambian en su lugar; ni la mano ni la mesa se reordenan", () => {
   let st = fresh(4);
-  const c = st.hands[0][0], k = full(st)[0], got = st.slots[k];
-  const emptyBefore = holes(st);
-  st = act(st, 0, { type: "swap", c, slot: k });
-  assert.equal(st.hands[0].length, 4);
-  assert.ok(st.hands[0].includes(got) && !st.hands[0].includes(c));
-  assert.equal(st.slots[k], null);
-  assert.ok(emptyBefore.includes(st.slots.indexOf(c)), "la tuya cae en un hueco que estaba vacío");
-  assert.equal(full(st).length, 4);
-  assert.throws(() => act(st, 0, { type: "swap", c, slot: full(st)[0] }), /no la tienes/);
-  assert.throws(() => act(st, 0, { type: "swap", c: st.hands[0][0], slot: holes(st)[0] }), /ya no hay carta/);
+  const hand = st.hands[0].slice(), slots = st.slots.slice();
+  st = act(st, 0, { type: "swap", c: hand[2], slot: 3 });
+  assert.deepEqual(st.hands[0], [hand[0], hand[1], slots[3], hand[3]], "la nueva queda donde estaba la tuya");
+  assert.deepEqual(st.slots, [slots[0], slots[1], slots[2], hand[2]], "la tuya queda donde estaba la de la mesa");
+  assert.throws(() => act(st, 0, { type: "swap", c: hand[2], slot: 0 }), /no la tienes/);
+  assert.throws(() => act(st, 0, { type: "swap", c: st.hands[0][0], slot: 9 }), /no existe/);
 });
 
 test("otro puede tomar la carta que alguien acaba de soltar", () => {
   let st = fresh(4);
   const c = st.hands[0][0];
-  st = act(st, 0, { type: "swap", c, slot: full(st)[0] });
-  st = act(st, 1, { type: "swap", c: st.hands[1][0], slot: st.slots.indexOf(c) });
+  st = act(st, 0, { type: "swap", c, slot: 0 });
+  st = act(st, 1, { type: "swap", c: st.hands[1][0], slot: 0 });
   assert.ok(st.hands[1].includes(c));
 });
 
 test("mesa tapada: la vista solo dice dónde hay carta; el cambio funciona igual", () => {
   let st = fresh(4, "closed");
   const v = view(st, 0);
-  assert.ok(v.slots.every((c) => c === null || c === HIDDEN));
-  assert.equal(v.slots.filter((c) => c === HIDDEN).length, 4);
+  assert.ok(v.slots.every((c) => c === HIDDEN));
+  assert.equal(v.slots.length, 4);
   assert.deepEqual(v.hand, st.hands[0], "tu mano sí la ves");
-  const k = full(st)[0], got = st.slots[k];
-  st = act(st, 0, { type: "swap", c: st.hands[0][0], slot: k });
-  assert.ok(st.hands[0].includes(got));
+  const got = st.slots[1];
+  st = act(st, 0, { type: "swap", c: st.hands[0][0], slot: 1 });
+  assert.equal(st.hands[0][0], got);
   assert.ok(view(fresh(4, "open"), 0).slots.every((c) => c !== HIDDEN));
 });
 
@@ -126,7 +125,8 @@ test("con 0 fichas quedas fuera; la siguiente ronda se reparte con menos; gana e
   assert.equal(st.phase, "play");
   assert.deepEqual(aliveSeats(st), [1, 2]);
   assert.equal(st.ranks.length, 3);
-  assert.equal(st.slots.length, 6);
+  assert.equal(st.slots.length, 4);
+  assert.equal(st.spots.length, 1, "con dos, una cuchara");
   assert.deepEqual(st.hands[0], []);
   assert.deepEqual(game.currentSeats(st), [1, 2]);
   st = act(st, 1, { type: "spoon" }); // con dos, una cuchara: se acaba de inmediato. 1 falso → 0, 2 sin cuchara → 1
@@ -159,7 +159,9 @@ test("lo que ve cada asiento: su mano, la mesa; nada de manos ajenas ni de quié
 
 test("la compu: con póker toma cuchara; junta el número que más tiene; nunca suelta de ese número", () => {
   let st = givePoker(fresh(4), 0);
-  assert.deepEqual(decide(view(st, 0), 0, "normal", seededRandom(1)), { type: "spoon" });
+  const a0 = decide(view(st, 0), 0, "normal", seededRandom(1));
+  assert.equal(a0.type, "spoon");
+  assert.ok(view(st, 0).spots[a0.i].free, "toma una que sigue en la mesa");
   st = fresh(5);
   for (let k = 0; k < 30; k++) {
     const v = view(st, 2);
@@ -184,4 +186,28 @@ test("la compu con la mesa tapada cambia a ciegas y nunca suelta del número que
 test("no hay límite de tiempo: el juego no declara reloj ni opción de ritmo", () => {
   assert.equal(game.timing, undefined);
   assert.deepEqual(game.options.map((o) => o.id), ["table"]);
+});
+
+test("cucharas: cada una en su lugar, repartidas por la orilla; la que se toma deja su lugar vacío", () => {
+  for (let m = 1; m <= 9; m++) for (let seed = 1; seed <= 20; seed++) {
+    const spots = spreadSpots(m, seededRandom(seed));
+    assert.equal(new Set(spots).size, m, "nunca dos en el mismo lugar");
+    assert.ok(spots.every((p) => p >= 0 && p < RULES.ring));
+    // Repartidas: entre dos vecinas nunca hay más de dos tramos
+    const sorted = spots.slice().sort((a, b) => a - b);
+    const gaps = sorted.map((p, k) => (k ? p - sorted[k - 1] : p + RULES.ring - sorted[m - 1]));
+    if (m > 1) assert.ok(Math.max(...gaps) < (2 * RULES.ring) / m + 1, `m=${m} huecos ${gaps}`);
+  }
+  let st = fresh(5);
+  assert.equal(st.spots.length, 4);
+  st = act(st, 3, { type: "spoon", i: 2 });
+  const v = view(st, 0);
+  assert.deepEqual(v.spots.map((x) => x.free), [true, true, false, true]);
+  assert.ok(!legalActions(st, 0).some((a) => a.type === "spoon" && a.i === 2));
+  assert.throws(() => act(st, 0, { type: "spoon", i: 2 }), /ya la tomaron/);
+  st = act(st, 0, { type: "spoon", i: 0 });
+  assert.deepEqual(st.spoonAt, [2, 0]);
+  const next = act(act(st, 1, { type: "spoon", i: 1 }), 2, { type: "spoon", i: 3 });
+  assert.equal(next.phase, "between");
+  assert.ok(!("spoonAt" in view(st, 0)), "la vista no dice quién tomó cuál");
 });

@@ -4,13 +4,15 @@
 // Funciones puras: estado entra, estado sale. El azar llega como ctx.rnd y la hora como ctx.now.
 //
 // La ronda
-// - Se juega con `vivos + 1` números (pókers): uno de sobra. Cada quien recibe 4 cartas; nadie empieza con póker.
-// - La mesa tiene `max(6, vivos + 2)` espacios. Siempre hay 4 cartas en ella, así que quedan `espacios - 4` huecos.
+// - Pókers de sobra: 1 con 2–4 jugadores, 2 con 5–8 y 3 con 9–10. Se juega con `vivos + sobra` números; cada quien
+//   recibe 4 cartas (nadie empieza con póker) y las de sobra quedan en la mesa, una por espacio: no hay huecos.
+//   Hasta 10 jugadores porque 10 + 3 = 13, todos los números de la baraja.
 // - Cartas de la mesa (opción de la mesa): abiertas (boca arriba, escoges cuál tomar) o tapadas (tomas a ciegas).
-// - Cambiar es un solo paso: escoges una carta tuya y una de la mesa. La tuya se suelta en un hueco al azar y tomas
-//   la otra. Nunca tienes más de 4, y nunca tomas la que acabas de soltar. No hay límite de tiempo.
-// - Cuchara: con póker, la tomas. Después de la primera, cualquiera puede tomar. Al tomarla tu mano se congela.
-//   Nadie anuncia nada: las cucharas solo desaparecen de la mesa.
+// - Cambiar es un solo paso: escoges una carta tuya y una de la mesa, y se intercambian en su lugar: la de la mesa
+//   queda donde estaba la tuya y la tuya donde estaba la de la mesa. Nada se reordena. No hay límite de tiempo.
+// - Cucharas: `vivos - 1`, cada una en su lugar alrededor de la mesa, repartidas para que no queden juntas (cambian
+//   de lugar cada ronda). Con póker, tomas una. Después de la primera, cualquiera puede tomar. Al tomarla tu mano se
+//   congela. Nadie anuncia nada: la cuchara solo deja su lugar vacío.
 //
 // Al terminar (cuando ya no quedan cucharas)
 // - Se revelan las manos. El primero en tomar cuchara gana una ficha si tenía póker (sin pasar de 3); si no, pierde
@@ -25,13 +27,14 @@ export const RULES = {
   maxChips: 3, // ganar ficha no te pasa de aquí: si no, la partida casi nunca termina
   hand: 4,
   tables: ["open", "closed"],
-  slots: (alive) => Math.max(6, alive + 2),
-  ranks: (alive) => alive + 1,
+  players: { min: 2, max: 10 },
+  extra: (alive) => (alive <= 4 ? 1 : alive <= 8 ? 2 : 3), // pókers de sobra
+  ring: 24, // lugares para cucharas alrededor de la mesa (la UI los dibuja en el borde, en orden de reloj)
 };
 // Cómo ve una carta tapada quien no es el motor
 export const HIDDEN = "?";
 
-export const validConfig = (c) => Number.isInteger(c.n) && c.n >= 3 && c.n <= 8 && RULES.tables.includes(c.table);
+export const validConfig = (c) => Number.isInteger(c.n) && c.n >= RULES.players.min && c.n <= RULES.players.max && RULES.tables.includes(c.table);
 
 export const nameOf = (st, s) => st.names[s] || `Jugador ${s + 1}`;
 export const aliveSeats = (st) => st.chips.map((c, s) => (c > 0 ? s : -1)).filter((s) => s >= 0);
@@ -49,13 +52,15 @@ export function countRanks(hand) {
 export function newGame(config, names = [], ctx) {
   const n = config.n;
   const st = {
-    v: 2,
+    v: 3,
     config: { n, table: config.table },
     names: Array.from({ length: n }, (_, i) => names[i] || `Jugador ${i + 1}`),
     chips: Array(n).fill(RULES.chips),
     round: 0,
     phase: "play", // "play" | "between" (entre rondas) | "over"
     ranks: [], slots: [], hands: [],
+    spots: [], // lugar (0 … ring-1) de cada cuchara de la ronda
+    spoonAt: [], // qué cuchara tomó cada quien (índice en spots), en el orden de spoonBy
     spoonBy: [], // quién tomó cuchara, en orden
     firstPoker: null, // si el primero tenía póker al tomarla
     last: null, // lo que pasó en la ronda anterior, público
@@ -71,7 +76,7 @@ export function newGame(config, names = [], ctx) {
 function deal(st, rnd) {
   const alive = aliveSeats(st);
   const n = st.config.n;
-  const ranks = shuffle(RANKS, rnd).slice(0, RULES.ranks(alive.length));
+  const ranks = shuffle(RANKS, rnd).slice(0, alive.length + RULES.extra(alive.length));
   const deck = [];
   for (const r of ranks) for (const s of SUITS) deck.push(r + s + "0");
   // Nadie empieza con póker: se revuelve otra vez si a alguien le tocó (con el mismo azar, así se repite igual)
@@ -82,37 +87,46 @@ function deal(st, rnd) {
     alive.forEach((s, k) => { hands[s] = cards.slice(k * 4, k * 4 + 4); });
     if (!hands.some(isPoker) || tries > 50) break;
   }
-  const rest = cards.slice(alive.length * 4);
-  const nSlots = RULES.slots(alive.length);
-  const where = shuffle(Array.from({ length: nSlots }, (_, i) => i), rnd).slice(0, rest.length);
-  const slots = Array(nSlots).fill(null);
-  where.forEach((i, k) => { slots[i] = rest[k]; });
+  const slots = cards.slice(alive.length * 4);
   st.round++;
   st.phase = "play";
   st.ranks = ranks;
   st.slots = slots;
   st.hands = hands;
+  st.spots = spreadSpots(alive.length - 1, rnd);
   st.spoonBy = [];
+  st.spoonAt = [];
   st.firstPoker = null;
   st.start = st.t;
   return st;
 }
 
+// Lugares de las cucharas: el anillo se parte en tantos tramos como cucharas y cada una cae al azar en el suyo, así
+// quedan repartidas por toda la orilla y nunca dos en el mismo lugar
+export function spreadSpots(m, rnd) {
+  if (m <= 0) return [];
+  const R = RULES.ring, offset = Math.floor(rnd() * R), len = R / m;
+  return Array.from({ length: m }, (_, k) => (offset + Math.floor(k * len) + Math.floor(rnd() * Math.max(1, Math.floor(len)))) % R);
+}
+
 function clone(st) {
-  return { ...st, chips: st.chips.slice(), ranks: st.ranks.slice(), slots: st.slots.slice(), hands: st.hands.map((h) => h.slice()), spoonBy: st.spoonBy.slice() };
+  return {
+    ...st, chips: st.chips.slice(), ranks: st.ranks.slice(), slots: st.slots.slice(), hands: st.hands.map((h) => h.slice()),
+    spots: st.spots.slice(), spoonBy: st.spoonBy.slice(), spoonAt: st.spoonAt.slice(),
+  };
 }
 
 const playing = (st, seat) => st.phase === "play" && st.chips[seat] > 0 && !hasSpoon(st, seat);
-const emptySlots = (st) => st.slots.map((c, i) => (c === null ? i : -1)).filter((i) => i >= 0);
-const fullSlots = (st) => st.slots.map((c, i) => (c !== null ? i : -1)).filter((i) => i >= 0);
+const freeSpoons = (st) => st.spots.map((_, i) => i).filter((i) => !st.spoonAt.includes(i));
 
 export function legalActions(st, seat) {
   if (seat < 0 || seat >= st.config.n) return [];
   if (st.phase === "between") return st.chips[seat] > 0 ? [{ type: "next" }] : [];
   if (!playing(st, seat)) return [];
   const out = [];
-  for (const c of st.hands[seat]) for (const slot of fullSlots(st)) out.push({ type: "swap", c, slot });
-  out.push({ type: "spoon" }); // sin póker también se puede (si eres el primero, al final pierdes ficha)
+  for (const c of st.hands[seat]) st.slots.forEach((_, slot) => out.push({ type: "swap", c, slot }));
+  // Sin póker también se puede (si eres el primero, al final pierdes ficha)
+  for (const i of freeSpoons(st)) out.push({ type: "spoon", i });
   out.push({ type: "wait" });
   return out;
 }
@@ -138,22 +152,22 @@ export function apply(st0, seat, action, { now = 0, rnd = Math.random } = {}) {
       const hand = st.hands[seat];
       const k = hand.indexOf(a.c);
       if (k < 0) throw new Error("Esa carta no la tienes.");
-      if (!Number.isInteger(a.slot) || st.slots[a.slot] == null) throw new Error("En ese espacio ya no hay carta.");
-      const holes = emptySlots(st);
-      if (!holes.length) throw new Error("No hay espacio vacío en la mesa.");
-      // Primero sueltas (en un hueco al azar) y después tomas: nunca más de 4
-      const got = st.slots[a.slot];
-      hand.splice(k, 1);
-      st.slots[holes[Math.floor(rnd() * holes.length)]] = a.c;
-      st.slots[a.slot] = null;
-      hand.push(got);
+      if (!Number.isInteger(a.slot) || a.slot < 0 || a.slot >= st.slots.length) throw new Error("Ese espacio no existe.");
+      // Se intercambian en su lugar: nada se reordena
+      hand[k] = st.slots[a.slot];
+      st.slots[a.slot] = a.c;
       break;
     }
     case "spoon": {
       if (st.chips[seat] <= 0) throw new Error("Ya no tienes fichas.");
       if (hasSpoon(st, seat)) throw new Error("Ya tienes cuchara.");
+      const free = freeSpoons(st);
+      const i = a.i === undefined ? free[0] : a.i; // sin índice: la primera libre
+      if (!Number.isInteger(i) || i < 0 || i >= st.spots.length) throw new Error("Esa cuchara no existe.");
+      if (!free.includes(i)) throw new Error("Esa cuchara ya la tomaron.");
       if (!st.spoonBy.length) st.firstPoker = isPoker(st.hands[seat]);
       st.spoonBy.push(seat);
+      st.spoonAt.push(i);
       if (st.spoonBy.length >= spoonsTotal(st)) endRound(st);
       break;
     }
@@ -191,20 +205,21 @@ export function ranking(st) {
   return st.chips.map((c, s) => s).sort((a, b) => (b === st.winner) - (a === st.winner) || st.chips[b] - st.chips[a] || a - b);
 }
 
-// Lo que ve un asiento (-1: quien solo mira). La mesa es pública si se juega con cartas abiertas; tapadas, solo se
-// ve dónde hay carta (HIDDEN). De las manos ajenas solo cuántas cartas tienen. De las cucharas solo cuántas quedan y
-// si tú tienes: quién las tomó y en qué orden se sabe al terminar la ronda.
+// Lo que ve un asiento (-1: quien solo mira). La mesa es pública si se juega con cartas abiertas; tapadas, cada carta
+// se ve como HIDDEN. De las manos ajenas solo cuántas cartas tienen. De las cucharas, dónde están y cuáles siguen ahí
+// (como en una mesa de verdad) y si tú tienes una: quién las tomó y en qué orden se sabe al terminar la ronda.
 export function view(st, seat) {
   const mine = seat >= 0 && seat < st.config.n;
   const open = st.config.table !== "closed";
   return {
     v: st.v, config: st.config, names: st.names, seat, round: st.round, phase: st.phase,
     chips: st.chips, ranks: st.ranks,
-    slots: open ? st.slots : st.slots.map((c) => (c === null ? null : HIDDEN)),
+    slots: open ? st.slots : st.slots.map(() => HIDDEN),
     counts: st.hands.map((h) => h.length),
     hand: mine ? st.hands[seat].slice() : [],
     spoons: st.phase === "play" ? spoonsTotal(st) : 0,
     spoonsLeft: st.phase === "play" ? spoonsTotal(st) - st.spoonBy.length : 0,
+    spots: st.phase === "play" ? st.spots.map((pos, i) => ({ pos, free: !st.spoonAt.includes(i) })) : [],
     mySpoon: mine && hasSpoon(st, seat),
     last: st.last, seq: st.seq, t: st.t, start: st.start, winner: st.winner,
   };

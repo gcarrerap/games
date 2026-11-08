@@ -2,9 +2,9 @@
 export default {
   id: "cucharas",
   name: "Cucharas",
-  players: { min: 3, max: 8 },
+  players: { min: 2, max: 10 },
   realtime: true, // sin turnos: todos cambian cartas a la vez (docs/ARCHITECTURE.md §4, "Juegos en tiempo real")
-  modes: [3, 4, 5, 6, 7, 8].map((n) => ({ id: String(n), label: `${n} jugadores`, n })),
+  modes: [2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => ({ id: String(n), label: `${n} jugadores`, n })),
   options: [{
     id: "table",
     label: "Cartas de la mesa",
