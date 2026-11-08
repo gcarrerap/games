@@ -44,7 +44,7 @@ export function wire(ui) {
     if (card) {
       e.preventDefault();
       const i = +card.dataset.card, c = v.cards[i];
-      if (c.hold < 0 && c.won < 0 && v.mine.length < RULES.maxOpen && !isFrozen(v, seat, nowOf(ui, v))) ctx.act({ type: "open", i });
+      if (c.hold < 0 && c.won === -1 && v.mine.length < RULES.maxOpen && !isFrozen(v, seat, nowOf(ui, v))) ctx.act({ type: "open", i });
       else card.classList.add("nope"), setTimeout(() => card.classList.remove("nope"), 300);
     } else if (btn && !btn.disabled) {
       e.preventDefault();
@@ -95,11 +95,18 @@ function renderMenu(ctx, v) {
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };
 }
 
+// Si terminó por atorón, qué pares se eliminaron
+function jamNote(v) {
+  const e = v.log.find((x) => x.type === "jam");
+  return e ? `<p class="hint">Se atoró al final: ${e.faces.map(faceOf).join(" ")} ${e.faces.length === 1 ? "se eliminó" : "se eliminaron"} sin ser de nadie.</p>` : "";
+}
+
 function renderResult(ctx, v, seat) {
   const order = ranking(v);
   const title = v.winner === seat ? "¡Ganaste!" : `¡Ganó ${nameOf(v, v.winner)}!`;
   const tie = order.length > 1 && v.pairs[order[0]] === v.pairs[order[1]];
   renderSheet(ctx.modal, `result-${ctx.table.round}`, title, `
+    ${jamNote(v)}
     ${tie ? `<p class="hint">Empate en pares: gana quien llegó primero.</p>` : ""}
     <div class="res">${order.map((s) => `<div class="resrow ${s === v.winner ? "win" : ""}"><span><i class="dot" style="--pc:${COLORS[s]}"></i> ${esc(nameOf(v, s))}${s === seat && nameOf(v, s) !== "Tú" ? " (tú)" : ""}</span><b>${v.pairs[s]}</b></div>`).join("")}</div>
     ${seat >= 0 ? `<button class="primary big-cta" id="again">Revancha</button>` : ""}
@@ -134,10 +141,6 @@ function statusHTML(v, seat, now, tv) {
   if (tm) return `<span class="warn">⏱ ${esc(nameOf(v, tm.by))} te puso timer: ${secs(tm.end - now)} s</span>`;
   const fresh = freshPair(v, seat, now);
   if (fresh) return `<span class="good">¡Par! ${faceOf(fresh.f)}</span>`;
-  // Sin cartas libres solo queda esperar o quitarle su carta a alguien con el timer
-  const anyFree = v.cards.some((c) => c.hold < 0 && c.won < 0);
-  const others = v.counts.some((c, s) => s !== seat && c > 0);
-  if (!anyFree && others) return `<span class="warn">No quedan cartas libres: ponle ⏱ a quien tenga una abierta</span>`;
   if (v.mine.length === 1) return "Ahora busca su pareja";
   const t = activeTimerBy(v, seat);
   const timerTxt = t >= 0 ? `tu timer corre sobre ${esc(nameOf(v, t))}` : now < v.cool[seat] ? `tu timer se recarga en ${secs(v.cool[seat] - now)} s` : "";
@@ -148,7 +151,7 @@ function statusHTML(v, seat, now, tv) {
 // resaltar el par) solo se pone cuando la carta acaba de cambiar a ese dibujo; si no, se repetiría a cada rato.
 function cardKind(v, seat, i, now, fresh) {
   const c = v.cards[i];
-  if (c.won >= 0) return fresh && fresh.cards.includes(i) ? "fresh" : "gone";
+  if (c.won !== -1) return fresh && fresh.cards.includes(i) ? "fresh" : "gone";
   if (c.hold === seat && seat >= 0) return "mine";
   if (c.hold >= 0) return "held";
   return seat >= 0 && v.miss && v.miss.until > now && v.miss.cards.includes(i) ? "missed" : "down";
@@ -159,7 +162,7 @@ function cardHTML(v, seat, i, now, tv, fresh, anim) {
   const miss = seat >= 0 && v.miss && v.miss.until > now ? v.miss.cards.indexOf(i) : -1;
   const a = anim ? " anim" : "";
   if (c.won >= 0 && fresh && fresh.cards.includes(i)) return `<div class="mc up fresh${a}" style="--pc:${COLORS[c.won]}" aria-label="¡Tu par!"><span>${faceOf(c.f)}</span></div>`;
-  if (c.won >= 0) return `<div class="mc gone" style="--pc:${COLORS[c.won]}" aria-label="Reclamada"><span>${faceOf(c.f)}</span></div>`;
+  if (c.won !== -1) return `<div class="mc gone" style="--pc:${COLORS[c.won] || "var(--muted)"}" aria-label="${c.won >= 0 ? "Reclamada" : "Eliminada"}"><span>${faceOf(c.f)}</span></div>`;
   if (c.hold === seat && seat >= 0) return `<button class="mc up mine${a}" data-card="${i}" style="--pc:${COLORS[seat]}" aria-label="Tu carta abierta"><span>${faceOf(c.f)}</span></button>`;
   if (c.hold >= 0) return `<div class="mc held" style="--pc:${COLORS[c.hold]}" aria-label="Abierta por ${esc(nameOf(v, c.hold))}"></div>`;
   if (miss >= 0) return `<button class="mc up missed" data-card="${i}" aria-label="No era pareja"><span>${faceOf(v.miss.faces[miss])}</span></button>`;

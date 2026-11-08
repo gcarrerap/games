@@ -5,6 +5,8 @@
 //   abierta no se puede regresar (si no, gana quien abre y cierra sin armar pares).
 // - Si la segunda es pareja, el par es tuyo en ese momento. Si no, las dos se regresan solas y quedas congelado
 //   RULES.freezeMs.
+// - Atorón final: si ya no queda ninguna carta libre (las que quedan las tienen abiertas jugadores distintos), esos
+//   pares se eliminan sin ser de nadie y termina la partida.
 // - Timer: le pones a otro que tiene una carta abierta RULES.timerMs; al acabarse se le regresa. Si antes junta su
 //   par o falla, vence sin acción. Puedes poner otro RULES.cooldownMs después de que el tuyo terminó.
 // - Un par reclamado sale del juego. Gana quien tenga más pares; en empate, quien llegó primero a ese número.
@@ -16,7 +18,7 @@
 
 export const RULES = {
   maxOpen: 2,
-  freezeMs: 2000,
+  freezeMs: 500,
   timerMs: 5000,
   cooldownMs: 10000,
   pairs: (n) => (n <= 2 ? 18 : 24),
@@ -40,7 +42,8 @@ export function newGame(config, names = [], { rnd, now = 0 }) {
     v: 1,
     config: { n, pairs },
     names: Array.from({ length: n }, (_, i) => names[i] || `Jugador ${i + 1}`),
-    // f: cara · hold: quién la tiene abierta (-1 nadie) · at: desde cuándo · won: quién la reclamó (-1 nadie)
+    // f: cara · hold: quién la tiene abierta (-1 nadie) · at: desde cuándo · won: quién la reclamó (-1 sigue en juego,
+    // OUT: se eliminó en un atorón final)
     cards: deck.map((f) => ({ f, hold: -1, at: 0, won: -1 })),
     held: Array.from({ length: n }, () => []), // cartas abiertas de cada quien, en el orden en que las abrió
     frozen: Array(n).fill(0), // congelado hasta esta hora
@@ -60,8 +63,10 @@ export function newGame(config, names = [], { rnd, now = 0 }) {
 }
 
 const LOG_KEEP = 12;
-const isFree = (c) => c.hold < 0 && c.won < 0;
-export const remaining = (st) => st.cards.filter((c) => c.won < 0).length / 2;
+export const OUT = -2; // won de una carta eliminada en un atorón final: sale del juego sin ser de nadie
+const inPlay = (c) => c.won === -1;
+const isFree = (c) => c.hold < 0 && inPlay(c);
+export const remaining = (st) => st.cards.filter(inPlay).length / 2;
 export const nameOf = (st, s) => st.names[s] || `Jugador ${s + 1}`;
 export const isFrozen = (st, seat, now) => st.frozen[seat] > now;
 export const activeTimerBy = (st, seat) => st.timers.findIndex((x) => x && x.by === seat);
@@ -124,7 +129,7 @@ export function apply(st0, seat, action, { now = 0 } = {}) {
       if (isFrozen(st, seat, st.t)) throw new Error("Estás congelado.");
       const c = st.cards[a.i];
       if (!c) throw new Error("Esa carta no existe.");
-      if (c.won >= 0) throw new Error("Esa carta ya se reclamó.");
+      if (!inPlay(c)) throw new Error("Esa carta ya salió del juego.");
       if (c.hold === seat) throw new Error("Esa carta ya la tienes abierta.");
       if (c.hold >= 0) throw new Error("Esa carta la tiene abierta otro.");
       if (held.length >= RULES.maxOpen) throw new Error(`Solo puedes tener ${RULES.maxOpen} cartas abiertas.`);
@@ -142,6 +147,7 @@ export function apply(st0, seat, action, { now = 0 } = {}) {
         afterReturn(st, seat);
         note(st, { type: "miss", seat });
       }
+      if (st.phase === "play") unjam(st);
       break;
     }
     case "timer": {
@@ -184,6 +190,18 @@ function claim(st, seat) {
   if (remaining(st) === 0) finish(st);
 }
 
+// Atorón final: ya no queda ninguna carta libre, así que nadie puede abrir y las cartas abiertas (una por jugador:
+// con dos ya se habrían resuelto) son parejas repartidas entre dos jugadores. Esos pares se eliminan sin ser de nadie
+// y, como ya no queda nada en juego, termina la partida.
+function unjam(st) {
+  if (st.cards.some(isFree) || remaining(st) === 0) return;
+  const out = [];
+  st.cards.forEach((c, i) => { if (inPlay(c)) { c.won = OUT; c.hold = -1; c.at = 0; out.push(i); } });
+  for (let s = 0; s < st.config.n; s++) { st.held[s] = []; st.timers[s] = null; }
+  note(st, { type: "jam", cards: out, faces: [...new Set(out.map((i) => st.cards[i].f))] });
+  finish(st);
+}
+
 function finish(st) {
   st.phase = "over";
   st.winner = ranking(st)[0];
@@ -207,10 +225,10 @@ export function nextDeadline(st) {
 // forma de recordar; la mesa no la muestra.
 export function view(st, seat) {
   const mine = seat >= 0 && seat < st.config.n;
-  const cards = st.cards.map((c) => ({ f: c.won >= 0 || (mine && c.hold === seat) ? c.f : null, hold: c.hold, at: c.at, won: c.won }));
+  const cards = st.cards.map((c) => ({ f: !inPlay(c) || (mine && c.hold === seat) ? c.f : null, hold: c.hold, at: c.at, won: c.won }));
   const miss = mine && st.miss[seat] ? { cards: st.miss[seat].cards, faces: st.miss[seat].cards.map((i) => st.cards[i].f), until: st.miss[seat].until } : null;
   const memory = [];
-  if (mine) st.seen[seat].forEach((q, i) => { if (q >= 0 && st.cards[i].won < 0) memory.push({ i, f: st.cards[i].f, q }); });
+  if (mine) st.seen[seat].forEach((q, i) => { if (q >= 0 && inPlay(st.cards[i])) memory.push({ i, f: st.cards[i].f, q }); });
   return {
     v: st.v, config: st.config, names: st.names, seat,
     cards, mine: mine ? st.held[seat].slice() : [], counts: st.held.map((h) => h.length),
