@@ -166,7 +166,11 @@ with sync_playwright() as p:
     page.wait_for_selector(".game.cucharas .cuslots", timeout=10000)
     cu_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
     cu_slots = len(page.query_selector_all(".cuslots .cus"))
-    cu_spoons0 = len(page.query_selector_all(".cuspoons .cuspoon"))
+    cu_spoons0 = len(page.query_selector_all(".curing button.cuspot"))
+    cu_hand0 = page.eval_on_selector_all("button.cuc", "els => els.map(e => e.dataset.hand)")
+    page.click("button.cuc >> nth=3"); page.click("button.cus >> nth=0"); page.wait_for_timeout(300)
+    cu_hand1 = page.eval_on_selector_all("button.cuc", "els => els.map(e => e.dataset.hand)")
+    cu_inplace = len(cu_hand1) == 4 and cu_hand1[:3] == cu_hand0[:3] and cu_hand1[3] != cu_hand0[3]
     cu_swaps = 0; cu_round = False
     for k in range(60):
         if page.query_selector(".sheet #next, .sheet #again"): cu_round = True; break
@@ -619,7 +623,8 @@ if not mem_bot_held: problems.append("Memoria Veloz: nunca se vio una carta abie
 if not mem_rules: problems.append("Memoria Veloz: el menú no tiene las reglas")
 if not cu_no_timer: problems.append("Cucharas: el lobby ofrece escoger el reloj")
 if set(cu_styles) != {"cucharas"}: problems.append(f"Cucharas: estilos cargados {cu_styles}")
-if cu_slots != 6: problems.append(f"Cucharas: {cu_slots} espacios con 4 jugadores (debían ser 6)")
+if cu_slots != 4: problems.append(f"Cucharas: {cu_slots} cartas en la mesa con 4 jugadores (debían ser 4)")
+if not cu_inplace: problems.append(f"Cucharas: el cambio reordenó la mano ({cu_hand0} → {cu_hand1})")
 if cu_spoons0 != 3: problems.append(f"Cucharas: {cu_spoons0} cucharas al empezar con 4 jugadores (debían ser 3)")
 if cu_swaps < 2: problems.append(f"Cucharas: solo se pudieron cambiar {cu_swaps} cartas")
 if not cu_round: problems.append("Cucharas: no terminó ninguna ronda (o no se vieron las manos)")
@@ -707,7 +712,7 @@ print(f"Carrera: música {ch_music_req}/{ch_music_on}/{ch_music_mute}/{ch_music_
 print(f"Damas chinas: reglas {cc_rules}, jugadas {cc_moves}, estilos cargados {cc_styles}.")
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Memoria Veloz: {mem_cards} cartas, abrió cartas {mem_opened}, la compu abrió cartas {mem_bot_held}, estilos {mem_styles}.")
-print(f"Cucharas: {cu_slots} espacios, {cu_spoons0} cucharas, cartas tomadas {cu_swaps}, ronda {cu_round}, reglas {cu_rules}, estilos {cu_styles}.")
+print(f"Cucharas: {cu_slots} cartas en la mesa, cambio en su lugar {cu_inplace}, {cu_spoons0} cucharas, cartas tomadas {cu_swaps}, ronda {cu_round}, reglas {cu_rules}, estilos {cu_styles}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
 print(f"Tele: aviso {tv_hint}, espera {tv_wait}, teléfono {tv_phone}, tablero {tv_board}, salir {tv_left}.")

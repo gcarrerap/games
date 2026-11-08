@@ -6,6 +6,7 @@
 // - Si no: junta el número del que tiene más (en empate, el que más se ve en la mesa) y cambia su carta más sola.
 //   Con la mesa abierta toma una del número que junta (o de otro del que ya tiene dos); si no hay ninguna que le
 //   sirva, a veces cambia de todos modos para mover la mano. Con la mesa tapada toma a ciegas.
+// - Para tomar cuchara escoge una de las que siguen en la mesa, al azar.
 // - Nunca toma cuchara sin póker si nadie ha tomado (no blufea).
 import { rankOf } from "../../../modules/cards/index.js";
 import { isPoker, countRanks } from "../engine/index.js";
@@ -30,13 +31,13 @@ export function decide(v, seat, profile, rnd) {
   if (v.phase === "between") return { type: "next" };
   if (v.phase !== "play" || v.mySpoon || !v.hand.length) return null;
   const s = style(profile);
-  if (isPoker(v.hand)) return { type: "spoon" };
-  if (v.spoonsLeft < v.spoons && rnd() < s.notice) return { type: "spoon" };
+  const grab = () => ({ type: "spoon", i: pick(v.spots.map((x, i) => (x.free ? i : -1)).filter((i) => i >= 0), rnd) });
+  if (isPoker(v.hand)) return grab();
+  if (v.spoonsLeft < v.spoons && rnd() < s.notice) return grab();
 
   const goal = target(v.hand, v.slots);
   const counts = countRanks(v.hand);
-  const full = v.slots.map((c, i) => (c ? i : -1)).filter((i) => i >= 0);
-  if (!full.length || !v.slots.includes(null)) return WAIT;
+  const full = v.slots.map((_, i) => i);
   const spare = v.hand.filter((c) => rankOf(c) !== goal);
   const fewest = Math.min(...spare.map((c) => counts[rankOf(c)]));
   const give = pick(spare.filter((c) => counts[rankOf(c)] === fewest), rnd);

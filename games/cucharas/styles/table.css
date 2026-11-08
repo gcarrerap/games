@@ -23,18 +23,21 @@
 .cuchips{color:var(--accent);letter-spacing:1px}
 .cuout{color:var(--muted);font-size:12px}
 
-/* La mesa: los espacios en dos filas; las cucharas, chicas y pálidas en la orilla derecha */
-.cutable{display:flex;gap:8px;align-items:stretch;padding:10px;border-radius:14px;flex:none;
+/* La mesa: las cartas al centro y, en la orilla, un anillo de lugares para cucharas (cada una en el suyo).
+   --band es el ancho de esa orilla; los lugares se ponen con --x/--y (0–100 %) sobre la línea media de la orilla. */
+.cutable{--band:40px;position:relative;padding:var(--band);border-radius:16px;flex:none;
   background:radial-gradient(ellipse at center,var(--cufelt),var(--cufelt-2))}
-.cuslots{flex:1;min-width:0;max-width:calc(var(--cols) * 100px);margin:0 auto;display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:6px}
+.cuslots{min-width:0;max-width:calc(var(--cols) * 92px);margin:0 auto;display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:8px}
 .cus{padding:0;min-height:0;aspect-ratio:44/62;width:100%;border-radius:7px;background:transparent;border:none;display:block;transition:transform .12s}
 .cus svg.card,.cuc svg.card{width:100%;height:auto}
-.cus.empty{border:2px dashed var(--cuslot-line);box-sizing:border-box}
 .cus.pick{box-shadow:0 0 0 2px var(--accent);border-radius:7px}
 button.cus:active{transform:scale(.94)}
-.cuspoons{width:28px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:flex-end}
-.cuspoon{width:28px;height:28px;min-height:28px;padding:0;border:none;background:transparent;font-size:17px;line-height:1;opacity:.6;filter:saturate(.5)}
-.cuspoon.mine{opacity:1;filter:none}
+.curing{position:absolute;inset:calc(var(--band) / 2);pointer-events:none}
+.cuspot{position:absolute;left:var(--x);top:var(--y);transform:translate(-50%,-50%);pointer-events:auto;
+  width:30px;height:30px;min-height:30px;padding:0;border-radius:50%;border:1.5px dashed var(--cuslot-line);background:rgba(0,0,0,.12);
+  font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.cuspot.taken{background:transparent}
+button.cuspot:active{transform:translate(-50%,-50%) scale(.9)}
 
 .custatus{text-align:center;font-weight:800;font-size:14px;min-height:1.5em;flex:none;margin-top:auto}
 .custatus .good{color:var(--accent)}
@@ -59,9 +62,8 @@ button.cus:active{transform:scale(.94)}
 /* Monitor: la mesa grande para todos */
 .game.cucharas.tv{max-width:none}
 .cucharas.tv .cuplayers{grid-template-columns:repeat(4,1fr)}
-.cucharas.tv .cutable{flex:1;align-items:center}
-.cucharas.tv .cuslots{max-width:calc((100dvh - 200px) * var(--cols) / 2 * 44 / 62)}
+.cucharas.tv .cutable{flex:1;--band:64px;display:flex;align-items:center}
+.cucharas.tv .cuslots{flex:1;max-width:calc((100dvh - 260px) * var(--cols) / 3 * 44 / 62)}
 .cucharas.tv .custatus{margin-top:0}
-.cucharas.tv .cuspoon{font-size:28px;width:40px;height:40px}
-.cucharas.tv .cuspoons{width:40px}
+.cucharas.tv .cuspot{width:48px;height:48px;font-size:26px}
 @media (prefers-reduced-motion:reduce){.nope{animation:none}.cuc,.cus{transition:none}}

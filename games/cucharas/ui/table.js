@@ -1,10 +1,11 @@
-// La mesa de Cucharas: los jugadores (fichas y cuántas cartas tienen), la mesa con sus espacios boca arriba, las
-// cucharas en una orilla y tu mano. Dibuja con ctx.view y juega con ctx.act().
+// La mesa de Cucharas: los jugadores (fichas y cuántas cartas tienen), la mesa con sus cartas, las cucharas cada una
+// en su lugar alrededor de la orilla, y tu mano. Dibuja con ctx.view y juega con ctx.act().
 //
-// Para cambiar: tocas una carta de tu mano y luego la carta de la mesa que quieres. La tuya se suelta en un hueco
-// al azar. Con la mesa tapada se ven los reversos y tomas a ciegas. Las cucharas están chicas y a un lado a
-// propósito: mientras miras tus cartas y la mesa no ves cuándo desaparecen. Nadie anuncia nada.
-import { nameOf, isPoker, aliveSeats, HIDDEN } from "../engine/index.js";
+// Para cambiar: tocas una carta de tu mano y luego la carta de la mesa que quieres; se intercambian en su lugar.
+// Ni tu mano ni la mesa se reordenan. Con la mesa tapada se ven los reversos y tomas a ciegas. Las cucharas están
+// repartidas por toda la orilla (cambian de lugar cada ronda): para tomar una tienes que buscar dónde queda alguna.
+// Nadie anuncia nada: la que se toman deja su lugar vacío.
+import { nameOf, isPoker, aliveSeats, HIDDEN, RULES } from "../engine/index.js";
 import { rankOf } from "../../../modules/cards/index.js";
 import { cardSVG, backSVG, cardChip } from "../../../modules/cards/ui.js";
 import { $, esc } from "../../../platform/ui/dom.js";
@@ -25,7 +26,7 @@ export function wire(ui) {
     const v = ctx.view, seat = ctx.seat;
     if (seat < 0 || v.phase !== "play" || ctx.display === MONITOR || v.mySpoon || !v.hand.length) return;
     const card = e.target.closest("[data-hand]"), slot = e.target.closest("[data-slot]"), spoon = e.target.closest("[data-spoon]");
-    if (spoon) { e.preventDefault(); ui.sel = null; ctx.act({ type: "spoon" }); return; }
+    if (spoon) { e.preventDefault(); ui.sel = null; ctx.act({ type: "spoon", i: +spoon.dataset.spoon }); return; }
     if (card) {
       e.preventDefault();
       ui.sel = ui.sel === card.dataset.hand ? null : card.dataset.hand;
@@ -33,7 +34,7 @@ export function wire(ui) {
     } else if (slot) {
       e.preventDefault();
       const i = +slot.dataset.slot;
-      if (!ui.sel || v.slots[i] === null) return nope(slot);
+      if (!ui.sel) return nope(slot);
       const c = ui.sel; ui.sel = null;
       ctx.act({ type: "swap", c, slot: i });
     }
@@ -48,7 +49,7 @@ function nope(el) { el.classList.add("nope"); setTimeout(() => el.classList.remo
 function renderMenu(ctx, v) {
   renderSheet(ctx.modal, "gameMenu", ctx.practice ? "Práctica" : "Mesa " + ctx.table.code, `
     <p class="hint">Ronda ${v.round} · ${plural(aliveSeats(v).length, "jugador", "jugadores")} en juego</p>
-    <details class="help" open><summary>Cómo se juega</summary>${rulesHelp(v.config.pace, v.config.table)}</details>
+    <details class="help" open><summary>Cómo se juega</summary>${rulesHelp(v.config.table)}</details>
     ${modeMenu(ctx)}
     <button id="back">← Salir</button>
     <button class="primary big-cta" id="menuclose">Volver al juego</button>`);
@@ -119,9 +120,27 @@ function statusHTML(v, seat, tv, sel) {
   return "Toca una carta tuya para cambiarla";
 }
 
+// Dónde va el lugar `pos` (0 … ring-1) en la orilla de la mesa, en % del ancho y alto: arranca arriba a la izquierda
+// y da la vuelta como reloj. Los lados largos tienen más lugares que los cortos.
+function spotXY(pos) {
+  const W = 1, H = 0.75, t = ((pos + 0.5) / RULES.ring) * 2 * (W + H);
+  if (t < W) return [t / W, 0];
+  if (t < W + H) return [1, (t - W) / H];
+  if (t < 2 * W + H) return [1 - (t - W - H) / W, 1];
+  return [0, 1 - (t - 2 * W - H) / H];
+}
+
+function spotsHTML(v, canAct) {
+  return v.spots.map((sp, i) => {
+    const [x, y] = spotXY(sp.pos);
+    const at = `style="--x:${(x * 100).toFixed(1)}%;--y:${(y * 100).toFixed(1)}%"`;
+    if (!sp.free) return `<span class="cuspot taken" ${at}></span>`;
+    return canAct ? `<button class="cuspot" data-spoon="${i}" ${at} aria-label="Tomar cuchara">🥄</button>` : `<span class="cuspot" ${at}>🥄</span>`;
+  }).join("");
+}
+
 function slotHTML(v, i, canAct, sel) {
   const c = v.slots[i];
-  if (c === null) return `<div class="cus empty"></div>`;
   const inner = c === HIDDEN ? backSVG() : cardSVG(c);
   return canAct ? `<button class="cus ${sel ? "pick" : ""}" data-slot="${i}" aria-label="Tomar esta carta">${inner}</button>` : `<div class="cus">${inner}</div>`;
 }
@@ -131,7 +150,7 @@ export function renderTable(app, ctx, ui) {
   if (ui.sel && !v.hand.includes(ui.sel)) ui.sel = null;
   const playing = v.phase === "play";
   const canAct = playing && seat >= 0 && !tv && !v.mySpoon && v.hand.length > 0;
-  const n = v.slots.length, cols = Math.ceil(n / 2);
+  const n = v.slots.length, cols = n <= 4 ? 2 : 4;
 
   app.className = `game cucharas ${tv ? "tv" : ""}`;
   app.innerHTML = `
@@ -143,13 +162,11 @@ export function renderTable(app, ctx, ui) {
     <section class="cuplayers" aria-label="Jugadores">${playersHTML(v, seat)}</section>
     <section class="cutable">
       <div class="cuslots" style="--cols:${cols}" aria-label="Mesa">${v.slots.map((_, i) => slotHTML(v, i, canAct, !!ui.sel)).join("")}</div>
-      <div class="cuspoons" aria-label="Cucharas">${playing ? Array.from({ length: v.spoonsLeft }, () =>
-        canAct ? `<button class="cuspoon" data-spoon aria-label="Tomar cuchara">🥄</button>` : `<span class="cuspoon">🥄</span>`).join("") : ""}
-        ${v.mySpoon ? `<span class="cuspoon mine" aria-label="Tu cuchara">🥄</span>` : ""}</div>
+      <div class="curing" aria-label="Cucharas">${playing ? spotsHTML(v, canAct) : ""}</div>
     </section>
     <div class="custatus" aria-live="polite">${statusHTML(v, seat, tv, ui.sel)}</div>
     ${seat >= 0 && !tv ? `<section class="cuhand ${v.mySpoon ? "frozen" : ""}" aria-label="Tu mano">
-      ${sortHand(v.hand).map((c) => canAct
+      ${v.hand.map((c) => canAct
         ? `<button class="cuc ${ui.sel === c ? "sel" : ""}" data-hand="${c}" aria-label="Soltar esta carta">${cardSVG(c)}</button>`
         : `<div class="cuc">${cardSVG(c)}</div>`).join("")}
     </section>` : ""}
