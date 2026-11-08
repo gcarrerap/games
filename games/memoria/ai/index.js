@@ -35,7 +35,7 @@ export function decide(v, seat, profile, rnd) {
   const s = style(profile);
   if (isFrozen(v, seat, v.t)) return TICK;
   const mine = v.mine;
-  const free = v.cards.map((c, i) => (c.hold < 0 && c.won < 0 ? i : -1)).filter((i) => i >= 0);
+  const free = v.cards.map((c, i) => (c.hold < 0 && c.won === -1 ? i : -1)).filter((i) => i >= 0);
   const known = recall(v, s, rnd);
   const seen = new Set(v.memory.map((m) => m.i));
   const unseen = free.filter((i) => !seen.has(i));

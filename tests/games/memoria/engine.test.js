@@ -2,7 +2,7 @@
 // final con desempate y lo que ve cada asiento.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { newGame, apply, legalActions, view, ranking, nextDeadline, canTimer, RULES } from "../../../games/memoria/engine/index.js";
+import { newGame, apply, legalActions, view, ranking, nextDeadline, canTimer, RULES, OUT } from "../../../games/memoria/engine/index.js";
 import { decide, thinkMs } from "../../../games/memoria/ai/index.js";
 import game from "../../../games/memoria/index.js";
 import { seededRandom } from "../../../modules/random/index.js";
@@ -46,25 +46,26 @@ test("si la segunda es pareja, el par es tuyo al instante y sale del juego", () 
   st = act(st, 1, { type: "open", i: y }, 500);
   assert.deepEqual([st.cards[x].won, st.cards[y].won, st.pairs[1], st.reached[1], st.held[1]], [1, 1, 1, 500, []]);
   assert.deepEqual(st.log.at(-1), { type: "claim", seat: 1, f: st.cards[x].f, cards: [x, y], t: 500 });
-  assert.throws(() => act(st, 0, { type: "open", i: x }), /ya se reclamó/);
+  assert.throws(() => act(st, 0, { type: "open", i: x }), /ya salió del juego/);
 });
 
-test("si la segunda no es pareja: se regresan solas, congelado 2 s y solo él vio las caras", () => {
+test("si la segunda no es pareja: se regresan solas, congelado medio segundo y solo él vio las caras", () => {
   let st = fresh(2);
   const x = 0, z = other(st, st.cards[0].f);
   st = act(st, 0, { type: "open", i: x }, 1000);
   st = act(st, 0, { type: "open", i: z }, 1200);
   assert.deepEqual(st.held[0], []);
   assert.ok(st.cards.every((c) => c.hold === -1));
-  assert.equal(st.frozen[0], 1200 + RULES.freezeMs);
+  assert.equal(RULES.freezeMs, 500);
+  assert.equal(st.frozen[0], 1700);
   assert.deepEqual(view(st, 0).miss.cards, [x, z]);
   assert.deepEqual(view(st, 0).miss.faces, [st.cards[x].f, st.cards[z].f]);
   assert.equal(view(st, 1).miss, null);
-  assert.throws(() => act(st, 0, { type: "open", i: x }, 3000), /congelado/);
+  assert.throws(() => act(st, 0, { type: "open", i: x }, 1600), /congelado/);
   assert.ok(!legalActions(st, 0).some((a) => a.type === "open"));
-  // Los demás sí pueden abrirlas mientras tanto, y él vuelve a jugar al pasar los 2 s
+  // Los demás sí pueden abrirlas mientras tanto, y él vuelve a jugar al pasar el medio segundo
   st = act(st, 1, { type: "open", i: x }, 1500);
-  st = act(st, 0, { type: "open", i: z }, 3200);
+  st = act(st, 0, { type: "open", i: z }, 1700);
   assert.equal(st.cards[z].hold, 0);
 });
 
@@ -192,18 +193,39 @@ test("el tablero escoge las columnas que dan las cartas más grandes en el espac
   assert.equal(bestLayout(48, 1600, 800).cols, 12, "tele: muchas columnas");
 });
 
-test("al final, si el último par queda repartido entre dos, la compu le pone timer al otro y se destraba", () => {
-  // Quedan solo x e y (el mismo par): el asiento 0 tiene x, la compu (1) tiene y
+test("atorón final: si el último par queda repartido entre dos, se elimina sin ser de nadie y termina", () => {
+  // Solo queda el último par: 0 abre una, 1 abre la otra
   let st = fresh(2);
   const [x, y] = pairOf(st);
-  st = { ...st, cards: st.cards.map((c, i) => (i === x || i === y ? c : { ...c, won: 0 })) };
+  st = { ...st, cards: st.cards.map((c, i) => (i === x || i === y ? c : { ...c, won: 0 })), pairs: [17, 0] };
   st = act(st, 0, { type: "open", i: x }, 1000);
-  st = act(st, 1, { type: "open", i: y }, 1000);
-  assert.deepEqual(decide(view(st, 1), 1, "normal", () => 0), { type: "timer", seat: 0 });
-  st = act(st, 1, { type: "timer", seat: 0 }, 1200);
-  st = act(st, 1, { type: "tick" }, 1200 + RULES.timerMs);
-  assert.equal(st.cards[x].hold, -1, "el timer le regresó su carta");
-  // Ahora la compu recuerda dónde está x (lo vio antes) o la abre por ser la única libre: el par es suyo
-  st = act(st, 1, decide(view(st, 1), 1, "normal", () => 0), 1200 + RULES.timerMs + 100);
+  assert.equal(st.phase, "play", "todavía hay una libre");
+  st = act(st, 1, { type: "open", i: y }, 1100);
+  assert.deepEqual([st.cards[x].won, st.cards[y].won, st.cards[x].hold], [OUT, OUT, -1]);
+  assert.deepEqual(st.pairs, [17, 0], "no es de nadie");
   assert.equal(st.phase, "over");
+  assert.equal(st.winner, 0);
+  assert.deepEqual(st.log.at(-1), { type: "jam", cards: [x, y], faces: [st.cards[x].f], t: 1100 });
+  assert.equal(view(st, 1).cards[y].f, st.cards[y].f, "al final se ven las caras eliminadas");
+});
+
+test("atorón con varios pares repartidos: se eliminan todos; antes de eso se puede seguir jugando", () => {
+  let st = fresh(4);
+  const [a1, a2] = pairOf(st);
+  const [b1, b2] = pairOf(st, st.cards.find((c) => c.f !== st.cards[a1].f).f);
+  const keep = [a1, a2, b1, b2];
+  st = { ...st, cards: st.cards.map((c, i) => (keep.includes(i) ? c : { ...c, won: 2 })) };
+  st = act(st, 0, { type: "open", i: a1 }, 1000);
+  st = act(st, 1, { type: "open", i: a2 }, 1000);
+  st = act(st, 2, { type: "open", i: b1 }, 1000);
+  assert.equal(st.phase, "play", "b2 sigue libre");
+  // Si 0 abre b2 falla (tenía a1): se le regresan las dos y sigue el juego
+  st = act(st, 0, { type: "open", i: b2 }, 1000);
+  assert.equal(st.phase, "play");
+  // 3 abre a1 y 0 abre b2: ya no hay libres y las dos parejas quedaron repartidas
+  st = act(st, 3, { type: "open", i: a1 }, 1100);
+  st = act(st, 0, { type: "open", i: b2 }, 1600);
+  assert.equal(st.phase, "over");
+  assert.ok(keep.every((i) => st.cards[i].won === OUT));
+  assert.equal(st.log.at(-1).faces.length, 2);
 });

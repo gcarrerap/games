@@ -7,7 +7,8 @@ El juego de pares, pero **sin turnos**: de 1 a 4 jugadores juegan al mismo tiemp
 - **Tablero:** 18 pares con 1–2 jugadores, 24 pares con 3–4.
 - **Abrir:** abres una carta y luego otra. Mientras la tienes abierta, solo tú ves su cara y solo tú la puedes tomar; los demás la ven marcada con tu color, sin la cara. **Una carta abierta no se regresa** (si no, ganaría quien abre y cierra cartas sin armar pares).
 - **Si la segunda es pareja:** el par es tuyo en ese momento (sin botón de reclamar) y sale del juego.
-- **Si no es pareja:** las dos se regresan solas a su lugar y quedas **congelado 2 s** (no abres cartas ni pones timers). Solo tú viste las caras.
+- **Si no es pareja:** las dos se regresan solas a su lugar y quedas **congelado 0.5 s** (no abres cartas ni pones timers). Solo tú viste las caras.
+- **Atorón final:** si ya no queda ninguna carta libre (las que quedan las tienen abiertas jugadores distintos y nadie puede abrir), esos pares se eliminan sin ser de nadie y termina la partida.
 - **Timer:** le pones uno de **5 s** a otro que tenga una carta abierta; al acabarse se le regresa. Si antes junta su par o falla, vence sin acción. Un timer a la vez sobre cada jugador; puedes poner otro **10 s** después de que el tuyo terminó (no se acumulan).
 - **Fin:** cuando no quedan pares. Gana quien tenga más; en empate, quien llegó primero a ese número.
 
