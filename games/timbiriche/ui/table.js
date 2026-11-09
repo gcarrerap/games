@@ -9,7 +9,7 @@ import { boardSVG } from "./board.js";
 import { rulesHelp } from "./rules.js";
 
 const initial = (name) => (String(name || "?").trim()[0] || "?").toUpperCase();
-const youTag = (s, seat) => (s === seat ? " <small>(tú)</small>" : "");
+const youTag = (s, seat, st) => (s === seat && !(st && nameOf(st, s) === "Tú") ? " <small>(tú)</small>" : "");
 
 function renderRules(ctx, st) {
   renderSheet(ctx.modal, "rules", "Reglas del timbiriche", `${rulesHelp(st.config)}
@@ -37,7 +37,7 @@ function renderResult(ctx, st, seat) {
   const order = [0, 1].sort((a, b) => st.scores[b] - st.scores[a]);
   renderSheet(ctx.modal, `result-${ctx.table.round}`, title, `
     <div class="res">${order.map((s) => `<div class="resrow ${s === st.winner ? "win" : ""}">
-      <span><i class="dot c${s}"></i>${esc(nameOf(st, s))}${youTag(s, seat)}${st.penalties[s] ? ` <small class="pen">· ${st.penalties[s]} ${st.penalties[s] === 1 ? "castigo" : "castigos"}</small>` : ""}</span>
+      <span><i class="dot c${s}"></i>${esc(nameOf(st, s))}${youTag(s, seat, st)}${st.penalties[s] ? ` <small class="pen">· ${st.penalties[s]} ${st.penalties[s] === 1 ? "castigo" : "castigos"}</small>` : ""}</span>
       <b>${st.scores[s]}</b></div>`).join("")}</div>
     ${seat >= 0 ? `<button class="primary big-cta" id="again">Revancha</button>` : ""}
     <button class="ghost" id="exit">Salir</button>`, { closable: false });
@@ -48,7 +48,7 @@ function renderResult(ctx, st, seat) {
 function playerHTML(st, s, seat, playing) {
   return `<div class="prow c${s} ${playing && st.turn === s ? "turn" : ""} ${s === seat ? "mine" : ""}">
     <i class="dot" aria-hidden="true"></i>
-    <span class="pname">${esc(nameOf(st, s))}${youTag(s, seat)}</span>
+    <span class="pname">${esc(nameOf(st, s))}${youTag(s, seat, st)}</span>
     ${st.skip[s] ? `<span class="skip" title="Dejó pasar una caja">pierde turno</span>` : ""}
     <span class="pscore" aria-label="${st.scores[s]} cajas"><b>${st.scores[s]}</b></span>
   </div>`;

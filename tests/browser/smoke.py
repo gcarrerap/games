@@ -18,6 +18,8 @@ consola:
      recuerda. Los efectos: botón 🔔/🔕 y volumen propios, que no callan la música.
   3d. Damas chinas en práctica (3 jugadores): el botón "Reglas"; escoger una canica, ver a dónde puede ir y moverla
      varias veces contra la compu.
+  3e. Timbiriche en práctica: escoger tablero y segundos por raya en el lobby, con reloj; el botón "Reglas" (con el
+     castigo); escoger una raya y trazarla con «Trazar» varias veces contra la compu.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
      el consejo y abrir el menú. En línea: la regla escogida se ve en la pantalla de asientos.
   5. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
@@ -406,6 +408,29 @@ with sync_playwright() as p:
         page.wait_for_timeout(300)
     shot("17-damas-chinas-jugadas")
     cc_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+    # ---------- Timbiriche en práctica ----------
+    page.evaluate("location.hash = '#/timbiriche'"); page.wait_for_selector("#practice")
+    page.click("[data-opt='size'][data-val='3']"); page.click("[data-opt='secs'][data-val='30']")
+    page.wait_for_timeout(200); tb_hint = "30 segundos" in page.inner_text("body")
+    page.click("[data-timer='1']"); page.click("#practice")
+    page.wait_for_selector(".game.timbiriche .tb-board", timeout=10000); shot("17b-timbiriche")
+    tb_clock = page.query_selector("#clockbar") is not None
+    tap("#rules"); page.wait_for_timeout(200)
+    tb_rules = bool(page.query_selector(".sheet[data-sheet='rules']")) and "pierdes tu siguiente turno" in page.inner_text(".sheet[data-sheet='rules']")
+    tap("#rulesclose"); page.wait_for_timeout(200)
+    tb_lines = 0
+    for _ in range(60):
+        if tb_lines >= 5 or page.query_selector(".sheet #again"): break
+        if page.query_selector(".tb-board .hit"):
+            before = len(page.query_selector_all(".tb-board .ln.drawn"))
+            tap(".tb-board .hit"); page.wait_for_timeout(150)
+            if page.query_selector(".tb-board .ln.pick"):
+                tap("#draw")
+                page.wait_for_timeout(150)
+                if len(page.query_selector_all(".tb-board .ln.drawn")) > before: tb_lines += 1
+        page.wait_for_timeout(300)
+    shot("17c-timbiriche-rayas")
+    tb_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
 
     # ---------- Escribir tu nombre sin que se cierre el teclado ----------
     kb = browser.new_page(viewport={"width": 390, "height": 844})
@@ -668,6 +693,11 @@ if set(ch_styles) != {"chihuahuas"}: problems.append(f"Carrera: estilos cargados
 if not cc_rules: problems.append("Damas chinas: el botón Reglas no mostró las reglas")
 if cc_moves < 5: problems.append(f"Damas chinas: solo se movieron {cc_moves} canicas")
 if cc_styles != ["damas-chinas"]: problems.append(f"Damas chinas: estilos cargados {cc_styles}")
+if not tb_hint: problems.append("Timbiriche: el lobby no explica los segundos por raya")
+if not tb_clock: problems.append("Timbiriche: con reloj no se ve la barra del tiempo")
+if not tb_rules: problems.append("Timbiriche: el botón Reglas no mostró las reglas con el castigo")
+if tb_lines < 5: problems.append(f"Timbiriche: solo se trazaron {tb_lines} rayas")
+if tb_styles != ["timbiriche"]: problems.append(f"Timbiriche: estilos cargados {tb_styles}")
 if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not tv_hint: problems.append("Skull con tele: la pantalla de asientos no explica cómo abrir la tele")
