@@ -23,6 +23,7 @@ El sitio tiene tres tipos de piezas:
 | Carrera de Chihuahuas | `games/chihuahuas/` | 2–8 | Apuestas en una carrera de perros que se apilan (estilo Camel Up). Práctica contra la compu y mesas en línea, con dibujos propios de Monitor y Control |
 | Memoria Veloz | `games/memoria/` | 1–4 | Pares sin turnos: gana el más rápido. Práctica contra la compu y mesas en línea |
 | Cucharas | `games/cucharas/` | 3–8 | Arma un póker cambiando cartas con la mesa, sin turnos; el que se queda sin cuchara pierde ficha. Práctica contra la compu y mesas en línea |
+| Timbiriche | `games/timbiriche/` | 2 | Puntos y cajas. Tablero de 3×3 a 6×6, segundos por raya a escoger y castigo opcional por dejar pasar una caja. Práctica contra la compu y mesas en línea |
 
 En cualquier mesa en línea, cada aparato escoge desde el menú de la partida cómo la usa: **Teléfono** (el tablero y lo tuyo), **Control** (solo lo tuyo) o **Monitor** (el tablero para todos, como tele, sin tirar).
 
@@ -68,7 +69,8 @@ games/
 │   ├── panal/            # misma forma, más assets/ (banco de imágenes)
 │   ├── skull/            # misma forma
 │   ├── damas-chinas/     # misma forma
-│   └── chihuahuas/       # misma forma, más assets/ (banco de imágenes)
+│   ├── chihuahuas/       # misma forma, más assets/ (banco de imágenes)
+│   └── timbiriche/       # misma forma
 ├── tests/
 │   ├── architecture.test.js # las reglas de dependencia se cumplen (revisa los imports)
 │   ├── contract.test.js  # todos los juegos cumplen el contrato
