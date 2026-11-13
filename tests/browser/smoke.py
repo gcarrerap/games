@@ -87,11 +87,13 @@ with sync_playwright() as p:
             el = page.query_selector(selector)
             if not el: return False
             el.click(timeout=1000); return True
-        except PWError:
+        except PWError as e:
+            print("TOQUE FALLIDO", selector, str(e)[-700:], flush=True)
             return False
 
     moves = 0
     for _ in range(400):
+        if _ in (0, 1, 2, 3, 10, 20): print("DOMINO", _, page.locator("#dock").inner_text(), page.locator("#hand").inner_text(), page.locator(".err").all_text_contents(), flush=True)
         if page.query_selector(".sheet #next, .sheet #again"):
             break
         if tap(".tilebtn.play, .tilebtn.sel"):
@@ -419,6 +421,7 @@ with sync_playwright() as p:
     cc_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
     # ---------- Timbiriche en práctica ----------
     page.evaluate("location.hash = '#/timbiriche'"); page.wait_for_selector("#practice")
+    page.click("[data-mode='2']")  # el modo por omisión es el más grande (6): aquí se prueba a 2 contra la compu
     page.click("[data-opt='size'][data-val='3']"); page.click("[data-opt='secs'][data-val='30']")
     page.wait_for_timeout(200); tb_hint = "30 segundos" in page.inner_text("body")
     page.click("[data-timer='1']"); page.click("#practice")
@@ -440,6 +443,19 @@ with sync_playwright() as p:
         page.wait_for_timeout(300)
     shot("17c-timbiriche-rayas")
     tb_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+    # ---------- Timbiriche con 3 personas en el mismo aparato ----------
+    page.evaluate("location.hash = '#/timbiriche'"); page.wait_for_selector("#practice")
+    page.click("[data-mode='3']")
+    page.select_option("select[data-bot='0']", "persona"); page.select_option("select[data-bot='1']", "persona"); page.wait_for_timeout(150)
+    tb3_lobby = "Jugar en este aparato" in page.inner_text("#practice")
+    page.click("#practice"); page.wait_for_selector(".game.timbiriche .tb-board", timeout=10000)
+    tb3_rows = len(page.query_selector_all(".timbiriche .players .prow"))
+    tb3_turns = []
+    for _ in range(3):
+        tb3_turns.append(page.eval_on_selector_all(".timbiriche .players .prow", "r => r.findIndex(x => x.classList.contains('turn'))"))
+        tap(".tb-board .hit"); page.wait_for_timeout(150); tap("#draw"); page.wait_for_timeout(250)
+    tb3_pass = "Pásale el aparato" in page.inner_text(".timbiriche .status")
+    shot("17c2-timbiriche-3-personas")
     # ---------- Vikingos en práctica ----------
     page.evaluate("location.hash = '#/vikingos'"); page.wait_for_selector("#practice")
     page.click("#practice"); page.wait_for_selector(".game.vikingos .cards .card .vk-board", timeout=10000); shot("17d-vikingos-retos")
@@ -788,6 +804,10 @@ if not tb_hint: problems.append("Timbiriche: el lobby no explica los segundos po
 if not tb_clock: problems.append("Timbiriche: con reloj no se ve la barra del tiempo")
 if not tb_rules: problems.append("Timbiriche: el botón Reglas no mostró las reglas con el castigo")
 if tb_lines < 5: problems.append(f"Timbiriche: solo se trazaron {tb_lines} rayas")
+if not tb3_lobby: problems.append("Timbiriche: el lobby no ofrece jugar en el mismo aparato")
+if tb3_rows != 3: problems.append(f"Timbiriche: con 3 personas se ven {tb3_rows} jugadores")
+if tb3_turns != [0, 1, 2]: problems.append(f"Timbiriche: el turno no pasó por las 3 personas: {tb3_turns}")
+if not tb3_pass: problems.append("Timbiriche: no dice que se pase el aparato")
 if tb_styles != ["timbiriche"]: problems.append(f"Timbiriche: estilos cargados {tb_styles}")
 if not kh_lobby: problems.append("Láser: el lobby no ofrece jugar en el mismo aparato")
 if not (kh_rot and kh_beam): problems.append(f"Láser: girar o el rayo (botones {kh_rot}, rayo {kh_beam})")

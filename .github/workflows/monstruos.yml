@@ -43,4 +43,4 @@ jobs:
       - name: Prueba de navegador de toda la plataforma
         run: |
           python -m http.server 8765 > /tmp/http.log 2>&1 &
-          python tests/browser/smoke.py
+          python -u tests/browser/smoke.py

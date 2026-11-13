@@ -35,7 +35,7 @@ export default {
   apply: (st, seat, action) => applyMove(st, seat, action),
   view: (st) => st, // no hay nada oculto: todos ven el tablero
   isOver: (st) => st.phase === "over",
-  result: (st) => ({ winner: st.winner, draw: st.draw, champions: st.winner === null ? [] : [st.winner], scores: st.scores.slice() }),
+  result: (st) => ({ winner: st.winner, draw: st.draw, champions: st.winners.slice(), scores: st.scores.slice() }),
   timing: {
     turnMs: (st) => (st.phase !== "over" && st.config.timer !== false ? st.config.secs * 1000 : null),
     autoAction: (st) => autoAction(st),
