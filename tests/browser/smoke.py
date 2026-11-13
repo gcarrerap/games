@@ -23,6 +23,9 @@ consola:
   3f. Láser en el mismo aparato: "Persona (este aparato)" en el asiento de Rojo; jugar un turno de cada uno (girar con
      «Girar ⟳» y mover a un punto dorado), el láser se ve en el canvas, el turno pasa de uno a otro; las reglas; con el
      teclado (flechas, Enter, E) también se juega; en pantalla de tele (1920×1080) el tablero usa casi toda la altura.
+  3g. Vikingos en práctica: el selector de retos con sus dibujitos; el reto 1: tocar una pieza trabada (aviso),
+     girar con ↻ y ↺, deshacer y el consejo con «Hacerlo» hasta resolverlo; la ventana del resultado y «Siguiente
+     reto» abre el reto 2 solo; el reto marcado como resuelto en el selector.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
      el consejo y abrir el menú. En línea: la regla escogida se ve en la pantalla de asientos.
   5. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
@@ -434,6 +437,32 @@ with sync_playwright() as p:
         page.wait_for_timeout(300)
     shot("17c-timbiriche-rayas")
     tb_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+    # ---------- Vikingos en práctica ----------
+    page.evaluate("location.hash = '#/vikingos'"); page.wait_for_selector("#practice")
+    page.click("#practice"); page.wait_for_selector(".game.vikingos .cards .card .vk-board", timeout=10000); shot("17d-vikingos-retos")
+    vk_cards = len(page.query_selector_all(".vikingos .cards .card"))
+    tap("[data-pick='1']"); page.wait_for_selector(".vikingos #board .slot", timeout=5000)
+    tap("[data-piece='7'] .hit"); page.wait_for_timeout(150)
+    vk_blocked = "trabada" in page.inner_text(".vikingos .say")
+    tap("[data-piece='8'] .hit"); page.wait_for_timeout(150); tap("#cw"); page.wait_for_timeout(600)
+    tap("#ccw"); page.wait_for_timeout(600)  # regresa: no cuenta
+    vk_zero = "Movimientos 0" in page.inner_text(".vikingos .status")
+    tap("#cw"); page.wait_for_timeout(600); tap("#undo"); page.wait_for_timeout(600)
+    shot("17e-vikingos-reto1")
+    vk_steps = 0
+    for _ in range(80):  # el hilo de la compu puede venir ocupado de otros juegos: se espera sin prisa
+        if page.query_selector(".sheet #next"): break
+        if page.query_selector("#advdo"):
+            if tap("#advdo"): vk_steps += 1; page.wait_for_timeout(700); continue
+        elif "Pensando" not in page.inner_text(".vikingos"): tap("#advice")
+        page.wait_for_timeout(500)
+    page.wait_for_timeout(1200); shot("17f-vikingos-resuelto")
+    vk_done = bool(page.query_selector(".sheet #next")) and "5 movimientos" in page.inner_text(".sheet")
+    if vk_done: tap(".sheet #next"); page.wait_for_timeout(1200)
+    vk_next = "Reto 2" in page.inner_text(".vikingos .gtitle")
+    tap("#menu"); page.wait_for_timeout(200); tap("#choose"); page.wait_for_timeout(500)
+    vk_marked = bool(page.query_selector("[data-pick='1'] .mark"))
+    vk_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
 
     # ---------- Láser en el mismo aparato ----------
     page.evaluate("location.hash = '#/khet'"); page.wait_for_selector("#practice")
@@ -744,6 +773,13 @@ if not kh_keys: problems.append("Láser: con el teclado no se pudo girar la esfi
 if not kh_rules: problems.append("Láser: el botón Reglas no mostró las reglas")
 if not kh_tall: problems.append("Láser: en 1920×1080 el tablero no usa la altura")
 if set(kh_styles) != {"khet"}: problems.append(f"Láser: estilos cargados {kh_styles}")
+if vk_cards != 15: problems.append(f"Vikingos: el selector mostró {vk_cards} retos (deben ser 15 por nivel)")
+if not vk_blocked: problems.append("Vikingos: tocar una pieza trabada no avisó")
+if not vk_zero: problems.append("Vikingos: girar y regresar la misma pieza contó movimientos")
+if not vk_done: problems.append(f"Vikingos: el consejo no resolvió el reto 1 en 5 movimientos ({vk_steps} pasos)")
+if not vk_next: problems.append("Vikingos: «Siguiente reto» no abrió el reto 2")
+if not vk_marked: problems.append("Vikingos: el reto 1 no quedó marcado como resuelto")
+if vk_styles != ["vikingos"]: problems.append(f"Vikingos: estilos cargados {vk_styles}")
 if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not tv_hint: problems.append("Skull con tele: la pantalla de asientos no explica cómo abrir la tele")
@@ -789,6 +825,7 @@ print(f"Damas chinas: reglas {cc_rules}, jugadas {cc_moves}, estilos cargados {c
 print(f"Piojos: tiros {piojos_rolls}, plantadas {piojos_banks}, estilos cargados {piojos_styles}.")
 print(f"Memoria Veloz: {mem_cards} cartas, abrió cartas {mem_opened}, la compu abrió cartas {mem_bot_held}, estilos {mem_styles}.")
 print(f"Cucharas: {cu_slots} cartas en la mesa, cambio en su lugar {cu_inplace}, {cu_spoons0} cucharas, cartas tomadas {cu_swaps}, ronda {cu_round}, reglas {cu_rules}, estilos {cu_styles}.")
+print(f"Vikingos: {vk_cards} retos por nivel, aviso de trabada {vk_blocked}, giros juntos {vk_zero}, resuelto con el consejo en {vk_steps} pasos {vk_done}, siguiente {vk_next}, marcado {vk_marked}.")
 print(f"Continental: turnos {cont_turns}, compras {cont_buys}, bajadas {cont_downs}, menú {cont_menu}; en línea: regla {cont_online_rule}.")
 print(f"Teclado: foco al cambiar el tamaño {keyboard_resize_ok}, foco al cambiar la lista {list_redraw_ok} (escrito {typed!r}).")
 print(f"Tele: aviso {tv_hint}, espera {tv_wait}, teléfono {tv_phone}, tablero {tv_board}, salir {tv_left}.")

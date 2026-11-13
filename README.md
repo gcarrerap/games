@@ -25,6 +25,7 @@ El sitio tiene tres tipos de piezas:
 | Cucharas | `games/cucharas/` | 3–8 | Arma un póker cambiando cartas con la mesa, sin turnos; el que se queda sin cuchara pierde ficha. Práctica contra la compu y mesas en línea |
 | Timbiriche | `games/timbiriche/` | 2 | Puntos y cajas. Tablero de 3×3 a 6×6, segundos por raya a escoger y castigo opcional por dejar pasar una caja. Práctica contra la compu y mesas en línea |
 | Láser de los Faraones | `games/khet/` | 2 | Estilo Khet 2.0: espejos, láser y faraones. Gráficos con láser animado y explosiones, voz de narrador. Contra la compu, dos personas en el mismo aparato, o en línea; la tele como tablero (Monitor) o para jugar en ella con el control |
+| Vikingos | `games/vikingos/` | 1 | Rompecabezas: lleva los barcos a su flecha girando las piezas del mar. Los 60 retos del cuadernillo en cuatro niveles, con deshacer, consejo y el mínimo de movimientos de cada reto |
 
 En cualquier mesa en línea, cada aparato escoge desde el menú de la partida cómo la usa: **Teléfono** (el tablero y lo tuyo), **Control** (solo lo tuyo) o **Monitor** (el tablero para todos, como tele, sin tirar).
 
@@ -71,7 +72,8 @@ games/
 │   ├── skull/            # misma forma
 │   ├── damas-chinas/     # misma forma
 │   ├── chihuahuas/       # misma forma, más assets/ (banco de imágenes)
-│   └── timbiriche/       # misma forma
+│   ├── timbiriche/       # misma forma
+│   └── vikingos/         # misma forma; engine/challenges.js trae los 60 retos
 ├── tests/
 │   ├── architecture.test.js # las reglas de dependencia se cumplen (revisa los imports)
 │   ├── contract.test.js  # todos los juegos cumplen el contrato
