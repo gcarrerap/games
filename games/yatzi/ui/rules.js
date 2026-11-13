@@ -1,6 +1,6 @@
 // Las reglas, para el botón "Reglas" y el menú
 import { RULES } from "../engine/index.js";
-import { miniDie } from "./dice.js";
+import { miniDie } from "../../../modules/dice/ui.js";
 
 export function rulesHelp() {
   return `<div class="rules yz-rules">

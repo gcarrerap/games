@@ -12,10 +12,11 @@ Agitar el aparato para hacer algo (en Yatzi, tirar los dados). No sabe nada de n
 | `shakeSupported()` | El navegador conoce `DeviceMotionEvent`. |
 | `needsPermission()` | Hay que pedir permiso con un toque (iPhone/iPad, iOS 13+). |
 | `requestShake()` | Pide el permiso; llamarlo dentro de un toque. `Promise<boolean>`. |
+| `createShakeControl({ root, prefs, key?, enabled?, canStart, onStart, onPower?, onThrow, onCancel?, onChange? })` | Todo lo que un juego necesita: si se puede (`available`: acelerómetro y pantalla táctil), si está encendido (`on`, se recuerda en `prefs` bajo `key`), el permiso pedido con el primer toque en `root` cuando hace falta, `alive` (ya llegó una lectura), `denied`, `toggle()` y `destroy()`. Convierte los eventos en un gesto: `onStart()` (si `canStart()`), `onPower(p)`, y al parar `onThrow(fuerza)` u `onCancel()`. |
 | `listenShake(onEvent, opts?)` | Escucha `devicemotion` y pasa los eventos del detector. `{ stop(), reset(), alive }`; `alive` dice si ya llegó alguna lectura (en una computadora el evento existe pero no llega). |
 
 **Cosas del navegador:** solo con https (GitHub Pages ya lo es; `localhost` también cuenta). En iPhone el permiso se
 pide una vez por sitio, siempre desde un toque; si se niega, hay que borrar los datos del sitio en Ajustes para que se
 vuelva a preguntar. El juego decide si recuerda que la persona lo activó (por ejemplo en `ctx.prefs`).
 
-**Lo usa:** Yatzi (agitar para tirar, con los dados sonando mientras agitas).
+**Lo usan:** Yatzi y Piojos (agitar para tirar, con los dados sonando mientras agitas).

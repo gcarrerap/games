@@ -42,3 +42,58 @@ export function listenShake(onEvent, opts = {}) {
     stop() { if (shakeSupported()) globalThis.removeEventListener("devicemotion", handler); },
   };
 }
+
+const coarse = () => !!(globalThis.matchMedia && globalThis.matchMedia("(pointer: coarse)").matches);
+
+// El control completo para un juego: si se puede (teléfono o tableta con acelerómetro), si está encendido (se recuerda
+// en prefs bajo `key`), pedir el permiso con el primer toque en `root` cuando hace falta (iPhone, y Chrome nuevo), y
+// convertir los eventos del detector en un gesto: onStart() cuando empieza a agitar y canStart() lo deja, onPower(p)
+// mientras sigue, y al parar onThrow(fuerza) si duró lo suficiente u onCancel() si no. onChange() avisa que cambió algo
+// que se dibuja (encendido, primera lectura, permiso negado).
+export function createShakeControl({ root, prefs, key = "shake", enabled = true, canStart, onStart, onPower = () => {}, onThrow, onCancel = () => {}, onChange = () => {} }) {
+  const available = enabled && shakeSupported() && coarse();
+  let on = false, listener = null, denied = false, active = false, ask = null;
+
+  function handle(ev) {
+    if (!on) return;
+    if (ev.type === "start") { if (canStart()) { active = true; onStart(); } }
+    else if (ev.type === "shake") { if (active) onPower(ev.power); }
+    else if (ev.type === "end" && active) { active = false; if (ev.throw) onThrow(Math.max(0.4, ev.power)); else onCancel(); }
+  }
+  function listen() {
+    if (listener) return;
+    listener = listenShake(handle);
+    // Cuando llega la primera lectura, el juego puede mostrar "o agita el teléfono"
+    setTimeout(() => listener && listener.alive && onChange(), 1200);
+  }
+  function stop() { if (listener) { listener.stop(); listener = null; } active = false; }
+  function enable(remember) {
+    return requestShake().then((ok) => {
+      if (!ok) { denied = true; if (remember) prefs.set(key, "0"); onChange(); return false; }
+      on = true; prefs.set(key, "1"); listen(); onChange(); return true;
+    });
+  }
+  const dropAsk = () => { if (ask && root) root.removeEventListener("click", ask, true); ask = null; };
+
+  if (available && prefs.get(key) !== "0") {
+    if (!needsPermission()) { on = true; listen(); }
+    else if (root) {
+      // El permiso solo se puede pedir dentro de un toque: el primero en la mesa. Si lo niegan, no se vuelve a preguntar.
+      ask = () => { dropAsk(); if (!on) enable(true); };
+      root.addEventListener("click", ask, true);
+    }
+  }
+  return {
+    get available() { return available; },
+    get on() { return on; },
+    get alive() { return !!(listener && listener.alive); },
+    get denied() { return denied; },
+    get active() { return active; },
+    toggle() {
+      if (on) { on = false; prefs.set(key, "0"); stop(); onChange(); return Promise.resolve(false); }
+      dropAsk();
+      return enable(false);
+    },
+    destroy() { dropAsk(); stop(); },
+  };
+}

@@ -46,11 +46,12 @@
 .yatzi .clock.low{color:var(--warn)}
 @keyframes yz-blink{50%{opacity:.25}}
 
-/* ---------- La caja de dados ---------- */
-.yz-tray{
-  --d:56px;
-  position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;
-  height:clamp(250px,40vh,380px);padding:10px;border-radius:20px;
+/* ---------- La caja de dados (modules/dice; aquí el marco de azulejo y los colores) ---------- */
+.yatzi .yz-tray{
+  --dz-felt-1:#3363cc; --dz-felt-2:var(--yz-cobalt); --dz-felt-3:var(--yz-cobalt-2); --dz-felt-4:var(--yz-cobalt-3);
+  --dz-wood:var(--yz-wood); --dz-wood-2:var(--yz-wood-2); --dz-ivory:var(--yz-ivory); --dz-ivory-2:var(--yz-ivory-2);
+  --dz-pip:var(--yz-pip); --dz-pip-one:var(--yz-pip-one); --dz-gold:var(--yz-gold); --dz-gold-2:var(--yz-gold-2);
+  height:clamp(250px,40vh,380px);
   /* Marco de azulejo: flores de cuatro pétalos azules sobre blanco */
   background:
     radial-gradient(circle at 50% 50%,var(--yz-tile-ink) 0 3px,transparent 3.5px),
@@ -62,58 +63,9 @@
     var(--yz-tile);
   background-size:20px 20px;
   box-shadow:0 10px 24px -10px rgba(10,20,50,.55),inset 0 0 0 2px color-mix(in srgb,var(--yz-tile-ink) 40%,transparent);
-  user-select:none;-webkit-user-select:none;touch-action:manipulation;
 }
-.yz-felt{position:relative;flex:1;min-height:0;border-radius:12px;
-  background:
-    repeating-linear-gradient(45deg,rgba(255,255,255,.025) 0 2px,transparent 2px 5px),
-    repeating-linear-gradient(-45deg,rgba(0,0,0,.05) 0 2px,transparent 2px 6px),
-    radial-gradient(ellipse at 50% 38%,#3363cc 0%,var(--yz-cobalt) 38%,var(--yz-cobalt-2) 75%,var(--yz-cobalt-3) 100%);
-  box-shadow:inset 0 6px 18px rgba(0,0,0,.55),inset 0 0 0 3px var(--yz-wood-2);
-}
-.yz-glow{position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.12),transparent 55%)}
-/* La repisa de madera con sus cinco huecos */
-.yz-rack{flex:none;height:calc(var(--d) * 1.28);border-radius:10px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;justify-items:center;
-  background:linear-gradient(180deg,#9a6334,var(--yz-wood) 45%,var(--yz-wood-2));box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 6px rgba(0,0,0,.35)}
-.yz-rack .slot{width:calc(var(--d) * 1.08);height:calc(var(--d) * 1.08);border-radius:22%;background:rgba(0,0,0,.28);box-shadow:inset 0 3px 6px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.15)}
-
-/* ---------- Los dados ---------- */
-.yz-dice{position:absolute;inset:0;pointer-events:none}
-.yz-die{position:absolute;left:0;top:0;width:var(--d);height:var(--d);perspective:calc(var(--d) * 7);pointer-events:auto;will-change:transform;outline:none;-webkit-tap-highlight-color:transparent}
-.yz-die.smooth{transition:transform .42s cubic-bezier(.3,.8,.3,1.15)}
-.yz-die.smooth .yz-cube{transition:transform .42s ease-out}
-.yz-lift,.yz-cube{width:100%;height:100%;transform-style:preserve-3d}
-.yz-cube{position:relative}
-.yz-face{position:absolute;inset:0;border-radius:19%;box-sizing:border-box;padding:12%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);backface-visibility:hidden;
-  background:radial-gradient(circle at 30% 25%,#fff 0%,var(--yz-ivory) 45%,var(--yz-ivory-2) 100%);
-  box-shadow:inset 0 0 0 1px rgba(120,100,60,.25),inset -3px -4px 8px rgba(120,100,60,.22),inset 2px 2px 4px rgba(255,255,255,.8)}
-.yz-face i{width:76%;height:76%;align-self:center;justify-self:center;border-radius:50%;
-  background:radial-gradient(circle at 40% 35%,#46506e,var(--yz-pip) 70%);box-shadow:inset 0 1.5px 2px rgba(0,0,0,.6),0 .5px 0 rgba(255,255,255,.7)}
-.yz-face.f1 i{width:92%;height:92%;background:radial-gradient(circle at 40% 35%,#ef6a5f,var(--yz-pip-one) 70%)}
-.yz-face i.p1{grid-area:1/1}.yz-face i.p3{grid-area:1/3}.yz-face i.p4{grid-area:2/1}.yz-face i.p5{grid-area:2/2}
-.yz-face i.p6{grid-area:2/3}.yz-face i.p7{grid-area:3/1}.yz-face i.p9{grid-area:3/3}
-.yz-shadow{position:absolute;inset:6%;border-radius:24%;background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0));transform:translate(5%,8%);opacity:.6;filter:blur(2px)}
-.yz-lock{position:absolute;top:-5px;right:-5px;width:14px;height:14px;border-radius:50%;background:var(--yz-gold);box-shadow:0 0 0 2px var(--yz-wood-2);transform:scale(0);transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
-.yz-die.held .yz-lock{transform:scale(1)}
-.yz-die.held .yz-shadow{background:radial-gradient(closest-side,rgba(240,185,58,.9),rgba(240,185,58,0));opacity:1;transform:scale(1.25);filter:blur(4px)}
-.yz-die.tap{cursor:pointer}
-.yz-die.tap:focus-visible{outline:3px solid var(--yz-gold);outline-offset:4px;border-radius:20%}
-.yz-die.idle{opacity:.5;filter:saturate(.6)}
-.yz-die.glow .yz-face{box-shadow:inset 0 0 0 2px var(--yz-gold),0 0 16px 3px rgba(240,185,58,.85)}
-.yz-die.hint:not(.held){animation:yz-hint 1s ease-in-out infinite}
-@keyframes yz-hint{50%{filter:drop-shadow(0 0 10px var(--yz-gold)) brightness(1.08)}}
-
-/* Destellos sobre el paño: combinaciones, turno, bonos */
-.yz-burst{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0;text-align:center;color:#fff;z-index:3}
-.yz-burst.show{animation:yz-pop 1.9s cubic-bezier(.2,.9,.3,1) forwards}
-.yz-burst b{font-family:var(--display);font-weight:400;font-size:clamp(26px,9vw,46px);line-height:1.05;text-shadow:0 3px 0 var(--yz-cobalt-3),0 0 24px rgba(0,0,0,.5)}
-.yz-burst small{font-weight:800;font-size:15px;letter-spacing:.3px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
-.yz-burst.gold b{color:var(--yz-gold);-webkit-text-stroke:1px var(--yz-gold-2)}
-.yz-burst.turn{background:radial-gradient(ellipse at center,rgba(12,29,77,.75),transparent 70%)}
-.yz-burst.turn b{font-size:clamp(24px,8vw,40px)}
-.yz-burst b.yatzi{font-size:clamp(48px,17vw,96px);color:var(--yz-gold);-webkit-text-stroke:2px #fff7d6;
-  text-shadow:0 4px 0 var(--yz-gold-2),0 8px 0 var(--yz-cobalt-3),0 0 40px rgba(240,185,58,.8);animation:yz-wobble .7s ease-in-out 2}
-@keyframes yz-pop{0%{opacity:0;transform:scale(.4) rotate(-6deg)}14%{opacity:1;transform:scale(1.12) rotate(2deg)}24%{transform:scale(1) rotate(0)}78%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.08) translateY(-14px)}}
+.yatzi .dz-burst b.yatzi{font-size:clamp(48px,17vw,96px);color:var(--yz-gold);-webkit-text-stroke:2px #fff7d6;
+  text-shadow:0 4px 0 var(--yz-gold-2),0 8px 0 var(--dz-felt-4),0 0 40px rgba(240,185,58,.8);animation:yz-wobble .7s ease-in-out 2}
 @keyframes yz-wobble{25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
 
 /* ---------- Lo de tu turno ---------- */
@@ -227,19 +179,16 @@
 .yz-rules ul{margin:4px 0 8px;padding-left:20px}
 .yz-rules li{margin:3px 0}
 .yz-rules .mini-die,.yz-card .mini-die{vertical-align:-3px}
-.mini-die .md-body{fill:var(--yz-ivory);stroke:#9b927d;stroke-width:.06}
-.mini-die .md-pip{fill:var(--yz-pip)}
-.mini-die .md-pip.one{fill:var(--yz-pip-one)}
 
 /* ---------- Acostado: tableta, computadora, tele ---------- */
 @media (min-width:760px) and (min-aspect-ratio:5/4){
   .game.yatzi{max-width:1280px;overflow:hidden}
   .yz-main{flex:1;flex-direction:row;align-items:stretch;gap:16px}
   .yz-play{flex:1.25;min-width:0;min-height:0}
-  .yz-tray{flex:1;height:auto;min-height:300px;--d:72px}
+  .yatzi .yz-tray{flex:1;height:auto;min-height:300px;--d:72px}
   .yz-sheet{flex:1;min-width:340px;max-width:520px;overflow:auto;padding-top:8px}
-  .yz-burst b{font-size:52px}
-  .yz-burst b.yatzi{font-size:110px}
+  .dz-burst b{font-size:52px}
+  .dz-burst b.yatzi{font-size:110px}
 }
 /* Monitor (la tele): todo grande, sin botones */
 .game.yatzi.tv{max-width:none;padding:1.2vh 2vw}
@@ -255,6 +204,6 @@
 .yatzi.tv .yz-dock{min-height:0}
 
 @media (prefers-reduced-motion:reduce){
-  .yz-burst.show{animation-duration:1.2s}
-  .yz-burst b.yatzi,.yz-die.hint:not(.held),.yz-players .chip.turn::before{animation:none}
+  .dz-burst.show{animation-duration:1.2s}
+  .dz-burst b.yatzi,.dz-die.hint:not(.held),.yz-players .chip.turn::before{animation:none}
 }

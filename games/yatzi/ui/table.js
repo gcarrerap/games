@@ -13,17 +13,15 @@ import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platfo
 import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
 import { fullscreenButton, wireFullscreen } from "../../../platform/ui/tv.js";
 import { sfxButton, sfxControls, wireSfx } from "../../../modules/sfx/ui.js";
-import { shakeSupported, needsPermission, requestShake, listenShake } from "../../../modules/shake/ui.js";
-import { createTray } from "./tray.js";
-import { createConfetti } from "./fx.js";
+import { createShakeControl } from "../../../modules/shake/ui.js";
+import { createConfetti } from "../../../modules/confetti/ui.js";
 import { cardHTML } from "./card.js";
 import { rulesHelp } from "./rules.js";
-import { miniDie } from "./dice.js";
+import { createTray, miniDie, wireRollButton } from "../../../modules/dice/ui.js";
 
 const NONE = [false, false, false, false, false];
 const isHotseat = (ctx) => !!ctx.practice && ctx.table.seats.length > 1 && ctx.table.seats.every((s) => s && !s.bot);
 const displayOf = (ctx) => ctx.display || "full";
-const coarse = () => !!(globalThis.matchMedia && globalThis.matchMedia("(pointer: coarse)").matches);
 
 // ---------- Esqueleto ----------
 export function buildSkeleton(app, ui) {
@@ -88,12 +86,12 @@ export function render(app, ctx, ui) {
 
   // Herramientas: efectos, agitar y, en la tele, pantalla completa
   const tools = $("#tools", app);
-  const shakeBtn = !tv && shakeSupported() && coarse()
-    ? `<button class="shakebtn" id="shake" aria-pressed="${!!ui.shakeOn}" aria-label="${ui.shakeOn ? "Apagar agitar para tirar" : "Agitar el teléfono para tirar"}" title="Agitar para tirar">📳</button>` : "";
+  const shakeBtn = ui.shake.available
+    ? `<button class="shakebtn" id="shake" aria-pressed="${ui.shake.on}" aria-label="${ui.shake.on ? "Apagar agitar para tirar" : "Agitar el teléfono para tirar"}" title="Agitar para tirar">📳</button>` : "";
   tools.innerHTML = `${tv ? fullscreenButton() : ""}${shakeBtn}${sfxButton(ui.sound.sfx)}`;
   wireSfx(tools, ui.sound.sfx);
   if (tv) wireFullscreen(app);
-  $("#shake", tools)?.addEventListener("click", () => toggleShake(ui));
+  $("#shake", tools)?.addEventListener("click", () => ui.shake.toggle());
 
   renderPlayers(app, ctx, ui, { tv, hot });
   renderDock(app, ctx, ui, { tv, hot, myTurn });
@@ -174,13 +172,19 @@ function renderDock(app, ctx, ui, { tv, hot, myTurn }) {
          <button id="advice" class="ghost">Consejo</button>`
       : `<p class="hint pickhint">Toca un número en tu columna de la tarjeta ↓</p><button id="advice" class="ghost">Consejo</button>`;
   }
-  const shakeHint = rolls < MAX_ROLLS && !ui.pick && ui.shakeOn && ui.listener && ui.listener.alive ? `<p class="hint shake">📳 o agita el teléfono</p>` : rolls < MAX_ROLLS && !ui.pick ? `<p class="hint shake">Déjalo apretado para sacudir los dados</p>` : "";
+  const shakeHint = rolls < MAX_ROLLS && !ui.pick && ui.shake.on && ui.shake.alive ? `<p class="hint shake">📳 o agita el teléfono</p>` : rolls < MAX_ROLLS && !ui.pick ? `<p class="hint shake">Déjalo apretado para sacudir los dados</p>` : "";
   dock.innerHTML = `<div class="status me">${status} ${rollPips(rolls)}</div>${timer}${advBox}
     <div class="actions">${actions}</div>${shakeHint}
     ${ctx.err ? `<p class="err" role="alert">${esc(ctx.err)}</p>` : ""}`;
 
   const roll = $("#roll", dock);
-  if (roll) wireRollButton(roll, ui);
+  if (roll) wireRollButton(roll, {
+    canRoll: () => canRoll(ui),
+    press: () => ui.tray.startRattle(ui.ctx.view.rolls === 0 ? NONE : ui.held),
+    release: (p) => doRoll(ui, p),
+    cancel: () => ui.tray.stopRattle(true, ui.held),
+    tap: () => doRoll(ui, 0.5),
+  });
   $("#score", dock)?.addEventListener("click", () => doScore(ui, ui.pick));
   $("#unpick", dock)?.addEventListener("click", () => { ui.pick = null; ctx.refresh(); });
   $("#advice", dock)?.addEventListener("click", () => ctx.askAdvice());
@@ -403,83 +407,17 @@ function followAdvice(ui, adv) {
   doRoll(ui, 0.5);
 }
 
-// El botón de tirar: un toque tira; apretado, los dados se sacuden en la mano hasta soltarlo
-function wireRollButton(btn, ui) {
-  btn.onpointerdown = (e) => {
-    if (!canRoll(ui) || e.button > 0) return;
-    ui.press = { t: performance.now(), id: e.pointerId };
-    try { btn.setPointerCapture(e.pointerId); } catch { /* sin captura */ }
-    ui.tray.startRattle(ui.ctx.view.rolls === 0 ? NONE : ui.held);
-  };
-  const release = (go) => () => {
-    const p = ui.press; if (!p) return;
-    ui.press = null;
-    ui.pressUsed = true;
-    if (!go) { ui.tray.stopRattle(true, ui.held); return; }
-    const ms = performance.now() - p.t;
-    doRoll(ui, Math.min(1, 0.35 + ms / 1800));
-  };
-  btn.onpointerup = release(true);
-  btn.onpointercancel = release(false);
-  // Teclado (Enter o espacio sobre el botón): sin pointer
-  btn.onclick = () => { if (ui.pressUsed) { ui.pressUsed = false; return; } doRoll(ui, 0.5); };
-}
-
-// ---------- Agitar el teléfono ----------
-function startListening(ui) {
-  if (ui.listener) return;
-  ui.listener = listenShake((ev) => onShake(ui, ev));
-  // Cuando llega la primera lectura, aparece el aviso "o agita el teléfono"
-  setTimeout(() => ui.ctx && ui.listener && ui.listener.alive && ui.ctx.refresh(), 1200);
-}
+// ---------- Agitar el teléfono (modules/shake) ----------
 export function initShake(ui) {
-  const want = ui.ctx.prefs.get("shake") !== "0" && shakeSupported() && coarse() && displayOf(ui.ctx) !== "tv";
-  ui.shakeOn = want && !needsPermission();
-  if (ui.shakeOn) { startListening(ui); return; }
-  if (!want) return;
-  // iPhone (y Chrome nuevo): el permiso solo se puede pedir dentro de un toque. Se pide con el primer toque en la mesa;
-  // si lo niegan, no se vuelve a preguntar (queda el botón 📳 del menú).
-  const ask = () => {
-    ui.el.removeEventListener("click", ask, true);
-    ui.askShake = null;
-    if (!ui.ctx || ui.shakeOn) return;
-    requestShake().then((ok) => {
-      if (!ui.ctx) return;
-      if (!ok) { ui.ctx.prefs.set("shake", "0"); return; }
-      ui.shakeOn = true; ui.ctx.prefs.set("shake", "1");
-      startListening(ui);
-      ui.ctx.refresh();
-    });
-  };
-  ui.askShake = ask;
-  ui.el.addEventListener("click", ask, true);
-}
-function toggleShake(ui) {
-  if (ui.shakeOn) {
-    ui.shakeOn = false; ui.ctx.prefs.set("shake", "0");
-    if (ui.listener) { ui.listener.stop(); ui.listener = null; }
-    ui.ctx.refresh();
-    return;
-  }
-  requestShake().then((ok) => {
-    if (!ok) { ui.shakeErr = true; ui.ctx.refresh(); return; }
-    ui.shakeOn = true; ui.ctx.prefs.set("shake", "1");
-    startListening(ui);
-    ui.ctx.refresh();
+  ui.shake = createShakeControl({
+    root: ui.el, prefs: ui.ctx.prefs, enabled: displayOf(ui.ctx) !== "tv",
+    canStart: () => canRoll(ui),
+    onStart: () => { ui.tray.startRattle(ui.ctx.view.rolls === 0 ? NONE : ui.held); navigator.vibrate?.(15); },
+    onPower: (p) => ui.tray.setPower(p),
+    onThrow: (p) => { navigator.vibrate?.(25); doRoll(ui, p); },
+    onCancel: () => ui.tray.stopRattle(true, ui.held),
+    onChange: () => ui.ctx && ui.ctx.refresh(),
   });
-}
-function onShake(ui, ev) {
-  if (!ui.shakeOn) return;
-  if (ev.type === "start") {
-    if (!canRoll(ui)) return;
-    ui.tray.startRattle(ui.ctx.view.rolls === 0 ? NONE : ui.held);
-    navigator.vibrate?.(15);
-  } else if (ev.type === "shake") ui.tray.setPower(ev.power);
-  else if (ev.type === "end") {
-    if (!ui.tray.rattling) return;
-    if (ev.throw) { navigator.vibrate?.(25); doRoll(ui, Math.max(0.4, ev.power)); }
-    else ui.tray.stopRattle(true, ui.held);
-  }
 }
 
 // ---------- Teclado ----------
@@ -495,9 +433,9 @@ export function onKey(e, ui) {
 
 // ---------- Ventanas ----------
 function renderMenu(ctx, st, ui) {
-  const shake = shakeSupported() && coarse()
-    ? `<div class="yz-menurow"><span>📳 Agitar para tirar</span><button id="mshake" class="${ui.shakeOn ? "primary" : ""}" aria-pressed="${!!ui.shakeOn}">${ui.shakeOn ? "Encendido" : "Apagado"}</button></div>
-       ${ui.shakeErr ? `<p class="hint">El navegador no dio permiso para leer el movimiento.</p>` : ""}` : "";
+  const shake = ui.shake.available
+    ? `<div class="yz-menurow"><span>📳 Agitar para tirar</span><button id="mshake" class="${ui.shake.on ? "primary" : ""}" aria-pressed="${ui.shake.on}">${ui.shake.on ? "Encendido" : "Apagado"}</button></div>
+       ${ui.shake.denied ? `<p class="hint">El navegador no dio permiso para leer el movimiento.</p>` : ""}` : "";
   renderSheet(ctx.modal, "gameMenu", ctx.practice ? "Práctica" : "Mesa " + ctx.table.code, `
     <p class="hint">${st.config.n === 1 ? "Solo, contra tu récord" : `${st.config.n} jugadores`} · Ronda ${Math.min(13, st.round)} de 13</p>
     ${sfxControls(ui.sound.sfx)}
@@ -508,7 +446,7 @@ function renderMenu(ctx, st, ui) {
     <button id="back">← Salir</button>
     <button class="primary big-cta" id="menuclose">Volver al juego</button>`);
   wireSfx(ctx.modal, ui.sound.sfx, { setDragging: ctx.setDragging });
-  $("#mshake", ctx.modal)?.addEventListener("click", () => toggleShake(ui));
+  $("#mshake", ctx.modal)?.addEventListener("click", () => ui.shake.toggle());
   $("#menuclose", ctx.modal).onclick = closeOverlay;
   wireModeMenu(ctx.modal, ctx);
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };

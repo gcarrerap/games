@@ -1,0 +1,72 @@
+/* Dados en 3D (modules/dice): la bandeja con paño y repisa, el cubo con sus caras, sombras, apartados y destellos.
+   El juego pone el marco de la bandeja (fondo de .dz-tray), su altura y los colores con estas variables: */
+.dz-tray{
+  --dz-felt-1:#3363cc; --dz-felt-2:#1f44a0; --dz-felt-3:#132c6e; --dz-felt-4:#0c1d4d;
+  --dz-wood:#7a4a24; --dz-wood-2:#56321a;
+  --dz-ivory:#fcf8ee; --dz-ivory-2:#e8dfc9; --dz-pip:#1a2238; --dz-pip-one:#c22f28;
+  --dz-gold:#f0b93a; --dz-gold-2:#b9851d;
+}
+.dz-die.dim{opacity:.42;filter:saturate(.4) brightness(.85)}
+.dz-die.dim .dz-shadow{opacity:.25}
+@media (prefers-reduced-motion:reduce){.dz-burst.show{animation-duration:1.2s}.dz-die.hint:not(.held){animation:none}}
+.dz-tray{
+  --d:56px;
+  position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:20px;
+  background:linear-gradient(180deg,#9a6334,var(--dz-wood));
+  box-shadow:0 10px 24px -10px rgba(10,20,50,.55);
+  user-select:none;-webkit-user-select:none;touch-action:manipulation;
+}
+.dz-felt{position:relative;flex:1;min-height:0;border-radius:12px;
+  background:
+    repeating-linear-gradient(45deg,rgba(255,255,255,.025) 0 2px,transparent 2px 5px),
+    repeating-linear-gradient(-45deg,rgba(0,0,0,.05) 0 2px,transparent 2px 6px),
+    radial-gradient(ellipse at 50% 38%,var(--dz-felt-1) 0%,var(--dz-felt-2) 38%,var(--dz-felt-3) 75%,var(--dz-felt-4) 100%);
+  box-shadow:inset 0 6px 18px rgba(0,0,0,.55),inset 0 0 0 3px var(--dz-wood-2);
+}
+.dz-glow{position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.12),transparent 55%)}
+/* La repisa de madera con sus cinco huecos */
+.dz-rack{flex:none;height:calc(var(--d) * 1.28);border-radius:10px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;justify-items:center;
+  background:linear-gradient(180deg,#9a6334,var(--dz-wood) 45%,var(--dz-wood-2));box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 6px rgba(0,0,0,.35)}
+.dz-rack .slot{width:calc(var(--d) * 1.08);height:calc(var(--d) * 1.08);border-radius:22%;background:rgba(0,0,0,.28);box-shadow:inset 0 3px 6px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.15)}
+
+/* ---------- Los dados ---------- */
+.dz-dice{position:absolute;inset:0;pointer-events:none}
+.dz-die{position:absolute;left:0;top:0;width:var(--d);height:var(--d);perspective:calc(var(--d) * 7);pointer-events:auto;will-change:transform;outline:none;-webkit-tap-highlight-color:transparent}
+.dz-die.smooth{transition:transform .42s cubic-bezier(.3,.8,.3,1.15)}
+.dz-die.smooth .dz-cube{transition:transform .42s ease-out}
+.dz-lift,.dz-cube{width:100%;height:100%;transform-style:preserve-3d}
+.dz-cube{position:relative}
+.dz-face{position:absolute;inset:0;border-radius:19%;box-sizing:border-box;padding:12%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);backface-visibility:hidden;
+  background:radial-gradient(circle at 30% 25%,#fff 0%,var(--dz-ivory) 45%,var(--dz-ivory-2) 100%);
+  box-shadow:inset 0 0 0 1px rgba(120,100,60,.25),inset -3px -4px 8px rgba(120,100,60,.22),inset 2px 2px 4px rgba(255,255,255,.8)}
+.dz-face i{width:76%;height:76%;align-self:center;justify-self:center;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#46506e,var(--dz-pip) 70%);box-shadow:inset 0 1.5px 2px rgba(0,0,0,.6),0 .5px 0 rgba(255,255,255,.7)}
+.dz-face.f1 i{width:92%;height:92%;background:radial-gradient(circle at 40% 35%,#ef6a5f,var(--dz-pip-one) 70%)}
+.dz-face i.p1{grid-area:1/1}.dz-face i.p3{grid-area:1/3}.dz-face i.p4{grid-area:2/1}.dz-face i.p5{grid-area:2/2}
+.dz-face i.p6{grid-area:2/3}.dz-face i.p7{grid-area:3/1}.dz-face i.p9{grid-area:3/3}
+.dz-shadow{position:absolute;inset:6%;border-radius:24%;background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0));transform:translate(5%,8%);opacity:.6;filter:blur(2px)}
+.dz-lock{position:absolute;top:-5px;right:-5px;width:14px;height:14px;border-radius:50%;background:var(--dz-gold);box-shadow:0 0 0 2px var(--dz-wood-2);transform:scale(0);transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.dz-die.held .dz-lock{transform:scale(1)}
+.dz-die.held .dz-shadow{background:radial-gradient(closest-side,rgba(240,185,58,.9),rgba(240,185,58,0));opacity:1;transform:scale(1.25);filter:blur(4px)}
+.dz-die.tap{cursor:pointer}
+.dz-die.tap:focus-visible{outline:3px solid var(--dz-gold);outline-offset:4px;border-radius:20%}
+.dz-die.idle{opacity:.5;filter:saturate(.6)}
+.dz-die.glow .dz-face{box-shadow:inset 0 0 0 2px var(--dz-gold),0 0 16px 3px rgba(240,185,58,.85)}
+.dz-die.hint:not(.held){animation:dz-hint 1s ease-in-out infinite}
+@keyframes dz-hint{50%{filter:drop-shadow(0 0 10px var(--dz-gold)) brightness(1.08)}}
+
+/* Destellos sobre el paño: combinaciones, turno, bonos */
+.dz-burst{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0;text-align:center;color:#fff;z-index:3}
+.dz-burst.show{animation:dz-pop 1.9s cubic-bezier(.2,.9,.3,1) forwards}
+.dz-burst b{font-family:var(--display);font-weight:400;font-size:clamp(26px,9vw,46px);line-height:1.05;text-shadow:0 3px 0 var(--dz-felt-4),0 0 24px rgba(0,0,0,.5)}
+.dz-burst small{font-weight:800;font-size:15px;letter-spacing:.3px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.dz-burst.gold b{color:var(--dz-gold);-webkit-text-stroke:1px var(--dz-gold-2)}
+.dz-burst.turn{background:radial-gradient(ellipse at center,rgba(12,29,77,.75),transparent 70%)}
+.dz-burst.turn b{font-size:clamp(24px,8vw,40px)}
+@keyframes dz-pop{0%{opacity:0;transform:scale(.4) rotate(-6deg)}14%{opacity:1;transform:scale(1.12) rotate(2deg)}24%{transform:scale(1) rotate(0)}78%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.08) translateY(-14px)}}
+
+
+/* Dado chiquito en SVG (miniDie) */
+.mini-die .md-body{fill:#fcf8ee;stroke:#9b927d;stroke-width:.06}
+.mini-die .md-pip{fill:#1a2238}
+.mini-die .md-pip.one{fill:#c22f28}

@@ -1,10 +1,11 @@
 // La mesa de Yatzi, montada por la plataforma (platform/ui/play.js). Solo usa lo que recibe en ctx.
 import { loadStyles, unloadStyles } from "../../../platform/ui/styles.js";
 import { SFX_STYLES } from "../../../modules/sfx/ui.js";
+import { DICE_STYLES } from "../../../modules/dice/ui.js";
 import { buildSkeleton, render, paintClock, onKey, initShake } from "./table.js";
 import { createSound } from "./sound.js";
 
-const STYLES = ["../styles/table.css"].map((x) => new URL(x, import.meta.url).href).concat(SFX_STYLES);
+const STYLES = [DICE_STYLES, SFX_STYLES].concat(["../styles/table.css"].map((x) => new URL(x, import.meta.url).href));
 
 let ui = null;
 
@@ -34,8 +35,7 @@ export function tick(ctx, clock) { if (ui) paintClock(clock); }
 export function unmount() {
   if (!ui) return;
   ui.tray.stopAll();
-  if (ui.listener) ui.listener.stop();
-  if (ui.askShake) ui.el.removeEventListener("click", ui.askShake, true);
+  ui.shake.destroy();
   document.removeEventListener("keydown", ui.key);
   if (ui.ro) ui.ro.disconnect();
   if (ui.onResize) removeEventListener("resize", ui.onResize);
