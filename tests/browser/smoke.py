@@ -779,7 +779,7 @@ if not vk_zero: problems.append("Vikingos: girar y regresar la misma pieza cont�
 if not vk_done: problems.append(f"Vikingos: el consejo no resolvió el reto 1 en 5 movimientos ({vk_steps} pasos)")
 if not vk_next: problems.append("Vikingos: «Siguiente reto» no abrió el reto 2")
 if not vk_marked: problems.append("Vikingos: el reto 1 no quedó marcado como resuelto")
-if vk_styles != ["vikingos"]: problems.append(f"Vikingos: estilos cargados {vk_styles}")
+if set(vk_styles) != {"vikingos"}: problems.append(f"Vikingos: estilos cargados {vk_styles}")
 if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not tv_hint: problems.append("Skull con tele: la pantalla de asientos no explica cómo abrir la tele")

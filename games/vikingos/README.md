@@ -22,7 +22,8 @@ games/vikingos/
 ├── index.js      # conforme al contrato
 ├── engine/       # board.js (la geometría y cuándo se gira), index.js (la partida), challenges.js (los 60 retos)
 ├── ai/           # solve.js (búsqueda a lo ancho: la solución más corta), la compu y el consejo
-├── ui/           # el selector de retos, el mar en SVG y las reglas
+├── ui/           # el selector de retos, el mar en SVG con sus efectos, el sonido y las reglas
+├── sfx/          # voz del narrador (Fish Audio); los efectos se sintetizan
 └── styles/
 ```
 
@@ -43,3 +44,12 @@ tardan alrededor de un segundo en resolverse.
 **En la mesa:** tocas una pieza con barco para escogerla (las que se pueden girar tienen la orilla clara) y la giras
 con ↺ o ↻; tocarla otra vez la gira a la derecha. Lo resuelto se recuerda en el aparato (`juegos.vikingos.resueltos`),
 con ⭐ si fue en el mínimo. «Siguiente reto» empieza otra partida que abre sola el reto que sigue.
+
+**Gráficos:** todo es SVG hecho a mano (`ui/board.js`), sin imágenes. Marco de madera con cordel y escudos, mar con
+oleaje que avanza, remolinos con espiral que gira despacio, corrientes que fluyen, drakkars vistos desde arriba
+(proa de dragón, escudos, remos y vela a rayas) que se mecen, y banderines que esperan su barco. Al girar una pieza
+salen ondas; al llegar un barco, destellos dorados; una pieza trabada tiembla; al ganar cae confeti. Con
+`prefers-reduced-motion` todo queda quieto.
+
+**Sonido** (`ui/sound.js`, botón 🔔 y volumen en el menú): los efectos se sintetizan con Web Audio y la voz del
+narrador es de Fish Audio (`sfx/README.md`). Cada cosa suena una sola vez, cuando llega la jugada, no al redibujar.

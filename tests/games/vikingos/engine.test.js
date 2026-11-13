@@ -164,3 +164,25 @@ test("el tablero se dibuja para cada reto; la pieza que gira lleva su animación
   assert.doesNotMatch(boardSVG(st, { fresh: st.last, still: true }), /animateTransform/);
   assert.match(piecePath([0, 1]), /^M [\d. -]+( A [\d. -]+){8} Z$/);
 });
+
+test("efectos del tablero: destellos al llegar, confeti al ganar, temblor y nada de eso con «still»", async () => {
+  let st = play(1);
+  for (const m of solve(boardOfState(st))) st = apply(st, 0, rot(m.piece, m.turns));
+  const fx = boardSVG(st, { fresh: st.last, arrived: ["R"], celebrate: true, shake: 4 });
+  assert.match(fx, /class="sparkle"/);
+  assert.match(fx, /class="confetti"/);
+  assert.match(fx, /class="shk"/);
+  assert.match(fx, /class="ripple"/);
+  const still = boardSVG(st, { fresh: st.last, arrived: ["R"], celebrate: true, still: true });
+  assert.doesNotMatch(still, /sparkle|confetti|animate/);
+  const { bannerSVG } = await import("../../../games/vikingos/ui/board.js");
+  assert.match(bannerSVG(), /animateTransform/);
+  assert.doesNotMatch(bannerSVG(true), /animate/);
+});
+
+test("las voces del narrador existen", async () => {
+  const { existsSync } = await import("node:fs");
+  for (const k of ["inicio", "llega-rojo", "llega-verde", "llega-amarillo", "llega-azul", "victoria", "perfecto", "trabada", "sin-barco", "reiniciar", "consejo"]) {
+    assert.ok(existsSync(new URL(`../../../games/vikingos/sfx/voz-${k}.mp3`, import.meta.url)), k);
+  }
+});
