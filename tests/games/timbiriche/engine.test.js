@@ -62,7 +62,7 @@ test("castigo: si podías cerrar y no cerraste, pierdes tu siguiente turno", () 
   assert.equal(st.turn, 1);
   st = apply(st, 1, L("h:3:0"));
   assert.equal(st.turn, 1, "Ana perdió este turno");
-  assert.equal(st.last.skipped, 0);
+  assert.deepEqual(st.last.skipped, [0]);
   assert.deepEqual(st.skip, [false, false], "el castigo se consume");
   st = apply(st, 1, L("h:3:1"));
   assert.equal(st.turn, 0, "después todo sigue normal");
@@ -128,6 +128,95 @@ test("cuántas cajas regala una raya: se cuenta toda la cadena", () => {
   const st = withLines(fresh(), ids, 0);
   assert.equal(greedyCapture(st, { ...st.lines, "v:0:3": 1 }).taken, 3, "cerrar la otra punta regala las tres");
   assert.equal(closingLines(st).length, 0);
+});
+
+test("2 a 6 jugadores: el turno va en orden y vuelve al primero", () => {
+  for (const n of [3, 4, 6]) {
+    let st = fresh({ n });
+    assert.equal(st.names.length, n);
+    assert.deepEqual(st.scores, Array(n).fill(0));
+    const order = [];
+    for (let i = 0; i < n + 1; i++) { order.push(st.turn); st = apply(st, st.turn, L(freeLines(st).find((l) => closingLines(st).length === 0 || true))); }
+    assert.deepEqual(order, Array.from({ length: n + 1 }, (_, i) => i % n));
+  }
+  assert.throws(() => newGame({ n: 7, size: 3, secs: 20 }), /no válida/);
+  assert.throws(() => newGame({ n: 1, size: 3, secs: 20 }), /no válida/);
+});
+
+test("con 3 jugadores quien cierra una caja sigue, y el castigo salta solo a quien lo debe", () => {
+  // El 0 cierra y sigue tirando
+  let st = withLines(fresh({ n: 3 }), three(0, 0, "v:0:1"), 0);
+  st = apply(st, 0, L("v:0:1"));
+  assert.equal(st.turn, 0);
+  // El 0 traza sin cerrar (ya no hay cajas por cerrar) y le toca al 1, que deja pasar una caja
+  st = apply(st, 0, L("h:3:0"));
+  assert.equal(st.turn, 1);
+  st = withLines({ ...st, boxes: st.boxes.map(() => -1), skip: [false, false, false] }, three(1, 1, "h:2:1"), 1);
+  st = apply(st, 1, L("h:3:2"));
+  assert.deepEqual(st.skip, [false, true, false]);
+  assert.equal(st.turn, 2);
+  // El 2 se lleva la caja, vuelve a tirar y pasa sin castigo (ya no hay nada que cerrar)
+  st = apply(st, 2, L("h:2:1"));
+  assert.equal(st.turn, 2);
+  st = apply(st, 2, L("h:3:0"));
+  assert.equal(st.turn, 0);
+  // El 0 pasa: al 1 se le salta el turno y sigue el 2
+  st = apply(st, 0, L("h:3:1"));
+  assert.equal(st.turn, 2, "al 1 se le salta el turno");
+  assert.deepEqual(st.last.skipped, [1]);
+  assert.deepEqual(st.skip, [false, false, false]);
+});
+
+test("con 4 jugadores se pueden saltar dos castigos seguidos", () => {
+  let st = fresh({ n: 4 });
+  st = { ...st, skip: [false, true, true, false], turn: 0 };
+  st = apply(st, 0, L("h:0:0"));
+  assert.equal(st.turn, 3);
+  assert.deepEqual(st.last.skipped, [1, 2]);
+  assert.deepEqual(st.skip, [false, false, false, false]);
+});
+
+test("gana quien tenga más cajas; los empates de primer lugar se reparten", () => {
+  const over = (scores) => {
+    const st = fresh({ n: scores.length });
+    const total = scores.reduce((a, b) => a + b, 0);
+    // Una raya que cierra la última caja: el 0 la toma, así que se le resta una y se le suma al armar el estado
+    const lines = allLines(st).filter((l) => l !== "v:2:3");
+    const boxes = Array(9).fill(0).map((_, i) => (i === 8 ? -1 : -2));
+    let k = 0;
+    scores.forEach((v, seat) => { for (let j = 0; j < v - (seat === 0 ? 1 : 0); j++) boxes[k++] = seat; });
+    assert.equal(k + 1, total, "9 cajas");
+    return apply({ ...st, lines: Object.fromEntries(lines.map((l) => [l, 0])), boxes, scores: scores.map((v, i) => (i === 0 ? v - 1 : v)), turn: 0 }, 0, L("v:2:3"));
+  };
+  let st = over([4, 3, 2]);
+  assert.deepEqual([st.phase, st.winner, st.winners, st.draw], ["over", 0, [0], false]);
+  st = over([3, 3, 3]);
+  assert.deepEqual([st.winner, st.winners, st.draw], [null, [0, 1, 2], true]);
+  assert.deepEqual(game.result(st).champions, [0, 1, 2]);
+  st = over([2, 4, 3]);
+  assert.deepEqual([st.winner, st.winners, st.draw], [1, [1], false]);
+  assert.deepEqual(game.result(st).champions, [1]);
+});
+
+test("la mesa acepta 2 a 6 jugadores y se puede jugar en el mismo aparato", () => {
+  const st = game.setup({ n: 5, names: ["A", "B", "C", "D", "E"] }, { now: 0 });
+  assert.equal(st.config.n, 5);
+  assert.equal(st.scores.length, 5);
+  assert.equal(game.hotseat, true);
+  assert.deepEqual(game.modes.map((m) => m.n), [2, 3, 4, 5, 6]);
+  assert.deepEqual(game.currentSeats(st), [0]);
+});
+
+test("la compu juega partidas completas de 3, 4 y 6", () => {
+  for (const n of [3, 4, 6]) {
+    const st = playGame(game, Array(n).fill("normal"), { config: { n, size: "4", timer: false }, seed: n }).state;
+    assert.equal(st.phase, "over");
+    assert.equal(st.scores.reduce((a, b) => a + b, 0), 16);
+    assert.ok(st.winners.length >= 1);
+  }
+  // la difícil no hace la doble jugada con más de 2
+  const st3 = withLines(fresh({ n: 3, penalty: false }), ["h:0:0", "h:0:2", "h:0:1", "v:1:1", "h:2:2", "v:1:3", "h:3:2", "h:3:1", "v:0:0", "v:0:2", "h:2:0", "h:2:1", "v:2:0", "v:2:1", "h:3:0"], 0);
+  assert.deepEqual(decide(st3, 0, "dificil"), L("v:2:2"));
 });
 
 test("la compu cierra cajas, evita regalar y regala lo menos posible", () => {

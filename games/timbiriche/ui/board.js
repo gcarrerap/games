@@ -18,7 +18,7 @@ function diamond(id) {
 
 // opts: { me, sel, advice, playable, initials: [letra de cada asiento], fresh }
 export function boardSVG(st, opts = {}) {
-  const { sel = null, advice = null, playable = false, initials = ["", ""], fresh = false, me = -1 } = opts;
+  const { sel = null, advice = null, playable = false, initials = [], fresh = false, me = -1 } = opts;
   const W = st.w, H = st.h;
   const last = st.last;
   const out = [];
