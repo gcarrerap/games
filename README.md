@@ -12,6 +12,7 @@ El sitio tiene tres tipos de piezas:
 
 | Juego | Carpeta | Jugadores | Estado |
 |---|---|---|---|
+| Club de Monstruos | `games/monstruos/` | 1 | Deducción estilo Mastermind con seis personajes, tres niveles, pistas, notas, animaciones, música y efectos originales |
 | Dominó | `games/domino/` | 2–4 | Práctica contra la compu y mesas en línea con la familia |
 | La Pata | `games/pata/` | 2–6 | Práctica contra la compu y mesas en línea |
 | Piojos | `games/piojos/` | 2–6 | Dados de póker. Práctica contra la compu y mesas en línea |

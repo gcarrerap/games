@@ -94,9 +94,9 @@ with sync_playwright() as p:
     for _ in range(400):
         if page.query_selector(".sheet #next, .sheet #again"):
             break
-        if tap(".tilebtn.play, .tilebtn.sel"):
+        # El render llega en requestAnimationFrame: elegir el extremo antes de volver a tocar fichas.
+        if tap("[data-side]") or tap(".tilebtn.play"):
             moves += 1
-            tap("[data-side]")
         elif not tap("#draw:not([disabled])"):
             tap("#pass:not([disabled])")
         page.wait_for_timeout(250)
@@ -577,9 +577,8 @@ with sync_playwright() as p:
     for _ in range(400):
         if on.query_selector(".sheet #next, .sheet #again"):
             break
-        if tap(".tilebtn.play, .tilebtn.sel"):
+        if tap("[data-side]") or tap(".tilebtn.play"):
             online_moves += 1
-            tap("[data-side]")
         elif not tap("#draw:not([disabled])"):
             tap("#pass:not([disabled])")
         on.wait_for_timeout(250)
