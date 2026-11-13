@@ -18,7 +18,10 @@ import khet from "./khet/manifest.js";
 import vikingos from "./vikingos/manifest.js";
 import yatzi from "./yatzi/manifest.js";
 
+import monstruos from "./monstruos/manifest.js";
+
 export const GAMES = [
+  { ...monstruos, load: () => import("./monstruos/index.js") },
   { ...domino, load: () => import("./domino/index.js") },
   { ...pata, load: () => import("./pata/index.js") },
   { ...piojos, load: () => import("./piojos/index.js") },

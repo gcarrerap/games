@@ -1,0 +1,5 @@
+[
+  {"f":"monstruos/welcome.mp3","t":"[excited] ¡Bienvenido al Club de Monstruos! Nos escondimos en una fila secreta. ¡Usa las pistas para encontrarnos!","v":"fc298429d7224759b414fc6a0e749aa0","s":1.0},
+  {"f":"monstruos/win.mp3","t":"[laughs] ¡Nos encontraste! ¡Eres un gran detective!","v":"fc298429d7224759b414fc6a0e749aa0","s":1.0},
+  {"f":"monstruos/retry.mp3","t":"[warm] Cada intento te dio una pista. ¡Vamos a resolver otro misterio juntos!","v":"fc298429d7224759b414fc6a0e749aa0","s":1.0}
+]
