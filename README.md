@@ -26,6 +26,7 @@ El sitio tiene tres tipos de piezas:
 | Timbiriche | `games/timbiriche/` | 2 | Puntos y cajas. Tablero de 3×3 a 6×6, segundos por raya a escoger y castigo opcional por dejar pasar una caja. Práctica contra la compu y mesas en línea |
 | Láser de los Faraones | `games/khet/` | 2 | Estilo Khet 2.0: espejos, láser y faraones. Gráficos con láser animado y explosiones, voz de narrador. Contra la compu, dos personas en el mismo aparato, o en línea; la tele como tablero (Monitor) o para jugar en ella con el control |
 | Vikingos | `games/vikingos/` | 1 | Rompecabezas: lleva los barcos a su flecha girando las piezas del mar. Los 60 retos del cuadernillo en cuatro niveles, con deshacer, consejo y el mínimo de movimientos de cada reto |
+| Yatzi | `games/yatzi/` | 1–6 | Cinco dados y la tarjeta de 13 casillas, con las reglas oficiales (bono de arriba, Yatzi extra y comodín). Dados en 3D que ruedan y rebotan, tarjeta de cuaderno, locutor y efectos. Se tira con el botón o **agitando el teléfono**. Solo contra tu récord, contra la compu, en el mismo aparato o en línea |
 
 En cualquier mesa en línea, cada aparato escoge desde el menú de la partida cómo la usa: **Teléfono** (el tablero y lo tuyo), **Control** (solo lo tuyo) o **Monitor** (el tablero para todos, como tele, sin tirar).
 

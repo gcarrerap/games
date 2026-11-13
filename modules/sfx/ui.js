@@ -9,6 +9,9 @@
 // Para probar sin navegador se pueden pasar AudioContext, fetch, doc y el reloj.
 import { clipOf, createGate, readSettings, saveSettings, clampVolume, PREF_KEY, DEFAULT_GAP_MS } from "./index.js";
 
+// Sonido sintetizado (osciladores, ruido, reverberación) que respeta el silencio y volumen de estos efectos
+export { createSynth } from "./ui/synth.js";
+
 export const SFX_STYLES = new URL("./ui/sfx.css", import.meta.url).href;
 
 export function createSfx({

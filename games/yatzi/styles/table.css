@@ -1,0 +1,260 @@
+/* Mesa de Yatzi. Dos materiales: la caja de dados, con marco de azulejo de talavera y paño azul cobalto, y la tarjeta
+   de puntos como hoja de cuaderno de cuadrícula escrita con pluma azul. Los dados son cubos 3D de marfil. */
+:root{
+  --yz-cobalt:#1f44a0; --yz-cobalt-2:#132c6e; --yz-cobalt-3:#0c1d4d;
+  --yz-tile:#f4f0e6; --yz-tile-ink:#1f44a0;
+  --yz-wood:#7a4a24; --yz-wood-2:#56321a;
+  --yz-ivory:#fcf8ee; --yz-ivory-2:#e8dfc9; --yz-pip:#1a2238; --yz-pip-one:#c22f28;
+  --yz-gold:#f0b93a; --yz-gold-2:#b9851d;
+  --yz-paper:#fdfcf7; --yz-grid:#cfe0ef; --yz-margin:#e2685d; --yz-ink:#1f3fa8; --yz-pencil:#7f8594; --yz-marker:#ffe76a;
+  --yz-hand:"Segoe Print","Bradley Hand","Marker Felt","Chalkboard SE","Comic Neue","Comic Sans MS",cursive;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --yz-paper:#e9e5d8; --yz-grid:#bccddd; --yz-tile:#dcd7ca;
+}}
+:root[data-theme="dark"]{ --yz-paper:#e9e5d8; --yz-grid:#bccddd; --yz-tile:#dcd7ca; }
+
+.game.yatzi{height:100%;max-width:620px;margin:0 auto;padding:6px 8px 10px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;overflow:auto;overscroll-behavior:contain}
+.yatzi .gbar{display:flex;align-items:center;gap:8px;min-height:40px;flex:none}
+.yatzi .menubtn{width:40px;height:40px;min-height:40px;padding:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;flex:none}
+.yatzi .menubtn span{display:block;width:18px;height:2px;background:var(--fg);border-radius:1px}
+.yatzi .gtitle{flex:1;font-family:var(--display);font-size:22px;display:flex;align-items:center;gap:8px;letter-spacing:.5px}
+.yz-logo{display:inline-flex;transform:rotate(-12deg)}
+.yz-tools{display:flex;gap:6px}
+.yatzi .shakebtn{width:38px;height:36px;min-height:36px;padding:0;font-size:18px;line-height:1}
+.yatzi .shakebtn[aria-pressed="true"]{background:var(--yz-gold);border-color:var(--yz-gold-2);color:#3a2504}
+.yatzi .rulesbtn{min-height:36px;padding:0 12px;font-size:14px}
+
+.yz-main{display:flex;flex-direction:column;gap:10px;min-height:0}
+.yz-play{display:flex;flex-direction:column;gap:8px;flex:none}
+
+/* ---------- Jugadores ---------- */
+.yz-players{display:flex;align-items:center;gap:8px;min-height:34px}
+.yz-players .chips{flex:1;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px}
+.yz-players .chips::-webkit-scrollbar{display:none}
+.yz-players .chip{flex:none;display:flex;align-items:baseline;gap:8px;padding:5px 11px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);font-size:13px;transition:border-color .25s,box-shadow .25s,transform .25s}
+.yz-players .chip .nm{font-weight:700;max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.yz-players .chip .nm small{font-weight:600;color:var(--muted)}
+.yz-players .chip .sc{font-family:var(--display);font-weight:400;font-size:16px;font-variant-numeric:tabular-nums}
+.yz-players .chip.turn{border-color:var(--yz-gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--yz-gold) 35%,transparent);transform:translateY(-1px)}
+.yz-players .chip.turn::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--yz-gold);align-self:center;animation:yz-blink 1.1s ease-in-out infinite}
+.yz-players .meta,.yz-players .solo{display:flex;align-items:baseline;gap:12px;font-size:13px;color:var(--muted);white-space:nowrap}
+.yz-players .solo{flex:1;justify-content:space-between}
+.yz-players b{color:var(--fg);font-family:var(--display);font-weight:400;font-size:16px}
+.yz-players .rec b{color:var(--yz-gold-2)}
+.yatzi .clock{font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted)}
+.yatzi .clock.low{color:var(--warn)}
+@keyframes yz-blink{50%{opacity:.25}}
+
+/* ---------- La caja de dados ---------- */
+.yz-tray{
+  --d:56px;
+  position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;
+  height:clamp(250px,40vh,380px);padding:10px;border-radius:20px;
+  /* Marco de azulejo: flores de cuatro pétalos azules sobre blanco */
+  background:
+    radial-gradient(circle at 50% 50%,var(--yz-tile-ink) 0 3px,transparent 3.5px),
+    radial-gradient(circle at 50% 22%,var(--yz-tile-ink) 0 3.5px,transparent 4px),
+    radial-gradient(circle at 50% 78%,var(--yz-tile-ink) 0 3.5px,transparent 4px),
+    radial-gradient(circle at 22% 50%,var(--yz-tile-ink) 0 3.5px,transparent 4px),
+    radial-gradient(circle at 78% 50%,var(--yz-tile-ink) 0 3.5px,transparent 4px),
+    radial-gradient(circle at 0 0,transparent 0 6px,color-mix(in srgb,var(--yz-tile-ink) 55%,transparent) 6.5px 7.5px,transparent 8px),
+    var(--yz-tile);
+  background-size:20px 20px;
+  box-shadow:0 10px 24px -10px rgba(10,20,50,.55),inset 0 0 0 2px color-mix(in srgb,var(--yz-tile-ink) 40%,transparent);
+  user-select:none;-webkit-user-select:none;touch-action:manipulation;
+}
+.yz-felt{position:relative;flex:1;min-height:0;border-radius:12px;
+  background:
+    repeating-linear-gradient(45deg,rgba(255,255,255,.025) 0 2px,transparent 2px 5px),
+    repeating-linear-gradient(-45deg,rgba(0,0,0,.05) 0 2px,transparent 2px 6px),
+    radial-gradient(ellipse at 50% 38%,#3363cc 0%,var(--yz-cobalt) 38%,var(--yz-cobalt-2) 75%,var(--yz-cobalt-3) 100%);
+  box-shadow:inset 0 6px 18px rgba(0,0,0,.55),inset 0 0 0 3px var(--yz-wood-2);
+}
+.yz-glow{position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.12),transparent 55%)}
+/* La repisa de madera con sus cinco huecos */
+.yz-rack{flex:none;height:calc(var(--d) * 1.28);border-radius:10px;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;justify-items:center;
+  background:linear-gradient(180deg,#9a6334,var(--yz-wood) 45%,var(--yz-wood-2));box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 6px rgba(0,0,0,.35)}
+.yz-rack .slot{width:calc(var(--d) * 1.08);height:calc(var(--d) * 1.08);border-radius:22%;background:rgba(0,0,0,.28);box-shadow:inset 0 3px 6px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.15)}
+
+/* ---------- Los dados ---------- */
+.yz-dice{position:absolute;inset:0;pointer-events:none}
+.yz-die{position:absolute;left:0;top:0;width:var(--d);height:var(--d);perspective:calc(var(--d) * 7);pointer-events:auto;will-change:transform;outline:none;-webkit-tap-highlight-color:transparent}
+.yz-die.smooth{transition:transform .42s cubic-bezier(.3,.8,.3,1.15)}
+.yz-die.smooth .yz-cube{transition:transform .42s ease-out}
+.yz-lift,.yz-cube{width:100%;height:100%;transform-style:preserve-3d}
+.yz-cube{position:relative}
+.yz-face{position:absolute;inset:0;border-radius:19%;box-sizing:border-box;padding:12%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);backface-visibility:hidden;
+  background:radial-gradient(circle at 30% 25%,#fff 0%,var(--yz-ivory) 45%,var(--yz-ivory-2) 100%);
+  box-shadow:inset 0 0 0 1px rgba(120,100,60,.25),inset -3px -4px 8px rgba(120,100,60,.22),inset 2px 2px 4px rgba(255,255,255,.8)}
+.yz-face i{width:76%;height:76%;align-self:center;justify-self:center;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#46506e,var(--yz-pip) 70%);box-shadow:inset 0 1.5px 2px rgba(0,0,0,.6),0 .5px 0 rgba(255,255,255,.7)}
+.yz-face.f1 i{width:92%;height:92%;background:radial-gradient(circle at 40% 35%,#ef6a5f,var(--yz-pip-one) 70%)}
+.yz-face i.p1{grid-area:1/1}.yz-face i.p3{grid-area:1/3}.yz-face i.p4{grid-area:2/1}.yz-face i.p5{grid-area:2/2}
+.yz-face i.p6{grid-area:2/3}.yz-face i.p7{grid-area:3/1}.yz-face i.p9{grid-area:3/3}
+.yz-shadow{position:absolute;inset:6%;border-radius:24%;background:radial-gradient(closest-side,rgba(0,0,0,.6),rgba(0,0,0,0));transform:translate(5%,8%);opacity:.6;filter:blur(2px)}
+.yz-lock{position:absolute;top:-5px;right:-5px;width:14px;height:14px;border-radius:50%;background:var(--yz-gold);box-shadow:0 0 0 2px var(--yz-wood-2);transform:scale(0);transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.yz-die.held .yz-lock{transform:scale(1)}
+.yz-die.held .yz-shadow{background:radial-gradient(closest-side,rgba(240,185,58,.9),rgba(240,185,58,0));opacity:1;transform:scale(1.25);filter:blur(4px)}
+.yz-die.tap{cursor:pointer}
+.yz-die.tap:focus-visible{outline:3px solid var(--yz-gold);outline-offset:4px;border-radius:20%}
+.yz-die.idle{opacity:.5;filter:saturate(.6)}
+.yz-die.glow .yz-face{box-shadow:inset 0 0 0 2px var(--yz-gold),0 0 16px 3px rgba(240,185,58,.85)}
+.yz-die.hint:not(.held){animation:yz-hint 1s ease-in-out infinite}
+@keyframes yz-hint{50%{filter:drop-shadow(0 0 10px var(--yz-gold)) brightness(1.08)}}
+
+/* Destellos sobre el paño: combinaciones, turno, bonos */
+.yz-burst{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0;text-align:center;color:#fff;z-index:3}
+.yz-burst.show{animation:yz-pop 1.9s cubic-bezier(.2,.9,.3,1) forwards}
+.yz-burst b{font-family:var(--display);font-weight:400;font-size:clamp(26px,9vw,46px);line-height:1.05;text-shadow:0 3px 0 var(--yz-cobalt-3),0 0 24px rgba(0,0,0,.5)}
+.yz-burst small{font-weight:800;font-size:15px;letter-spacing:.3px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.yz-burst.gold b{color:var(--yz-gold);-webkit-text-stroke:1px var(--yz-gold-2)}
+.yz-burst.turn{background:radial-gradient(ellipse at center,rgba(12,29,77,.75),transparent 70%)}
+.yz-burst.turn b{font-size:clamp(24px,8vw,40px)}
+.yz-burst b.yatzi{font-size:clamp(48px,17vw,96px);color:var(--yz-gold);-webkit-text-stroke:2px #fff7d6;
+  text-shadow:0 4px 0 var(--yz-gold-2),0 8px 0 var(--yz-cobalt-3),0 0 40px rgba(240,185,58,.8);animation:yz-wobble .7s ease-in-out 2}
+@keyframes yz-pop{0%{opacity:0;transform:scale(.4) rotate(-6deg)}14%{opacity:1;transform:scale(1.12) rotate(2deg)}24%{transform:scale(1) rotate(0)}78%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.08) translateY(-14px)}}
+@keyframes yz-wobble{25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
+
+/* ---------- Lo de tu turno ---------- */
+.yz-dock{display:flex;flex-direction:column;gap:7px;min-height:88px}
+.yz-dock .status{display:flex;align-items:center;justify-content:center;gap:10px;font-weight:700;font-size:15px;text-align:center;min-height:24px}
+.yz-dock .status.me{color:var(--fg)}
+.yz-dock .status .who{color:var(--yz-cobalt)}
+.yz-dock .status.big{font-size:clamp(18px,2.4vw,30px)}
+.pips{display:inline-flex;gap:4px;vertical-align:middle}
+.pips i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--muted);transition:background .2s,border-color .2s}
+.pips i.used{background:var(--yz-cobalt);border-color:var(--yz-cobalt)}
+.yz-dock .actions{display:flex;gap:8px;align-items:stretch}
+.yz-dock .actions .big{flex:1;min-height:54px;font-size:18px;border-radius:14px}
+.yz-dock .roll{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--yz-cobalt);border-color:var(--yz-cobalt-2);color:#fff;
+  box-shadow:0 4px 0 var(--yz-cobalt-3);touch-action:none;-webkit-user-select:none;user-select:none}
+.yz-dock .roll:active{transform:translateY(3px);box-shadow:0 1px 0 var(--yz-cobalt-3)}
+.yz-dock .roll small{font-weight:600;opacity:.75}
+.yz-dock .roll .cup{font-size:22px;display:inline-block}
+.yz-dock .roll:active .cup{animation:yz-shake .12s linear infinite}
+.yz-dock .roll[disabled]{opacity:.5}
+@keyframes yz-shake{25%{transform:rotate(-14deg) translateX(-2px)}75%{transform:rotate(14deg) translateX(2px)}}
+.yz-dock .score{background:var(--yz-gold);border-color:var(--yz-gold-2);color:#2d1d02;box-shadow:0 4px 0 var(--yz-gold-2)}
+.yz-dock .score b{font-family:var(--display);font-weight:400;font-size:20px}
+.yz-dock .ghost{min-height:54px;padding:0 14px;border-radius:14px}
+.yz-dock .hint{margin:0;text-align:center;font-size:13px;color:var(--muted)}
+.yz-dock .pickhint{flex:1;align-self:center;font-weight:700;color:var(--fg)}
+.yz-dock .advbox{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:color-mix(in srgb,var(--yz-gold) 18%,var(--card));border:1px solid var(--yz-gold)}
+.yz-dock .advbox span{flex:1;font-size:14px;font-weight:600}
+.yz-dock .advbox button{min-height:36px}
+.yz-dock .err{margin:0;text-align:center}
+.yatzi .timer{height:4px;border-radius:3px;background:var(--line);overflow:hidden}
+.yatzi .timer i{display:block;height:100%;width:100%;background:var(--yz-gold);transition:width .25s linear}
+.yatzi .timer i.low{background:var(--warn)}
+
+/* ---------- La hoja de cuaderno ---------- */
+.yz-sheet{flex:none}
+.yz-paper{position:relative;border-radius:6px 6px 10px 10px;padding:18px 8px 10px 0;color:#2a2f3d;
+  background:
+    linear-gradient(90deg,transparent 33px,var(--yz-margin) 33px 34.5px,transparent 34.5px),
+    linear-gradient(var(--yz-grid) 1px,transparent 1px) 0 4px/14px 14px,
+    linear-gradient(90deg,var(--yz-grid) 1px,transparent 1px) 0 0/14px 14px,
+    var(--yz-paper);
+  box-shadow:0 1px 0 #d9d3c3,0 3px 0 -1px #efe9da,0 4px 0 -1px #d9d3c3,0 12px 22px -12px rgba(0,0,0,.45)}
+/* El espiral de arriba */
+.yz-paper::before{content:"";position:absolute;left:10px;right:10px;top:-7px;height:16px;
+  background:radial-gradient(circle at 50% 55%,var(--bg) 0 3.5px,transparent 4px) 0 0/18px 16px,
+             radial-gradient(ellipse 4px 8px at 50% 40%,#8c93a3 0 3px,transparent 3.5px) 0 0/18px 16px}
+.yz-paper.landing .ghost i,.yz-paper.landing .ghost button{visibility:hidden}
+.yz-card{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
+.yz-card th,.yz-card td{height:30px;padding:0 4px;border-bottom:1px solid color-mix(in srgb,var(--yz-ink) 22%,transparent)}
+.yz-card .lbl{text-align:left;font-weight:700;padding-left:40px;width:52%;white-space:nowrap;overflow:hidden}
+.yz-card.n3 .lbl,.yz-card.n4 .lbl{width:40%}
+.yz-card.n5 .lbl,.yz-card.n6 .lbl{width:32%;padding-left:38px}
+.yz-card .lbl .ic{display:inline-flex;width:18px;justify-content:center;vertical-align:-3px;margin-right:6px}
+.yz-card .lbl .ic em{font-style:normal;color:var(--yz-ink);font-size:14px;line-height:1}
+.yz-card .lbl small{display:block;font-weight:500;font-size:10.5px;color:#7a7f8c;line-height:1;margin:-1px 0 0 24px}
+.yz-card.wide th,.yz-card.wide td{height:34px}
+.yz-card .hd th{height:30px;border-bottom:2px solid var(--yz-ink)}
+.yz-card .hd .brand{font-family:var(--display);font-weight:400;font-size:17px;color:var(--yz-ink);transform:rotate(-3deg);display:inline-block}
+.yz-card .hd .pc{font-size:12px;font-weight:800;color:#3e4558;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.yz-card .pc{text-align:center;font-variant-numeric:tabular-nums}
+.yz-card .pc.turn{background:color-mix(in srgb,var(--yz-gold) 15%,transparent)}
+.yz-card .hd .pc.turn{color:var(--yz-ink)}
+.yz-card .hd .pc.turn span{border-bottom:3px solid var(--yz-gold)}
+/* En pluma */
+.yz-card .ink b{font-family:var(--yz-hand);font-weight:700;font-size:18px;color:var(--yz-ink);display:inline-block;transform:rotate(-2deg)}
+.yz-card .ink.zero b,.yz-card b.zero{color:var(--yz-pip-one);font-size:16px}
+.yz-card .ink.fresh b{animation:yz-ink .7s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes yz-ink{0%{clip-path:inset(0 100% 0 0);transform:scale(1.6) rotate(-8deg)}60%{clip-path:inset(0 0 0 0)}100%{transform:scale(1) rotate(-2deg)}}
+/* A lápiz: lo que daría cada casilla */
+.yz-card .ghost button,.yz-card .ghost i{all:unset;display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;border-radius:6px;
+  font-family:var(--yz-hand);font-size:16px;font-style:normal;color:var(--yz-pencil);transition:opacity .25s}
+.yz-card .ghost button{cursor:pointer;color:#4a5164;border:1.5px dashed color-mix(in srgb,var(--yz-pencil) 70%,transparent)}
+.yz-card .ghost button:focus-visible{outline:2px solid var(--yz-ink)}
+.yz-card .ghost.nil button,.yz-card .ghost.nil i{opacity:.55;border-style:dotted}
+.yz-card .ghost.pick button{background:linear-gradient(100deg,transparent 4%,var(--yz-marker) 8% 92%,transparent 96%);border-color:transparent;color:var(--yz-ink);font-weight:700;transform:scale(1.15)}
+.yz-card .ghost.adv button{animation:yz-adv 1s ease-in-out infinite}
+@keyframes yz-adv{50%{box-shadow:0 0 0 3px var(--yz-gold)}}
+.yz-card .off i{color:#b8bcc6}
+.yz-card .sum th,.yz-card .sum td{font-weight:800}
+.yz-card .sum.up .pc b{font-size:14px;color:#3e4558}
+.yz-card .sum .bar{display:block;height:3px;margin:2px auto 0;width:70%;background:rgba(0,0,0,.1);border-radius:2px;overflow:hidden}
+.yz-card .sum .bar i{display:block;height:100%;background:var(--yz-ink)}
+.yz-card .sum .bar i.done{background:var(--yz-gold)}
+.yz-card .sum.bonus small{color:#7a7f8c;font-weight:600}
+.yz-card .won b{color:var(--yz-gold-2)}
+.yz-card .gap td{height:8px;border:0}
+.yz-card .tot th,.yz-card .tot td{height:38px;border-bottom:4px double var(--yz-ink)}
+.yz-card .tot .nm{font-family:var(--display);font-weight:400;font-size:16px;color:var(--yz-ink)}
+.yz-card .tot .pc b{font-family:var(--display);font-weight:400;font-size:19px;color:#23283a}
+.yz-card .tot .champ b{color:var(--yz-pip-one);border:2px solid var(--yz-pip-one);border-radius:50%;padding:2px 8px}
+.yz-card.n5,.yz-card.n6{font-size:12.5px}
+.yz-card.n5 .ink b,.yz-card.n6 .ink b{font-size:15px}
+.yz-card.n5 .ghost button,.yz-card.n6 .ghost button{min-width:28px;font-size:14px}
+
+/* "+25" que sube desde la casilla */
+.yz-float{position:fixed;z-index:60;transform:translate(-50%,-20%);pointer-events:none;font-family:var(--yz-hand);font-weight:700;font-size:26px;color:var(--yz-ink);
+  text-shadow:0 0 6px #fff,0 0 2px #fff;animation:yz-float 1.25s ease-out forwards}
+.yz-float.nil{color:var(--yz-pip-one)}
+@keyframes yz-float{0%{opacity:0;transform:translate(-50%,0) scale(.6)}20%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-260%) scale(1)}}
+
+.yz-confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:55}
+
+/* ---------- Ventanas ---------- */
+.yz-menurow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:700}
+.yz-final{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0 12px}
+.yz-final .big{font-family:var(--display);font-weight:400;font-size:56px;color:var(--yz-cobalt);line-height:1}
+.yz-final span{color:var(--muted);font-size:14px}
+.yz-final .rec{font-weight:800;color:var(--yz-gold-2)}
+.yatzi ~ * .resrow small,.resrow small{display:block;font-weight:500;font-size:11.5px;color:var(--muted)}
+.yz-rules ul{margin:4px 0 8px;padding-left:20px}
+.yz-rules li{margin:3px 0}
+.yz-rules .mini-die,.yz-card .mini-die{vertical-align:-3px}
+.mini-die .md-body{fill:var(--yz-ivory);stroke:#9b927d;stroke-width:.06}
+.mini-die .md-pip{fill:var(--yz-pip)}
+.mini-die .md-pip.one{fill:var(--yz-pip-one)}
+
+/* ---------- Acostado: tableta, computadora, tele ---------- */
+@media (min-width:760px) and (min-aspect-ratio:5/4){
+  .game.yatzi{max-width:1280px;overflow:hidden}
+  .yz-main{flex:1;flex-direction:row;align-items:stretch;gap:16px}
+  .yz-play{flex:1.25;min-width:0;min-height:0}
+  .yz-tray{flex:1;height:auto;min-height:300px;--d:72px}
+  .yz-sheet{flex:1;min-width:340px;max-width:520px;overflow:auto;padding-top:8px}
+  .yz-burst b{font-size:52px}
+  .yz-burst b.yatzi{font-size:110px}
+}
+/* Monitor (la tele): todo grande, sin botones */
+.game.yatzi.tv{max-width:none;padding:1.2vh 2vw}
+.yatzi.tv .gtitle{font-size:clamp(22px,2.6vw,40px)}
+.yatzi.tv .rulesbtn{display:none}
+.yatzi.tv .yz-players .chip{font-size:clamp(14px,1.6vw,26px);padding:.4em 1em}
+.yatzi.tv .yz-players .chip .sc,.yatzi.tv .yz-players b{font-size:clamp(18px,2vw,34px)}
+.yatzi.tv .yz-card{font-size:clamp(14px,1.4vw,24px)}
+.yatzi.tv .yz-card th,.yatzi.tv .yz-card td{height:clamp(30px,4.2vh,52px)}
+.yatzi.tv .yz-card .ink b{font-size:clamp(18px,1.9vw,32px)}
+.yatzi.tv .yz-card .ghost i{font-size:clamp(16px,1.6vw,28px)}
+.yatzi.tv .yz-card .lbl small{display:none}
+.yatzi.tv .yz-dock{min-height:0}
+
+@media (prefers-reduced-motion:reduce){
+  .yz-burst.show{animation-duration:1.2s}
+  .yz-burst b.yatzi,.yz-die.hint:not(.held),.yz-players .chip.turn::before{animation:none}
+}
