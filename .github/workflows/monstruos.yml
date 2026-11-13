@@ -43,4 +43,4 @@ jobs:
       - name: Prueba de navegador de toda la plataforma
         run: |
           python -m http.server 8765 > /tmp/http.log 2>&1 &
-          python -u -c 'from pathlib import Path; s=Path("tests/browser/smoke.py").read_text().split("    finished = bool", 1)[0].replace("range(400)", "range(25)"); exec(compile(s + "\n    print(page.locator(\"body\").inner_text())\n    browser.close()\n", "tests/browser/smoke.py", "exec"), {"__file__":str(Path("tests/browser/smoke.py").resolve())})'
+          python -u -c 'from pathlib import Path; s=Path("tests/browser/smoke.py").read_text().split("    finished = bool", 1)[0].replace("range(400)", "range(120)").replace("_ in (0, 1, 2, 3, 10, 20)", "_ % 20 == 0"); exec(compile(s + "\n    print(page.locator(\"body\").inner_text())\n    browser.close()\n", "tests/browser/smoke.py", "exec"), {"__file__":str(Path("tests/browser/smoke.py").resolve())})'
