@@ -2,6 +2,8 @@
 // botones. Dibuja con ctx.view y juega con ctx.act(). Lo propio de esta pantalla vive en `ui`: la pieza escogida
 // (`sel`), un aviso (`msg`), la pestaña del selector (`tab`) y la última jugada que ya se animó (`seenSeq`).
 //
+// Sonido (ui/sound.js): cada cosa suena una sola vez, cuando pasa (seq nuevo), no al redibujar.
+//
 // Los retos resueltos se recuerdan en este aparato (ctx.prefs, "resueltos": { reto: menos movimientos }). «Siguiente
 // reto» guarda el número en "siguiente" y pide otra partida; al llegar la partida nueva (en "pick") se escoge sola.
 import { LEVELS, CHALLENGES, levelOf, boardOf, boardOfState } from "../engine/index.js";
@@ -9,7 +11,9 @@ import { whyNot } from "../engine/board.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
 import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
-import { boardSVG } from "./board.js";
+import { boardSVG, bannerSVG, spinSecs } from "./board.js";
+import { ARRIVE_VOICE } from "./sound.js";
+import { sfxButton, sfxControls, wireSfx } from "../../../modules/sfx/ui.js";
 import { rulesHelp } from "./rules.js";
 
 const solvedMap = (ctx) => { const m = ctx.prefs.getJSON("resueltos", {}); return m && typeof m === "object" ? m : {}; };
@@ -22,10 +26,11 @@ function renderRules(ctx) {
   $("#rulesclose", ctx.modal).onclick = closeOverlay;
 }
 
-function renderMenu(ctx, st) {
+function renderMenu(ctx, st, sound) {
   const lv = st.reto ? levelOf(st.reto) : null;
   renderSheet(ctx.modal, "gameMenu", ctx.practice ? "Práctica" : "Mesa " + ctx.table.code, `
     ${st.reto ? `<p class="hint">Reto ${st.reto} · ${esc(lv.name)} · ${plural(st.history.length, "movimiento", "movimientos")} (mínimo ${st.min})</p>` : ""}
+    ${sfxControls(sound.sfx)}
     <details class="help"><summary>Reglas</summary>${rulesHelp()}</details>
     ${st.phase === "play" && ctx.seat === 0 ? `<button id="choose">Escoger otro reto</button>` : ""}
     ${modeMenu(ctx)}
@@ -34,6 +39,7 @@ function renderMenu(ctx, st) {
   $("#menuclose", ctx.modal).onclick = closeOverlay;
   $("#choose", ctx.modal)?.addEventListener("click", () => { closeOverlay(); ctx.act({ type: "choose" }); });
   wireModeMenu(ctx.modal, ctx);
+  wireSfx(ctx.modal, sound.sfx, { setDragging: ctx.setDragging });
   $("#back", ctx.modal).onclick = () => { closeOverlay(); ctx.leave(); };
 }
 
@@ -78,13 +84,37 @@ function pickerHTML(ctx, ui) {
       <small>mín. ${c.min}</small></button>`;
   }).join("");
   return `<section class="pick">
+    ${bannerSVG(reduced())}
     <p class="lead">${mine ? "Escoge un reto" : "Escogiendo reto…"}</p>
     <div class="tabs" role="tablist">${tabs}</div>
     <div class="cards lv-${lv.id}">${cards}</div>
   </section>`;
 }
 
+// Lo que suena cuando llega una jugada nueva. Devuelve los barcos que acaban de llegar a su flecha.
+function playNews(st, ui, sound, fresh) {
+  const prev = ui.prev || {};
+  const arrived = [];
+  if (st.phase !== "pick" && st.reto !== prev.reto) { sound.start(); return arrived; }
+  if (!fresh || st.phase === "pick") return arrived;
+  const spin = spinSecs(fresh.turns || 1);
+  if (fresh.type === "rotate") sound.rotate(fresh.turns, spin);
+  else if (fresh.type === "undo") sound.undo(spin);
+  else if (fresh.type === "reset") sound.reset();
+  if (prev.boats && st.boats) {
+    let k = 0;
+    for (const col of Object.keys(st.boats)) {
+      const now = st.boats[col] === st.arrows[col], before = prev.boats[col] === st.arrows[col];
+      if (now && !before) { arrived.push(col); setTimeout(() => sound.arrive(0), spin * 1000 + k * 250); if (st.phase !== "over") sound.voice(ARRIVE_VOICE[col], spin * 1000 + 300 + k * 1800); k++; }
+      else if (!now && before && fresh.type !== "reset") setTimeout(() => sound.leave(), spin * 1000);
+    }
+  }
+  if (st.phase === "over") { const perfect = st.history.length <= st.min; setTimeout(() => sound.victory(perfect), spin * 1000 + 250); }
+  return arrived;
+}
+
 export function renderTable(app, ctx, ui) {
+  const sound = ui.sound;
   const st = ctx.view, seat = ctx.seat;
   const me = seat === 0;
   app.className = "game vikingos";
@@ -102,8 +132,13 @@ export function renderTable(app, ctx, ui) {
     if (done[st.reto] === undefined || k < done[st.reto]) { done[st.reto] = k; ctx.prefs.setJSON("resueltos", done); }
   }
 
-  const fresh = st.seq !== ui.seenSeq ? st.last : null;
+  const isNew = st.seq !== ui.seenSeq;
+  const fresh = isNew ? st.last : null;
   ui.seenSeq = st.seq;
+  const arrived = isNew ? playNews(st, ui, sound, fresh) : [];
+  if (isNew) ui.prev = { reto: st.reto, boats: st.boats ? { ...st.boats } : null };
+  sound.sync();
+  const shake = ui.shake ?? -1; ui.shake = -1;
   if (st.reto !== ui.reto) { ui.reto = st.reto; ui.sel = -1; ui.msg = ""; }
   const playing = st.phase === "play";
   const b = st.kinds ? boardOfState(st) : null;
@@ -111,6 +146,7 @@ export function renderTable(app, ctx, ui) {
   if (!can.includes(ui.sel)) ui.sel = -1;
   const adv = ctx.advice && ctx.advice.data;
   const advice = playing && me && adv && adv.action ? adv : null;
+  if (advice && ui.advSeen !== adv) { ui.advSeen = adv; sound.advice(); sound.voice("consejo", 150); }
   const lv = st.reto ? levelOf(st.reto) : null;
 
   let body;
@@ -127,7 +163,7 @@ export function renderTable(app, ctx, ui) {
     body = `<section class="seawrap">
       <div class="status"><span class="chip lv-${lv.id}">${esc(lv.name)}</span>
         <span>Movimientos <b>${k}</b> <small>· mínimo ${st.min}</small></span></div>
-      <div class="boardwrap" id="board">${boardSVG(st, { sel: ui.sel, can, advice: advice ? advice.action.piece : -1, fresh, still: reduced() })}</div>
+      <div class="boardwrap" id="board">${boardSVG(st, { sel: ui.sel, can, advice: advice ? advice.action.piece : -1, fresh, arrived, shake, celebrate: isNew && st.phase === "over", still: reduced() })}</div>
       <p class="say ${ui.msg ? "warn" : ""}" role="status">${esc(ui.msg || status)}</p>
       ${advBox}
     </section>
@@ -148,11 +184,13 @@ export function renderTable(app, ctx, ui) {
     <header class="gbar">
       <button class="menubtn" id="menu" aria-label="Menú de la partida" aria-haspopup="dialog"><span></span><span></span><span></span></button>
       <div class="gtitle">Vikingos${st.reto ? ` <small>· Reto ${st.reto}</small>` : ""}</div>
+      <span id="sfxslot">${sfxButton(sound.sfx)}</span>
       <button class="rulesbtn" id="rules" aria-haspopup="dialog">Reglas</button>
     </header>
     ${body}
     ${ctx.err ? `<p class="err" role="alert">${esc(ctx.err)}</p>` : ""}`;
 
+  wireSfx($("#sfxslot", app), sound.sfx);
   const act = (a) => { ui.msg = ""; ctx.closeAdvice?.(); ctx.act(a); };
   const turn = (k) => { if (ui.sel >= 0) act({ type: "rotate", piece: ui.sel, turns: k }); };
   $("#menu", app).onclick = () => openOverlay("gameMenu");
@@ -173,17 +211,20 @@ export function renderTable(app, ctx, ui) {
     const i = Number(hit.dataset.piece);
     if (can.includes(i)) {
       if (ui.sel === i) { turn(1); return; }
-      ui.sel = i; ui.msg = "";
-    } else { ui.sel = -1; ui.msg = whyNot(b, i); }
+      ui.sel = i; ui.msg = ""; sound.select();
+    } else {
+      ui.sel = -1; ui.msg = whyNot(b, i); ui.shake = i;
+      if (/trabada/.test(ui.msg)) { sound.blocked(); sound.voice("trabada", 250); } else { sound.empty(); sound.voice("sin-barco", 250); }
+    }
     renderTable(app, ctx, ui);
   };
 
   // El resultado sale cuando terminó de girar la última pieza
   if (st.phase === "over") {
-    if (ui.overSeq !== st.seq) { ui.overSeq = st.seq; ui.overReady = false; setTimeout(() => { ui.overReady = true; ctx.refresh(); }, reduced() ? 0 : 900); }
+    if (ui.overSeq !== st.seq) { ui.overSeq = st.seq; ui.overReady = false; setTimeout(() => { ui.overReady = true; ctx.refresh(); }, reduced() ? 0 : 2600); }
   }
   const ov = overlay();
-  if (ov && ov.id === "gameMenu") renderMenu(ctx, st);
+  if (ov && ov.id === "gameMenu") renderMenu(ctx, st, sound);
   else if (ov && ov.id === "rules") renderRules(ctx);
   else if (st.phase === "over" && ui.overReady) renderResult(ctx, st);
   else ctx.modal.innerHTML = "";
