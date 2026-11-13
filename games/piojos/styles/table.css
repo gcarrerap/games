@@ -1,92 +1,169 @@
-/* Mesa de Piojos: marcador con la meta, el paño con los dados y los botones. Mismo estilo que el dominó y La Pata
-   (el paño y los colores de platform/styles/tokens.css). */
+/* Mesa de Piojos, de la familia de Yatzi: la caja de dados (modules/dice) con marco de talavera verde y ocre y paño
+   color vino de cantina; dados de póker de marfil; y el marcador como hoja de cuaderno escrita con pluma azul. */
 :root{
-  --felt:#1f5c49; --felt-2:#184c3c; --felt-fg:#eaf2ec; --felt-muted:#a9c4b7;
-  --die:#fbf7ec; --die-edge:#cfc6b0; --die-ink:#2a2a2a; --louse:#f3d67a; --louse-edge:#b9812a; --louse-ink:#5a3a07;
+  --pj-wine:#7c1f2a; --pj-wine-2:#561520; --pj-wine-3:#330b12;
+  --pj-tile:#f4efe0; --pj-tile-ink:#2f7a4a; --pj-tile-ochre:#d79b2b;
+  --pj-gold:#f0b93a; --pj-gold-2:#b9851d; --pj-red:#c22f28;
+  --pj-paper:#fdfcf7; --pj-grid:#cfe0ef; --pj-margin:#e2685d; --pj-ink:#1f3fa8; --pj-pencil:#7f8594;
+  --pj-hand:"Segoe Print","Bradley Hand","Marker Felt","Chalkboard SE","Comic Neue","Comic Sans MS",cursive;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --felt:#164232; --felt-2:#103428; --felt-fg:#e8f1ec; --felt-muted:#8fb2a2;
-  --die:#efe7d3; --die-edge:#a99e84; --louse:#f0d07a; --louse-edge:#e0a843;
-}}
-:root[data-theme="dark"]{
-  --felt:#164232; --felt-2:#103428; --felt-fg:#e8f1ec; --felt-muted:#8fb2a2;
-  --die:#efe7d3; --die-edge:#a99e84; --louse:#f0d07a; --louse-edge:#e0a843;
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){ --pj-paper:#e9e5d8; --pj-grid:#bccddd; --pj-tile:#dcd6c6; }}
+:root[data-theme="dark"]{ --pj-paper:#e9e5d8; --pj-grid:#bccddd; --pj-tile:#dcd6c6; }
+
+.game.piojos{height:100%;max-width:620px;margin:0 auto;padding:6px 8px 10px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;overflow:auto;overscroll-behavior:contain}
+.piojos .gbar{display:flex;align-items:center;gap:8px;min-height:40px;flex:none}
+.piojos .menubtn{width:40px;height:40px;min-height:40px;padding:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;flex:none}
+.piojos .menubtn span{display:block;width:18px;height:2px;background:var(--fg);border-radius:1px}
+.piojos .gtitle{flex:1;font-family:var(--display);font-size:22px;display:flex;align-items:center;gap:8px;letter-spacing:.5px}
+.pj-logo{display:inline-flex;transform:rotate(-12deg)}
+.pj-logo .pkmini{width:22px;height:22px;font-size:13px}
+.pj-tools{display:flex;gap:6px}
+.piojos .shakebtn{width:38px;height:36px;min-height:36px;padding:0;font-size:18px;line-height:1}
+.piojos .shakebtn[aria-pressed="true"]{background:var(--pj-gold);border-color:var(--pj-gold-2);color:#3a2504}
+.piojos .rulesbtn{min-height:36px;padding:0 12px;font-size:14px}
+.pj-main{display:flex;flex-direction:column;gap:10px;min-height:0}
+.pj-play{display:flex;flex-direction:column;gap:8px;flex:none}
+
+/* ---------- La caja de dados: talavera verde y ocre, paño vino ---------- */
+.piojos .pj-tray{
+  --dz-felt-1:#b23b47; --dz-felt-2:var(--pj-wine); --dz-felt-3:var(--pj-wine-2); --dz-felt-4:var(--pj-wine-3);
+  --dz-gold:var(--pj-gold); --dz-gold-2:var(--pj-gold-2);
+  height:clamp(250px,40vh,380px);
+  background:
+    radial-gradient(circle at 50% 50%,var(--pj-tile-ochre) 0 3px,transparent 3.5px),
+    radial-gradient(circle at 50% 18%,var(--pj-tile-ink) 0 3px,transparent 3.5px),
+    radial-gradient(circle at 50% 82%,var(--pj-tile-ink) 0 3px,transparent 3.5px),
+    radial-gradient(circle at 18% 50%,var(--pj-tile-ink) 0 3px,transparent 3.5px),
+    radial-gradient(circle at 82% 50%,var(--pj-tile-ink) 0 3px,transparent 3.5px),
+    conic-gradient(from 45deg at 0 0,color-mix(in srgb,var(--pj-tile-ink) 22%,transparent) 0 25%,transparent 0) ,
+    var(--pj-tile);
+  background-size:20px 20px;
+  box-shadow:0 10px 24px -10px rgba(50,10,20,.55),inset 0 0 0 2px color-mix(in srgb,var(--pj-tile-ink) 45%,transparent);
 }
+.piojos .pj-tray.shudder{animation:pj-shudder .45s ease-in-out}
+@keyframes pj-shudder{20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 
-.game.piojos{height:100%;max-width:560px;margin:0 auto;padding-inline:8px;padding-block:6px;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;overflow:hidden}
-.gbar{display:flex;align-items:center;gap:10px;min-height:40px}
-.menubtn{width:40px;height:40px;min-height:40px;padding:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;flex:none}
-.menubtn span{display:block;width:18px;height:2px;background:var(--fg);border-radius:1px}
-.gtitle{flex:1;font-family:var(--display);font-size:20px}
-.bar-info{font-size:13px;color:var(--muted);white-space:nowrap}
-.bar-info b{color:var(--fg);font-variant-numeric:tabular-nums}
+/* Las caras de póker sobre el cubo */
+.piojos .dz-face{display:flex;align-items:center;justify-content:center;padding:0}
+.pk{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#1a2238}
+.pk b{font-family:var(--display);font-weight:400;font-size:calc(var(--d) * .5);line-height:1;letter-spacing:-1px}
+.pk.pk-10 b{font-size:calc(var(--d) * .4)}
+.pk em{position:absolute;top:8%;left:12%;font-style:normal;font-size:calc(var(--d) * .2);line-height:1}
+.pk.red{color:var(--pj-red)}
+.pk.louse::after{content:"";position:absolute;inset:9%;border-radius:20%;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--pj-gold) 85%,transparent)}
+.pk.pk-A b{font-size:calc(var(--d) * .56)}
+.pkmini{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;background:#fcf8ee;border:1px solid #c9bea4;
+  font-family:var(--display);font-size:11px;color:#1a2238;vertical-align:-4px}
+.pkmini.red{color:var(--pj-red)}
+.pkmini.louse{box-shadow:inset 0 0 0 1.5px var(--pj-gold)}
 
-/* Marcador: cada jugador con su avance hacia la meta; lo del turno en curso, en tono claro */
-.board{display:flex;flex-direction:column;gap:4px;flex:none;max-height:34%;overflow:auto}
-.prow{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 6px;column-gap:8px;row-gap:3px;align-items:center;
-  padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
-.prow.turn{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
-.pname{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pname small{font-weight:600;color:var(--muted)}
-.pscore{font-variant-numeric:tabular-nums;white-space:nowrap}
-.pscore b{font-family:var(--display);font-weight:400;font-size:18px}
-.pscore em{font-style:normal;font-weight:800;color:var(--accent);font-size:13px}
-.pbar{grid-column:1/-1;display:flex;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
-.pbar i{display:block;height:100%;background:var(--ok);transition:width .3s}
-.pbar i.pend{background:var(--accent);opacity:.55}
-.prow.mine .pbar i:first-child{background:var(--accent)}
-.prow.mine .pbar i.pend{background:var(--gold)}
+/* Lo del turno, pintado sobre el paño */
+.pj-pot{position:absolute;top:8px;left:50%;transform:translateX(-50%) scale(.6);opacity:0;z-index:2;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;color:#fff;transition:opacity .25s,transform .35s cubic-bezier(.3,1.5,.5,1)}
+.pj-pot.show{opacity:1;transform:translateX(-50%) scale(1)}
+.pj-pot small{font-weight:800;font-size:12px;letter-spacing:.3px;opacity:.85}
+.pj-pot b{font-family:var(--display);font-weight:400;font-size:38px;line-height:1;color:var(--pj-gold);text-shadow:0 3px 0 var(--pj-wine-3),0 0 18px rgba(0,0,0,.45);font-variant-numeric:tabular-nums}
+.pj-pot.lost b{color:#ffb4a5;text-decoration:line-through;text-decoration-thickness:3px}
 
-/* Paño */
-.felt{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px 8px;
-  background:radial-gradient(ellipse at 50% 45%,var(--felt),var(--felt-2));border-radius:16px;color:var(--felt-fg);box-shadow:inset 0 0 0 2px rgba(0,0,0,.12)}
-.felt .status{font-weight:800;font-size:15px;text-align:center;min-height:1.4em}
-.felt .status.me{color:var(--gold)}
-.clock{font-variant-numeric:tabular-nums;color:var(--felt-muted);font-weight:700}
-.clock.low{color:var(--warn)!important}
-.timer{width:70%;height:4px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden;margin-top:-8px}
-.timer i{display:block;height:100%;width:100%;background:var(--gold);transition:width .25s linear}
-.timer i.low{background:var(--warn)}
+/* Destellos propios */
+.piojos .dz-burst b.five{font-size:clamp(40px,13vw,76px);color:var(--pj-gold);-webkit-text-stroke:2px #fff7d6;
+  text-shadow:0 4px 0 var(--pj-gold-2),0 8px 0 var(--pj-wine-3),0 0 40px rgba(240,185,58,.8)}
+.piojos .dz-burst b.bust{color:#ffd2c9;font-size:clamp(34px,11vw,60px)}
+.piojos .dz-burst.bust{background:radial-gradient(ellipse at center,rgba(40,0,6,.55),transparent 70%)}
+.piojos .dz-burst.turn{background:radial-gradient(ellipse at center,rgba(51,11,18,.75),transparent 70%)}
 
-.roll{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.roll.idle{opacity:.35}
-svg.die{display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
-.die-body{fill:var(--die);stroke:var(--die-edge);stroke-width:1.5}
-.die-face{fill:var(--die-ink);font-family:var(--display);font-weight:400}
-svg.die.louse .die-body{fill:var(--louse);stroke:var(--louse-edge);stroke-width:2.5}
-svg.die.louse .die-face{fill:var(--louse-ink)}
-svg.die.dim{opacity:.45;filter:none}
-svg.die.blank .die-body{fill:rgba(255,255,255,.08);stroke:rgba(255,255,255,.35);stroke-dasharray:4 3}
-.roll.rolling svg.die{animation:tumble .45s cubic-bezier(.3,1.4,.6,1) both}
-.roll.rolling svg.die:nth-child(2){animation-delay:.04s}
-.roll.rolling svg.die:nth-child(3){animation-delay:.08s}
-.roll.rolling svg.die:nth-child(4){animation-delay:.12s}
-.roll.rolling svg.die:nth-child(5){animation-delay:.16s}
-@keyframes tumble{0%{transform:translateY(-18px) rotate(-90deg) scale(.7)}100%{transform:none}}
-@media (prefers-reduced-motion:reduce){.roll.rolling svg.die{animation:none}}
+/* ---------- Tus botones ---------- */
+.pj-dock{display:flex;flex-direction:column;gap:7px;min-height:88px}
+.pj-dock .status{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:15px;text-align:center;min-height:24px}
+.pj-dock .status .who{color:var(--pj-wine)}
+.pj-dock .status.big{font-size:clamp(18px,2.4vw,30px)}
+.piojos .clock{font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted)}
+.piojos .clock.low{color:var(--warn)}
+.pj-dock .risk{margin:0;text-align:center;font-size:13px;color:var(--muted)}
+.pj-dock .risk b{color:var(--fg)}
+.pj-dock .actions{display:flex;gap:8px;align-items:stretch}
+.pj-dock .actions .big{flex:1;min-width:0;min-height:54px;font-size:17px;border-radius:14px;font-weight:800}
+.pj-dock .roll{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--pj-wine);border-color:var(--pj-wine-2);color:#fff;
+  box-shadow:0 4px 0 var(--pj-wine-3);touch-action:none;-webkit-user-select:none;user-select:none}
+.pj-dock .roll:active{transform:translateY(3px);box-shadow:0 1px 0 var(--pj-wine-3)}
+.pj-dock .roll .cup{font-size:22px;display:inline-block}
+.pj-dock .roll:active .cup{animation:pj-shake .12s linear infinite}
+.pj-dock .roll[disabled],.pj-dock .bank[disabled]{opacity:.55}
+@keyframes pj-shake{25%{transform:rotate(-14deg) translateX(-2px)}75%{transform:rotate(14deg) translateX(2px)}}
+.pj-dock .bank{background:var(--pj-gold);border-color:var(--pj-gold-2);color:#2d1d02;box-shadow:0 4px 0 var(--pj-gold-2)}
+.pj-dock .bank b{font-family:var(--display);font-weight:400;font-size:20px}
+.pj-dock .bank:active{transform:translateY(3px);box-shadow:0 1px 0 var(--pj-gold-2)}
+.pj-dock .hint{margin:0;text-align:center;font-size:13px;color:var(--muted)}
+.pj-dock .err{margin:0;text-align:center}
+.piojos .timer{height:4px;border-radius:3px;background:var(--line);overflow:hidden}
+.piojos .timer i{display:block;height:100%;width:100%;background:var(--pj-gold);transition:width .25s linear}
+.piojos .timer i.low{background:var(--warn)}
 
-.turnpts{display:flex;flex-direction:column;align-items:center;line-height:1}
-.turnpts .lbl,.apart .lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--felt-muted)}
-.turnpts b{font-family:var(--display);font-weight:400;font-size:40px;color:var(--gold);font-variant-numeric:tabular-nums;margin-top:4px}
-.apart{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center}
-.apart .lbl{margin-right:4px}
+/* ---------- El marcador en el cuaderno ---------- */
+.pj-paper{position:relative;border-radius:6px 6px 10px 10px;padding:18px 10px 10px 0;color:#2a2f3d;
+  background:
+    linear-gradient(90deg,transparent 33px,var(--pj-margin) 33px 34.5px,transparent 34.5px),
+    linear-gradient(var(--pj-grid) 1px,transparent 1px) 0 4px/14px 14px,
+    linear-gradient(90deg,var(--pj-grid) 1px,transparent 1px) 0 0/14px 14px,
+    var(--pj-paper);
+  box-shadow:0 1px 0 #d9d3c3,0 3px 0 -1px #efe9da,0 4px 0 -1px #d9d3c3,0 12px 22px -12px rgba(0,0,0,.45)}
+.pj-paper::before{content:"";position:absolute;left:10px;right:10px;top:-7px;height:16px;
+  background:radial-gradient(circle at 50% 55%,var(--bg) 0 3.5px,transparent 4px) 0 0/18px 16px,
+             radial-gradient(ellipse 4px 8px at 50% 40%,#8c93a3 0 3px,transparent 3.5px) 0 0/18px 16px}
+.pj-score{width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px}
+.pj-score th,.pj-score td{height:38px;padding:0 4px;border-bottom:1px solid color-mix(in srgb,var(--pj-ink) 22%,transparent)}
+.pj-score thead th{height:28px;border-bottom:2px solid var(--pj-ink);font-size:12px;font-weight:800;color:#3e4558;text-align:left}
+.pj-score th:first-child{padding-left:42px;width:38%;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pj-score thead th.brand{overflow:visible}
+.pj-score .brand{font-family:var(--display);font-weight:400;font-size:17px;color:var(--pj-ink);transform:rotate(-3deg);display:inline-block}
+.pj-score .sc{width:22%;text-align:center}
+.pj-score thead .track span{display:block;text-align:right;padding-right:4px}
+.pj-score thead .track b{font-family:var(--display);font-weight:400;color:var(--pj-red)}
+.pj-score tbody th .nm{font-weight:700}
+.pj-score tbody th small{color:#7a7f8c;font-weight:600}
+.pj-score tr.turn th,.pj-score tr.turn td{background:color-mix(in srgb,var(--pj-gold) 15%,transparent)}
+.pj-score tr.turn th .nm{border-bottom:3px solid var(--pj-gold)}
+.pj-score .sc b{font-family:var(--pj-hand);font-weight:700;font-size:19px;color:var(--pj-ink);display:inline-block;transform:rotate(-2deg)}
+.pj-score .sc em{font-family:var(--pj-hand);font-style:normal;font-size:14px;color:var(--pj-pencil);margin-left:4px}
+.pj-score .sc.fresh b{animation:pj-ink .7s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes pj-ink{0%{clip-path:inset(0 100% 0 0);transform:scale(1.6) rotate(-8deg)}60%{clip-path:inset(0 0 0 0)}100%{transform:scale(1) rotate(-2deg)}}
+.pj-score tr.champ .sc b{color:var(--pj-red);border:2px solid var(--pj-red);border-radius:50%;padding:2px 8px}
+/* El camino a la meta: una raya con marcas cada 100, en pluma lo ganado y a lápiz lo del turno */
+.pj-score .track .rule{position:relative;display:block;height:14px;margin-right:6px;border-bottom:1.5px solid #8c93a3}
+.pj-score .track .rule > i{position:absolute;bottom:-1px;width:1.5px;height:7px;background:#8c93a3}
+.pj-score .track .ink{position:absolute;left:0;bottom:-2px;height:4px;border-radius:2px;background:var(--pj-ink);transition:width .6s cubic-bezier(.3,.8,.3,1)}
+.pj-score .track .pencil{position:absolute;bottom:-2px;height:4px;border-radius:2px;background:repeating-linear-gradient(90deg,var(--pj-pencil) 0 4px,transparent 4px 7px);transition:width .4s,left .6s}
+.pj-score .track .mark{position:absolute;bottom:0;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#fff;border:2px solid var(--pj-ink);transition:left .6s cubic-bezier(.3,.8,.3,1)}
+.pj-score .track .mark.lead{background:var(--pj-gold);border-color:var(--pj-gold-2)}
 
-.lastev{display:flex;flex-direction:column;align-items:center;gap:6px;font-weight:800;font-size:14px;text-align:center;padding:8px 12px;border-radius:10px;background:rgba(0,0,0,.2)}
-.lastev.bust span{color:#ffb4a5}
-.lastev.bank span{color:var(--gold)}
-.lastroll{display:flex;gap:4px}
-.lastroll svg.die{filter:none}
+.pj-float{position:fixed;z-index:60;transform:translate(-50%,-20%);pointer-events:none;font-family:var(--pj-hand);font-weight:700;font-size:26px;color:var(--pj-ink);
+  text-shadow:0 0 6px #fff,0 0 2px #fff;animation:pj-float 1.25s ease-out forwards}
+@keyframes pj-float{0%{opacity:0;transform:translate(-50%,0) scale(.6)}20%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-260%) scale(1)}}
+.pj-confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:55}
 
-/* Tus botones */
-.me{display:flex;flex-direction:column;gap:6px;flex:none;padding-bottom:4px}
-.me .risk{margin:0;text-align:center;font-size:13px;color:var(--muted)}
-.me .actions{display:flex;gap:8px}
-.me .actions button{flex:1;min-width:0;min-height:52px;font-size:16px;font-weight:800}
-.me .err{text-align:center}
-
-/* Ventanas */
+/* ---------- Ventanas ---------- */
+.pj-menurow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:700}
 .res{display:flex;flex-direction:column;gap:6px}
 .resrow{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:15px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--line);padding-bottom:6px}
 .resrow.win b{color:var(--accent)}
 .log{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
 .rules p{margin:6px 0;font-size:14px;line-height:1.45}
+
+/* ---------- Acostado: tableta, computadora, tele ---------- */
+@media (min-width:760px) and (min-aspect-ratio:5/4){
+  .game.piojos{max-width:1280px;overflow:hidden}
+  .pj-main{flex:1;flex-direction:row;align-items:stretch;gap:16px}
+  .pj-play{flex:1.3;min-width:0;min-height:0}
+  .piojos .pj-tray{flex:1;height:auto;min-height:300px}
+  .pj-sheet{flex:1;min-width:320px;max-width:480px;overflow:auto;padding-top:8px}
+  .pj-pot b{font-size:52px}
+}
+.game.piojos.tv{max-width:none;padding:1.2vh 2vw}
+.piojos.tv .gtitle{font-size:clamp(22px,2.6vw,40px)}
+.piojos.tv .rulesbtn{display:none}
+.piojos.tv .pj-score{font-size:clamp(14px,1.5vw,26px)}
+.piojos.tv .pj-score th,.piojos.tv .pj-score td{height:clamp(38px,6vh,70px)}
+.piojos.tv .pj-score .sc b{font-size:clamp(19px,2.2vw,38px)}
+.piojos.tv .pj-dock{min-height:0}
+
+@media (prefers-reduced-motion:reduce){ .piojos .pj-tray.shudder{animation:none} }

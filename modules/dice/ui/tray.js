@@ -1,22 +1,30 @@
 // La bandeja: el paño donde ruedan los dados y la repisa de abajo donde se apartan. Se arma una vez y vive toda la
-// partida, para que las animaciones no se corten cuando la mesa se redibuja.
+// partida, para que las animaciones no se corten cuando la mesa se redibuja. Salió de Yatzi; la usan Yatzi y Piojos.
+//
+// Los valores de los dados son lugares del cubo (1–6); qué se pinta en cada uno lo da `faces` (pips por omisión).
+// sound: { impact(fuerza), rattle(fuerza) } (createDiceSounds, o uno que calle según el juego).
 //
 // - roll(): los dados que no están apartados entran volando desde abajo (o desde la mano, si venían agitándose),
 //   rebotan dos veces girando y se quedan con su cara. Cada rebote suena (sound.impact) en el momento justo.
 // - rattle(): mientras se agita el teléfono (o se deja apretado el botón), los dados se juntan y castañetean.
-// - place(): acomoda sin animar volar: apartados en la repisa, los demás donde cayeron.
-import { dieHTML, SHOW, cubeTransform } from "./dice.js";
+// - place(): acomoda sin animar volar: apartados en la repisa, los demás donde cayeron (o apagados, con `dim`).
+//
+// Opciones de place() y roll(): slot[i] (en qué hueco de la repisa va el dado i; por omisión el i) y, en place(),
+// dim[i] (el dado se ve apagado: no sirvió).
+import { SHOW, pickSpots } from "../index.js";
+import { dieHTML, pipFace, cubeTransform } from "./dice.js";
 
-const rand = (a, b) => a + Math.random() * (b - a);
+const rand = (a, b) => a + Math.random() * (b - a); // solo para animar
 const pick = (xs) => xs[Math.floor(Math.random() * xs.length)];
 
-export function createTray(host, sound) {
-  host.innerHTML = `<div class="yz-felt" id="felt"><div class="yz-glow"></div>
-      <div class="yz-dice">${[0, 1, 2, 3, 4].map(dieHTML).join("")}</div>
-      <div class="yz-burst" id="burst" aria-live="polite"></div>
+export function createTray(host, sound, { faces = pipFace } = {}) {
+  host.classList.add("dz-tray");
+  host.innerHTML = `<div class="dz-felt"><div class="dz-glow"></div>
+      <div class="dz-dice">${[0, 1, 2, 3, 4].map((i) => dieHTML(i, faces)).join("")}</div>
+      <div class="dz-burst" aria-live="polite"></div>
     </div>
-    <div class="yz-rack" aria-hidden="true">${[0, 1, 2, 3, 4].map((i) => `<span class="slot s${i}"></span>`).join("")}</div>`;
-  const dice = [...host.querySelectorAll(".yz-die")];
+    <div class="dz-rack" aria-hidden="true">${[0, 1, 2, 3, 4].map((i) => `<span class="slot s${i}"></span>`).join("")}</div>`;
+  const dice = [...host.querySelectorAll(".dz-die")];
   const st = dice.map(() => ({ x: 0, y: 0, rz: 0, rx: 0, ry: 0, v: 1, held: false }));
   let geo = null, rattling = null, anims = [], timers = [], onTap = null, busy = false;
 
@@ -26,8 +34,8 @@ export function createTray(host, sound) {
     const d = Math.round(Math.max(30, Math.min((r0.width - 20) / 6.2, (r0.height - 28) / 4.4, 96)));
     if (host.style.getPropertyValue("--d") !== `${d}px`) host.style.setProperty("--d", `${d}px`);
     const r = host.getBoundingClientRect();
-    const felt = host.querySelector(".yz-felt").getBoundingClientRect();
-    const rack = host.querySelector(".yz-rack").getBoundingClientRect();
+    const felt = host.querySelector(".dz-felt").getBoundingClientRect();
+    const rack = host.querySelector(".dz-rack").getBoundingClientRect();
     geo = {
       d, w: r.width, h: r.height,
       // Zona libre del paño (relativa al host) y la repisa
@@ -39,25 +47,12 @@ export function createTray(host, sound) {
   const slotOf = (i) => ({ x: geo.rx0 + (geo.rw * (i + 0.5)) / 5 - geo.d / 2, y: geo.ry - geo.d / 2 });
 
   // Lugares sin encimarse en el paño para los dados que caen
-  function spots(n) {
-    const out = [], m = geo.d * 0.35, min = geo.d * 1.32;
-    for (let k = 0; k < n; k++) {
-      let best = null;
-      for (let t = 0; t < 60; t++) {
-        const p = { x: geo.fx + rand(m, geo.fw - geo.d - m), y: geo.fy + rand(m, geo.fh - geo.d - m) };
-        const dist = Math.min(Infinity, ...out.map((q) => Math.hypot(q.x - p.x, q.y - p.y)));
-        if (dist >= min) { best = p; break; }
-        if (!best || dist > best.dist) best = { ...p, dist };
-      }
-      out.push(best);
-    }
-    return out;
-  }
+  const spots = (n) => pickSpots(n, { x: geo.fx, y: geo.fy, w: geo.fw, h: geo.fh }, geo.d);
 
   function paint(i) {
     const s = st[i], el = dice[i];
     el.style.transform = `translate(${s.x}px, ${s.y}px) rotate(${s.held ? 0 : s.rz}deg)`;
-    el.querySelector(".yz-cube").style.transform = cubeTransform(s.rx, s.ry);
+    el.querySelector(".dz-cube").style.transform = cubeTransform(s.rx, s.ry);
     el.classList.toggle("held", s.held);
     el.dataset.v = s.v;
   }
@@ -72,7 +67,7 @@ export function createTray(host, sound) {
   }
 
   // Coloca sin volar. held[i]: si va en la repisa. idle: los dados de antes del primer tiro, alineados y apagados.
-  function place(values, held, { idle = false, smooth = true } = {}) {
+  function place(values, held, { idle = false, smooth = true, slot = null, dim = null } = {}) {
     if (busy) return;
     measure();
     const row = (i) => ({ x: geo.fx + (geo.fw * (i + 0.5)) / 5 - geo.d / 2, y: geo.fy + geo.fh * 0.5 - geo.d / 2 });
@@ -80,10 +75,11 @@ export function createTray(host, sound) {
       const s = st[i];
       el.classList.toggle("smooth", smooth);
       el.classList.toggle("idle", idle);
+      el.classList.toggle("dim", !!(dim && dim[i]) && !held[i]);
       faceTo(s, values[i]);
       const wasHeld = s.held;
       s.held = !!held[i] && !idle;
-      if (s.held) Object.assign(s, slotOf(i));
+      if (s.held) Object.assign(s, slotOf(slot ? slot[i] : i));
       else if (idle) { Object.assign(s, row(i)); s.rz = 0; }
       else if (wasHeld || !s.placed) { const [p] = spots(1); Object.assign(s, p); s.rz = rand(-20, 20); }
       // Si quedó fuera del paño (cambió el tamaño), se regresa
@@ -95,7 +91,7 @@ export function createTray(host, sound) {
 
   // El tiro: los dados no apartados vuelan a su lugar. power (0–1) lo hace más rápido y con más vueltas.
   // Regresa la duración en ms.
-  function roll(values, held, { power = 0.5, onDone = null } = {}) {
+  function roll(values, held, { power = 0.5, onDone = null, slot = null } = {}) {
     stopAll();
     measure();
     busy = true;
@@ -103,9 +99,9 @@ export function createTray(host, sound) {
     const dest = spots(free.length);
     const fromHand = !!rattling || dice.some((el) => el.classList.contains("shaking"));
     const dur = Math.round(1250 - power * 300);
-    dice.forEach((el, i) => { el.classList.remove("idle", "shaking"); el.classList.add("smooth"); });
+    dice.forEach((el) => { el.classList.remove("idle", "shaking", "dim"); el.classList.add("smooth"); });
     // Los apartados a la repisa (con transición)
-    dice.forEach((el, i) => { if (held[i]) { const s = st[i]; s.held = true; faceTo(s, values[i]); Object.assign(s, slotOf(i)); paint(i); } });
+    dice.forEach((el, i) => { if (held[i]) { const s = st[i]; s.held = true; faceTo(s, values[i]); Object.assign(s, slotOf(slot ? slot[i] : i)); paint(i); } });
     free.forEach((i, k) => {
       const el = dice[i], s = st[i], p = dest[k];
       el.classList.remove("smooth");
@@ -128,7 +124,7 @@ export function createTray(host, sound) {
         { transform: `translate(${b2.x}px, ${b2.y}px) rotate(${mid(rz0, s.rz, 0.93)}deg)`, offset: 0.7, easing: "ease-out" },
         { transform: `translate(${p.x}px, ${p.y}px) rotate(${s.rz}deg)`, offset: 1 },
       ], opts));
-      anims.push(el.querySelector(".yz-lift").animate([
+      anims.push(el.querySelector(".dz-lift").animate([
         { transform: "scale(1.55) translateY(-8%)", offset: 0, easing: "ease-in" },
         { transform: "scale(1)", offset: 0.42, easing: "ease-out" },
         { transform: "scale(1.16) translateY(-4%)", offset: 0.55, easing: "ease-in" },
@@ -137,14 +133,14 @@ export function createTray(host, sound) {
         { transform: "scale(1)", offset: 0.88 },
         { transform: "scale(1)", offset: 1 },
       ], opts));
-      anims.push(el.querySelector(".yz-shadow").animate([
+      anims.push(el.querySelector(".dz-shadow").animate([
         { transform: "translate(18%, 30%) scale(.7)", opacity: 0.25, offset: 0 },
         { transform: "translate(5%, 8%) scale(1)", opacity: 0.6, offset: 0.42 },
         { transform: "translate(9%, 14%) scale(.9)", opacity: 0.45, offset: 0.55 },
         { transform: "translate(5%, 8%) scale(1)", opacity: 0.6, offset: 0.7 },
         { transform: "translate(5%, 8%) scale(1)", opacity: 0.6, offset: 1 },
       ], opts));
-      anims.push(el.querySelector(".yz-cube").animate([
+      anims.push(el.querySelector(".dz-cube").animate([
         { transform: cubeTransform(r0.x, r0.y), offset: 0 },
         { transform: cubeTransform(mid(r0.x, fx, 0.7), mid(r0.y, fy, 0.7)), offset: 0.42 },
         { transform: cubeTransform(mid(r0.x, fx, 0.93), mid(r0.y, fy, 0.93)), offset: 0.7 },
@@ -190,26 +186,26 @@ export function createTray(host, sound) {
     };
     rattling = { raf: requestAnimationFrame(tick), setPower(p) { power = Math.max(0.2, Math.min(1, p)); } };
   }
-  function stopRattle(putBack = true, held = []) {
+  function stopRattle(putBack = true, held = [], opts = {}) {
     if (!rattling) return;
     cancelAnimationFrame(rattling.raf);
     rattling = null;
-    if (putBack) { dice.forEach((el) => el.classList.remove("shaking")); place(st.map((s) => s.v), held, { smooth: true }); }
+    if (putBack) { dice.forEach((el) => el.classList.remove("shaking")); place(st.map((s) => s.v), held, { smooth: true, ...opts }); }
   }
 
   host.addEventListener("click", (e) => {
-    const d = e.target.closest(".yz-die");
+    const d = e.target.closest(".dz-die");
     if (d && onTap && !busy) onTap(Number(d.dataset.die));
   });
 
   // Destello de una combinación sobre el paño
   function burst(html, cls = "") {
-    const b = host.querySelector("#burst");
-    b.className = `yz-burst show ${cls}`;
+    const b = host.querySelector(".dz-burst");
+    b.className = `dz-burst show ${cls}`;
     b.innerHTML = html;
     b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";
     clearTimeout(b._t);
-    b._t = setTimeout(() => { b.className = "yz-burst"; }, 1900);
+    b._t = setTimeout(() => { b.className = "dz-burst"; }, 1900);
   }
   // Brillo en los dados que forman la combinación
   function glow(idx) {

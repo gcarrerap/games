@@ -3,7 +3,7 @@
 // anotar. Lo anotado va "en pluma".
 import { UPPER, LOWER, LABELS, HINTS, RULES, options, upperSum, upperBonusOf, total, nameOf } from "../engine/index.js";
 import { esc } from "../../../platform/ui/dom.js";
-import { miniDie } from "./dice.js";
+import { miniDie } from "../../../modules/dice/ui.js";
 
 const short = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 

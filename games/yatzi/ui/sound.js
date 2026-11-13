@@ -3,6 +3,7 @@
 // el "ni modo" al tachar, el bono y la fanfarria del Yatzi. La voz del locutor son mp3 (sfx/voz-*.mp3, hechos con Fish
 // Audio) y suenan con modules/sfx. Un solo botón (🔔) calla todo.
 import { createSfx, armOnGesture, createSynth } from "../../../modules/sfx/ui.js";
+import { createDiceSounds } from "../../../modules/dice/ui.js";
 
 export const VOICES = ["inicio", "yatzi", "yatzi-extra", "escalera-grande", "escalera-chica", "full", "poker", "tercia", "bono", "ultimo-tiro", "tacha", "tu-turno", "siguiente", "gana", "record", "fin", "empate"];
 const CLIPS = Object.fromEntries(VOICES.map((k) => [k, new URL(`../sfx/voz-${k}.mp3`, import.meta.url).href]));
@@ -18,32 +19,12 @@ export function createSound(prefs) {
   const T = () => syn.ac.currentTime;
   let lastVoiceAt = 0;
 
-  // Un golpe de dado contra madera: un "toc" de ruido filtrado más un cuerpo grave
-  function knock(t, str, pitch = 1) {
-    const bp = filt("bandpass", (1700 + Math.random() * 1600) * pitch, 2.5), g = out(0.15); bp.connect(g);
-    env(g, t, 0.55 * str, 0.001, 0.05 + Math.random() * 0.03); noise(t, 0.08, bp);
-    const g2 = out(0.1); env(g2, t, 0.35 * str, 0.002, 0.07); osc("sine", (170 + Math.random() * 60) * pitch, t, 0.09, g2, 90);
-    // Hueso contra hueso: un clic agudo
-    const hp = filt("highpass", 4200), g3 = out(0); hp.connect(g3); env(g3, t, 0.18 * str, 0.0005, 0.015); noise(t, 0.02, hp);
-  }
+  const dice = createDiceSounds(syn); // castañeteo, botes y apartar (modules/dice)
 
   const S = {
-    // Una "pasada" de castañeteo mientras se agita: 2 o 3 dados chocan dentro de la mano
-    rattle(power = 0.5) {
-      if (!on()) return; const t = T();
-      const n = 2 + Math.floor(Math.random() * 3);
-      for (let k = 0; k < n; k++) {
-        const tt = t + Math.random() * 0.05, bp = filt("bandpass", 2600 + Math.random() * 2600, 4), g = out(0.05); bp.connect(g);
-        env(g, tt, (0.18 + power * 0.25) * (0.6 + Math.random() * 0.4), 0.0008, 0.018); noise(tt, 0.03, bp);
-      }
-      if (Math.random() < 0.35) { const g = out(0); env(g, t, 0.12 * power, 0.003, 0.06); osc("sine", 140 + Math.random() * 50, t, 0.08, g, 80); }
-    },
-    impact(str = 1) { if (on()) knock(T(), Math.min(1, str)); },
-    hold(on_ = true) {
-      if (!on()) return; const t = T();
-      knock(t, 0.35, on_ ? 1.3 : 0.8);
-      const g = out(0.1); env(g, t, 0.12, 0.004, 0.12); osc("triangle", on_ ? 880 : 587, t, 0.14, g, on_ ? 1320 : 440);
-    },
+    rattle: dice.rattle,
+    impact: dice.impact,
+    hold: dice.hold,
     // Campanitas al anotar: más notas cuanto más vale (hasta 6)
     score(pts) {
       if (!on()) return; const t = T();

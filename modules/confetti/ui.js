@@ -1,4 +1,6 @@
-// Confeti en un canvas encima de toda la mesa (no recibe toques). Se usa para el Yatzi, el bono y el final.
+// Confeti en un canvas encima de toda la mesa (no recibe toques): estallidos desde un punto y lluvia desde arriba.
+// Salió de Yatzi (el Yatzi, el bono y el final); lo usa también Piojos. El juego pone el <canvas> (posición fija, sin
+// toques) y llama destroy() al desmontar.
 const COLORS = ["#e2b04a", "#f4d27a", "#d9483b", "#2f9e7a", "#3b7dd8", "#f6f1e3", "#b05cc8"];
 
 export function createConfetti(canvas) {

@@ -3,7 +3,7 @@ consola:
   1. Práctica: portal → lobby del dominó → práctica → una mano completa → "atrás" regresa al lobby.
   2. La Pata en práctica: varios turnos (robar y descartar), el registro y el consejo; los estilos del dominó se
      quitan al cambiar de juego.
-  3. Piojos en práctica: tirar y plantarse varios turnos contra la compu; solo sus estilos quedan cargados.
+  3. Piojos en práctica: tirar (dados 3D) y plantarse varios turnos contra la compu; solo sus estilos quedan cargados.
   3-. Memoria Veloz en práctica (tiempo real): el lobby no ofrece reloj; 48 cartas con 3 jugadores; abrir cartas
      mientras la compu juega a la vez (se ven sus cartas abiertas con su color); el tablero cabe sin scroll también
      en un teléfono chaparro; las reglas en el menú.
@@ -133,12 +133,13 @@ with sync_playwright() as p:
     for _ in range(300):
         if piojos_banks >= 3 or page.query_selector(".sheet #again"): break
         # Tu turno: tira; si ya llevas 30 o más, plántate
-        bank = page.query_selector("#bank")
-        pts = page.inner_text(".turnpts b") if page.query_selector(".turnpts b") else "0"
-        if bank and int(pts) >= 30:
+        # (los botones se apagan mientras ruedan los dados y los piojos van a la repisa)
+        bank = page.query_selector("#bank:not([disabled])")
+        pts = page.inner_text(".pj-pot b") if page.query_selector(".pj-pot.show b") else "0"
+        if bank and int(pts or 0) >= 30:
             if tap("#bank"): piojos_banks += 1
-        elif tap("#roll"): piojos_rolls += 1
-        page.wait_for_timeout(300)
+        elif page.query_selector("#roll:not([disabled])") and tap("#roll"): piojos_rolls += 1
+        page.wait_for_timeout(400)
     shot("10-piojos-turnos")
 
     # ---------- Memoria Veloz en práctica (tiempo real) ----------
@@ -505,13 +506,13 @@ with sync_playwright() as p:
     page.evaluate("location.hash = '#/yatzi'"); page.wait_for_selector("#practice")
     page.click("[data-mode='2']")
     page.select_option("select[data-bot='0']", "persona"); page.wait_for_timeout(150)
-    page.click("#practice"); page.wait_for_selector(".game.yatzi .yz-die", timeout=10000); page.wait_for_timeout(300)
+    page.click("#practice"); page.wait_for_selector(".game.yatzi .dz-die", timeout=10000); page.wait_for_timeout(300)
     tap("#roll"); page.wait_for_timeout(1900); shot("17g-yatzi-tiro")
     yz_rolled = page.evaluate("document.querySelectorAll('.pips i.used').length") == 1
-    tap(".yz-die[data-die='0']"); tap(".yz-die[data-die='3']"); page.wait_for_timeout(500)
-    yz_held = len(page.query_selector_all(".yz-die.held")) == 2
+    tap(".dz-die[data-die='0']"); tap(".dz-die[data-die='3']"); page.wait_for_timeout(500)
+    yz_held = len(page.query_selector_all(".dz-die.held")) == 2
     tap("#roll"); page.wait_for_timeout(1900)
-    yz_kept = len(page.query_selector_all(".yz-die.held")) == 2
+    yz_kept = len(page.query_selector_all(".dz-die.held")) == 2
     tap(".yz-card button[data-cat]"); page.wait_for_timeout(200)
     yz_pick = bool(page.query_selector("#score"))
     tap("#score"); page.wait_for_timeout(1200); shot("17h-yatzi-anotado")
@@ -744,7 +745,7 @@ if cu_spoons0 != 3: problems.append(f"Cucharas: {cu_spoons0} cucharas al empezar
 if cu_swaps < 2: problems.append(f"Cucharas: solo se pudieron cambiar {cu_swaps} cartas")
 if not cu_round: problems.append("Cucharas: no terminó ninguna ronda (o no se vieron las manos)")
 if not cu_rules: problems.append("Cucharas: el menú no tiene las reglas")
-if piojos_styles != ["piojos"]: problems.append(f"Piojos: estilos cargados {piojos_styles}")
+if set(piojos_styles) != {"piojos"}: problems.append(f"Piojos: estilos cargados {piojos_styles}")
 if panal_places < 5: problems.append(f"Panal: solo se pusieron {panal_places} bichos")
 if panal_moves < 1: problems.append("Panal: no se pudo mover ningún bicho")
 if not panal_rules: problems.append("Panal: el botón Reglas no mostró las reglas")

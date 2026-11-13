@@ -18,8 +18,8 @@ const timerOn = (st) => st.config.timer !== false;
 const bots = {
   profiles: Object.entries(STYLES).map(([id, s]) => ({ id, name: s.name })),
   decide: (v, seat, profile, { rnd }) => decide(v, seat, profile, rnd),
-  // Una pausa para que se alcance a ver el tiro
-  thinkMs: (v) => (v.phase === "roll" ? 900 : 1300),
+  // Espera a que se vea lo anterior: los dados en el aire (~1.3 s), los piojos yendo a la repisa, o el "sin piojos"
+  thinkMs: (v) => (v.phase === "choose" ? 2600 : !v.last ? 1000 : v.last.kind === "bust" ? 2600 : 1700),
   heavy: false,
 };
 
