@@ -26,6 +26,8 @@ consola:
   3g. Vikingos en práctica: el selector de retos con sus dibujitos; el reto 1: tocar una pieza trabada (aviso),
      girar con ↻ y ↺, deshacer y el consejo con «Hacerlo» hasta resolverlo; la ventana del resultado y «Siguiente
      reto» abre el reto 2 solo; el reto marcado como resuelto en el selector.
+  3h. Yatzi en el mismo aparato: "Persona" en el asiento 2; tirar, apartar dos dados (se van a la repisa), tirar
+     otra vez, escoger una casilla en la tarjeta y anotar; el turno pasa a la otra persona; las reglas.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
      el consejo y abrir el menú. En línea: la regla escogida se ve en la pantalla de asientos.
   5. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
@@ -499,6 +501,27 @@ with sync_playwright() as p:
     page.set_viewport_size({"width": 390, "height": 844}); page.wait_for_timeout(200)
     kh_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
 
+    # ---------- Yatzi en el mismo aparato ----------
+    page.evaluate("location.hash = '#/yatzi'"); page.wait_for_selector("#practice")
+    page.click("[data-mode='2']")
+    page.select_option("select[data-bot='0']", "persona"); page.wait_for_timeout(150)
+    page.click("#practice"); page.wait_for_selector(".game.yatzi .yz-die", timeout=10000); page.wait_for_timeout(300)
+    tap("#roll"); page.wait_for_timeout(1900); shot("17g-yatzi-tiro")
+    yz_rolled = page.evaluate("document.querySelectorAll('.pips i.used').length") == 1
+    tap(".yz-die[data-die='0']"); tap(".yz-die[data-die='3']"); page.wait_for_timeout(500)
+    yz_held = len(page.query_selector_all(".yz-die.held")) == 2
+    tap("#roll"); page.wait_for_timeout(1900)
+    yz_kept = len(page.query_selector_all(".yz-die.held")) == 2
+    tap(".yz-card button[data-cat]"); page.wait_for_timeout(200)
+    yz_pick = bool(page.query_selector("#score"))
+    tap("#score"); page.wait_for_timeout(1200); shot("17h-yatzi-anotado")
+    yz_scored = len(page.query_selector_all(".yz-card .ink b")) >= 1
+    yz_next = "Jugador 2" in page.inner_text("#dock .status")
+    tap("#rules"); page.wait_for_timeout(200)
+    yz_rules = "Escalera grande" in page.inner_text(".sheet[data-sheet='rules']")
+    tap("#rulesclose"); page.wait_for_timeout(200)
+    yz_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+
     # ---------- Escribir tu nombre sin que se cierre el teclado ----------
     kb = browser.new_page(viewport={"width": 390, "height": 844})
     kb.on("pageerror", lambda e: errors.append(f"pageerror (teclado): {e}"))
@@ -780,6 +803,11 @@ if not vk_done: problems.append(f"Vikingos: el consejo no resolvió el reto 1 en
 if not vk_next: problems.append("Vikingos: «Siguiente reto» no abrió el reto 2")
 if not vk_marked: problems.append("Vikingos: el reto 1 no quedó marcado como resuelto")
 if set(vk_styles) != {"vikingos"}: problems.append(f"Vikingos: estilos cargados {vk_styles}")
+if not (yz_rolled and yz_held and yz_kept): problems.append(f"Yatzi: tirar y apartar (tiro {yz_rolled}, apartados {yz_held}, se quedan {yz_kept})")
+if not (yz_pick and yz_scored): problems.append(f"Yatzi: escoger casilla y anotar ({yz_pick}, {yz_scored})")
+if not yz_next: problems.append("Yatzi: el turno no pasó a la otra persona")
+if not yz_rules: problems.append("Yatzi: el botón Reglas no mostró las reglas")
+if set(yz_styles) != {"yatzi"}: problems.append(f"Yatzi: estilos cargados {yz_styles}")
 if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not tv_hint: problems.append("Skull con tele: la pantalla de asientos no explica cómo abrir la tele")

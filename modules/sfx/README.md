@@ -20,6 +20,7 @@ y el volumen se recuerdan en el aparato con su propia llave (`"sfx"`), sin tocar
 | `sfxButton(s)`, `sfxControls(s)` | El botón 🔔/🔕 y el deslizador de volumen (0–100) con su botón. Vacíos si no hay efectos. |
 | `wireSfx(root, s, { setDragging? })` | Conecta los controles dibujados dentro de `root`. Con `ctx.setDragging`, la mesa no se redibuja mientras el dedo mueve el deslizador. |
 | `SFX_STYLES` | La hoja de estilos de los controles. El juego la agrega a su `loadStyles`. |
+| `createSynth(sfx, { reverb? })` | Sonido sintetizado al momento (sin archivos) que respeta el silencio y el volumen de `sfx`: crea el `AudioContext` con el primer toque, compresor y reverberación opcional (`{ secs, decay, wet }`). Da `on()` (si puede sonar ahora), `ac`, `out(send)`, `env(gn, t, peak, a, d)`, `osc(type, f, t, dur, dest, f2?)`, `noise(t, dur, dest)`, `filt(type, f, q)`, `destroy()`. Cada juego arma sus efectos con estas piezas. |
 
 **Cosas del navegador:**
 
@@ -35,4 +36,4 @@ y el volumen se recuerdan en el aparato con su propia llave (`"sfx"`), sin tocar
 y `destroy()` al desmontar. Qué llave suena en cada jugada lo decide el juego, y solo cuando pasa algo nuevo (no al
 redibujar). Con la tele como tablero, el juego elige en qué aparato suena cada cosa para que no se oiga doble.
 
-**Lo usa:** la Carrera de Chihuahuas.
+**Lo usa:** la Carrera de Chihuahuas; el Láser y Yatzi (también `createSynth`).
