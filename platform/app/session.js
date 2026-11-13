@@ -21,6 +21,9 @@ import { createCallController, createCallSession } from "../../modules/call/inde
 
 export const PRACTICE_CODE = "PRÁCTICA";
 export const BOT_NAMES = ["Lupe", "Toño", "Chuy", "Meche", "Pancho", "Licha", "Beto"];
+// En la práctica de un juego sin nada oculto (game.hotseat), un asiento puede ser otra persona en este mismo aparato
+// en lugar de la compu: se juega por turnos pasándose el aparato.
+export const LOCAL_PLAYER = "persona";
 export const BACKUP_MS = 4000; // en línea, los teléfonos de respaldo esperan esto antes de mover a la compu
 const CODE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 const MODES_KEPT = 30; // cuántas mesas recuerda este aparato con su modo
@@ -69,7 +72,15 @@ export function createSession(deps) {
   const fail = (e) => set({ err: message(e) });
   const isGoogle = () => !!(s.user && !s.user.isAnonymous);
   // El asiento de este aparato en la mesa abierta, juegue o no ahora
-  const seated = () => (s.practice ? 0 : s.table ? seatOf(s.table, s.me.id) : -1);
+  const seated = () => (s.practice ? localSeat() : s.table ? seatOf(s.table, s.me.id) : -1);
+  // En práctica, el asiento que juega en este aparato: el 0, o el de la persona a la que le toca si hay varias
+  // personas en el mismo aparato (game.hotseat). Mientras le toca a la compu, o fuera de partida, el 0.
+  function localSeat() {
+    const t = s.table, g = s.game;
+    if (!t || !g || t.status !== "playing" || !t.seats.some((x, i) => i > 0 && x && !x.bot)) return 0;
+    const now = g.currentSeats(t.state).find((i) => t.seats[i] && !t.seats[i].bot);
+    return now ?? 0;
+  }
   // El modo que queda: el pedido si se puede (sin asiento, solo Monitor; en práctica, solo Teléfono)
   const mode = () => deviceMode({ requested: s.want, seated: seated() >= 0, practice: s.practice });
   const modes = () => deviceModes({ seated: seated() >= 0, practice: s.practice });
@@ -190,7 +201,8 @@ export function createSession(deps) {
     const mode = game.modes.find((m) => m.id === saved.mode) || game.modes[game.modes.length - 1];
     const profiles = game.bots ? game.bots.profiles.map((x) => x.id) : [];
     const def = profiles.includes(saved.defaultBot) ? saved.defaultBot : profiles[Math.min(1, profiles.length - 1)];
-    const bots = Array.from({ length: 8 }, (_, i) => (profiles.includes(saved.bots && saved.bots[i]) ? saved.bots[i] : def));
+    const okSeat = (x) => profiles.includes(x) || (game.hotseat && x === LOCAL_PLAYER);
+    const bots = Array.from({ length: 8 }, (_, i) => (okSeat(saved.bots && saved.bots[i]) ? saved.bots[i] : def));
     return { mode: mode.id, timer: saved.timer !== false, bots, options: optionValues(game, saved.options || {}) };
   }
   function savePractice(patch) {
@@ -208,8 +220,13 @@ export function createSession(deps) {
     try {
       closeTable(); stopList();
       let t = newTable(game, { code: PRACTICE_CODE, mode: settings.mode, options: optionsFor(game, settings), host: s.me.id, seed: newSeed(), now: now(), version });
-      t = sit(t, 0, { id: s.me.id, name: s.me.name || "Tú" });
-      for (let i = 1; i < t.seats.length; i++) t = addBot(t, i, { profile: settings.bots[i - 1], name: BOT_NAMES[(i - 1) % BOT_NAMES.length] });
+      const local = (i) => !!game.hotseat && settings.bots[i - 1] === LOCAL_PLAYER;
+      const people = t.seats.some((_, i) => i > 0 && local(i));
+      t = sit(t, 0, { id: s.me.id, name: s.me.name || (people ? "Jugador 1" : "Tú") });
+      for (let i = 1; i < t.seats.length; i++) {
+        if (local(i)) t = sit(t, i, { id: `${s.me.id}~${i}`, name: `Jugador ${i + 1}` });
+        else t = addBot(t, i, { profile: settings.bots[i - 1], name: BOT_NAMES[(i - 1) % BOT_NAMES.length] });
+      }
       t = start(game, t, now());
       set({ screen: "table", table: t, practice: true, code: null, want: null, err: "", advice: null });
       afterChange();

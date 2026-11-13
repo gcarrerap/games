@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <!-- Portada 16:9 para la espera del Monitor: templo de noche, pirámide y el láser que rebota -->
+  <defs>
+    <radialGradient id="sky" cx=".5" cy=".15" r=".9"><stop offset="0" stop-color="#3a2a12"/><stop offset=".55" stop-color="#140f09"/><stop offset="1" stop-color="#070605"/></radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".45" stop-color="#e2b041"/><stop offset="1" stop-color="#6e4a10"/></linearGradient>
+    <linearGradient id="pyrL" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a7a"/><stop offset="1" stop-color="#8f1512"/></linearGradient>
+    <linearGradient id="pyrR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a0c0a"/><stop offset="1" stop-color="#2a0505"/></linearGradient>
+    <linearGradient id="mir" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4fbff"/><stop offset=".5" stop-color="#9fb4c6"/><stop offset="1" stop-color="#ffffff"/></linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <g fill="#e2b041" opacity=".06" font-family="serif" font-size="64">
+    <text x="60" y="140">𓂀 𓋹 𓆣 𓁹 𓃠 𓂀 𓋹 𓆣</text><text x="900" y="220">𓋹 𓆣 𓁹 𓂀 𓃠 𓋹</text><text x="120" y="780">𓆣 𓂀 𓋹 𓁹 𓃠 𓆣 𓂀</text>
+  </g>
+  <path d="M0 760 L1600 700 L1600 900 L0 900 Z" fill="#1c160e"/>
+  <g transform="translate(800 470)">
+    <path d="M0 -330 L360 230 L-360 230 Z" fill="url(#pyrL)"/>
+    <path d="M0 -330 L360 230 L120 230 Z" fill="url(#pyrR)"/>
+    <path d="M0 -330 L120 230 L-40 230 Z" fill="url(#mir)" opacity=".85"/>
+    <g stroke="#000" stroke-opacity=".25" stroke-width="5"><path d="M-90 -190 L90 -190"/><path d="M-180 -50 L180 -50"/><path d="M-270 90 L270 90"/></g>
+    <path d="M0 -330 L360 230 L-360 230 Z" fill="none" stroke="url(#gold)" stroke-width="8" stroke-linejoin="round"/>
+  </g>
+  <g stroke-linecap="round" fill="none">
+    <path d="M-20 300 L640 300 L860 620 L1620 620" stroke="#ff2b3d" stroke-width="40" opacity=".25" filter="url(#glow)"/>
+    <path d="M-20 300 L640 300 L860 620 L1620 620" stroke="#ff2b3d" stroke-width="12" opacity=".8"/>
+    <path d="M-20 300 L640 300 L860 620 L1620 620" stroke="#fff" stroke-width="4"/>
+  </g>
+  <circle cx="640" cy="300" r="34" fill="#fff" opacity=".85" filter="url(#glow)"/>
+  <circle cx="860" cy="620" r="30" fill="#ffd27a" opacity=".8" filter="url(#glow)"/>
+  <text x="800" y="128" text-anchor="middle" font-family="Georgia, serif" font-weight="900" font-size="120" fill="url(#gold)" letter-spacing="10">LÁSER</text>
+  <text x="800" y="186" text-anchor="middle" font-family="Georgia, serif" font-size="44" fill="#e2b041" letter-spacing="14" opacity=".9">DE LOS FARAONES</text>
+</svg>

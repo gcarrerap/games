@@ -237,3 +237,30 @@ test("tiempo real en práctica: la compu juega aunque tú toques sin parar, y te
   assert.equal(h.st.table.status, "over");
   assert.equal(h.timers.size, 0, "al terminar no queda nada programado");
 });
+
+test("en el mismo aparato (game.hotseat): una persona en lugar de la compu, y el aparato juega por quien le toca", async () => {
+  const nimLocal = { ...nim, hotseat: true };
+  const h = harness({ nim: nimLocal });
+  await h.a.openGame("nim");
+  h.a.startPractice({ mode: "normal", bots: ["persona"], timer: false });
+  const t = h.st.table;
+  assert.equal(t.seats[1].bot, undefined);
+  assert.equal(t.seats[0].name, "Jugador 1");
+  assert.equal(t.seats[1].name, "Jugador 2");
+  assert.equal(h.timers.size, 0, "no hay compu que programar");
+  // Juegan los dos desde este aparato, cada uno en su turno, hasta el final
+  for (let i = 0; i < 200 && h.st.table.status === "playing"; i++) {
+    const seat = h.st.game.currentSeats(h.st.table.state)[0];
+    assert.equal(h.a.mySeat(), seat);
+    await h.a.play(h.st.game.legalActions(h.st.table.state, seat)[0]);
+  }
+  assert.equal(h.st.table.status, "over");
+  assert.equal(h.timers.size, 0);
+  // Se recuerda la persona en ese asiento; sin hotseat no se acepta
+  assert.equal(h.a.practiceSettings().bots[0], "persona");
+  const h2 = harness({ nim });
+  await h2.a.openGame("nim");
+  h2.a.startPractice({ mode: "normal", bots: ["listo"] });
+  h2.a.savePractice({ bots: ["persona"] });
+  assert.notEqual(h2.a.practiceSettings().bots[0], "persona");
+});

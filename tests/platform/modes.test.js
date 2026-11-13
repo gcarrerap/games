@@ -24,7 +24,10 @@ test("los juegos con dibujo de Monitor propio tienen el botón del menú ahí ta
     const src = uiSource(g.id);
     if (!/display === "tv"|\bconst tv = display === "tv"/.test(src)) continue;
     // En su rama de Monitor está el botón del menú (antes no lo había: la tele nadie la toca)
-    const tvBranch = src.slice(src.search(/if \((tv|display === "tv")\) \{/));
-    assert.match(tvBranch.slice(0, 2500), /id="menu"/, `${g.id}: el Monitor no tiene botón de menú`);
+    // Si el juego no tiene rama aparte para la tele (la misma barra de arriba sirve para todos los modos), basta con
+    // que esa barra tenga el botón.
+    const at = src.search(/if \((tv|display === "tv")\) \{/);
+    const tvBranch = at >= 0 ? src.slice(at, at + 2500) : src;
+    assert.match(tvBranch, /id="menu"/, `${g.id}: el Monitor no tiene botón de menú`);
   }
 });

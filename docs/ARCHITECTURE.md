@@ -27,7 +27,7 @@ Este documento explica cómo se divide el sitio, qué comparte cada juego y qué
 |---|---|---|---|
 | **`platform/`** | La casa: lo que todo juego recibe sin pedirlo. | El sitio; los juegos solo a través del contrato y `ctx`. | Entrar, portal y lobby, mesas en línea, asientos, la compu en asientos libres, reloj de turno, limpieza, actualizaciones, estilos base. |
 | **`modules/<nombre>/`** | Una capacidad que un juego **escoge** usar. Independiente, con API pública. | Cualquier juego que la importe (y la plataforma si le sirve). | Azar con semilla, escoger con dudas, registro de lo que cada quien puede tener, simulaciones Monte Carlo, perfiles de la compu, notas, acomodar la mano. |
-| **`games/<id>/`** | Un juego. Cumple el contrato. | La plataforma, por medio de `games/registry.js`. | Dominó, La Pata, Piojos, Continental, La Viuda, Panal, Skull, Damas chinas. |
+| **`games/<id>/`** | Un juego. Cumple el contrato. | La plataforma, por medio de `games/registry.js`. | Dominó, La Pata, Piojos, Continental, La Viuda, Panal, Skull, Damas chinas, Láser. |
 
 **Plataforma o módulo:** si *todo* juego lo necesita para existir en el sitio, es plataforma; si un juego puede vivir sin eso, es módulo.
 
@@ -113,6 +113,8 @@ Qué hay hoy en myDomino y a dónde va.
 | Efectos de sonido: catálogo de clips, silencio y volumen propios (aparte de la música), varios a la vez, sin repetir el mismo demasiado seguido | (nuevo) Carrera de Chihuahuas (#69) | `modules/sfx` | ✅ de inmediato: no sabe nada del juego. Los clips y qué evento suena en cada aparato los pone cada juego |
 | Banco de imágenes: una imagen por llave con respaldo a un dibujo propio | (nuevo) Panal `assets/bank.js` + `ui/art.js`; Skull `assets/bank.js` + `ui/disc.js`; Carrera de Chihuahuas `assets/bank.js` + `ui/art.js` | se queda en cada juego | Revisado al llegar la carrera (tercer juego): lo común es solo un objeto `{ llave: { href, prompt, source } }` y una prueba de que los archivos existen. El respaldo es distinto en cada uno (SVG en `<g>`, SVG de disco, CSS y emoji), y la carrera pone además texturas como variables de CSS. Se extrae si un juego necesita algo más que el objeto (por ejemplo, tamaños para teléfono y tele) |
 | Casillas hexagonales: vecinos, colmena unida, puntos de corte | (nuevo) Panal `engine/hex.js` | se queda en Panal | Candidato si llega otro juego de tablero hexagonal |
+| Sonido sintetizado con Web Audio (osciladores, ruido, reverberación) que respeta el silencio y volumen de `modules/sfx` | (nuevo) Láser `ui/sound.js` | se queda en el Láser | Los sonidos son del láser (zumbido, rebotes, explosión). Si otro juego quiere sintetizar, lo común (contexto, envolvente, ruido, reverberación) se pasa a `modules/sfx` |
+| Efectos en canvas encima de un tablero SVG (rayo, chispas, explosión) | (nuevo) Láser `ui/fx.js` | se queda en el Láser | Candidato a módulo si otro juego quiere partículas |
 | Tutorial con lecciones jugables: posición armada, tarea, revisión y "Muéstrame" | (nuevo) Panal `ui/lessons.js`, `ui/tutorial.js`; Skull `ui/tutorial-script.js`, `ui/tutorial.js` | se queda en cada juego | Con los dos a la vista, lo común es poco: una ventana por pasos (paso *i* de *N*, puntos, Atrás/Siguiente, no avanzar hasta cumplir). El contenido es distinto: Panal hace jugar posiciones armadas con revisión de las reglas; Skull reproduce una ronda de ejemplo con `engine/` y hace preguntas de estrategia. Se extrae la ventana por pasos si un tercer juego la necesita o si las dos se empiezan a copiar |
 
 ## 4. El contrato de juego
@@ -159,6 +161,9 @@ export default {
   regla de compra del Continental.
 - **Acciones y estado son JSON simple** (`{ type: "play", tile: "6-4", side: "L" }`), sin clases ni `Map`. Viajan a Firestore, al Worker y a la grabación sin conversión.
 - **`currentSeats` devuelve una lista** para juegos donde varios actúan a la vez (salir en parejas en el dominó, votar en un juego estilo Dixit). Si varios bots pueden actuar, actúa primero el de menor `thinkMs`.
+- **En el mismo aparato** (`hotseat: true`, el Láser). Para juegos sin nada oculto: en la práctica, el lobby deja
+  poner **Persona (este aparato)** en lugar de la compu en cualquier asiento, y la sesión juega por la persona a la que
+  le toca (`ctx.seat` cambia con el turno). No se puede junto con `realtime`.
 - **Juegos en tiempo real** (`realtime: true`, Memoria Veloz). Sin turnos: `currentSeats` da todos los que pueden actuar,
   y la plataforma aplica cada jugada sobre el estado más reciente de la misma partida en lugar de descartarla porque
   otro se adelantó (solo se rechaza si ahí ya no se vale). Cada asiento de la compu tiene su propio temporizador
