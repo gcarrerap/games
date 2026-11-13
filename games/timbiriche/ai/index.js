@@ -5,7 +5,7 @@
 //     más corta.
 //   · Difícil: como la normal, y sin castigo en la mesa hace la "doble jugada" del final: de la última cadena que se
 //     lleva deja las dos últimas cajas para el otro, que así queda obligado a abrir la siguiente. Con castigo no lo
-//     hace (perdería su turno).
+//     hace (perdería su turno), ni con más de 2 jugadores (la doble jugada solo se piensa para dos).
 import { closingLines, safeLines, freeLines, greedyCapture, sidesOf, sidesDrawn, boxesOf } from "../engine/index.js";
 
 export const STYLES = {
@@ -65,7 +65,7 @@ export function decide(v, seat, profile = "normal", rnd = () => 0) {
   const style = STYLES[profile] || STYLES.normal;
   const close = closingLines(v);
   if (close.length) {
-    if (style.doubleDeal && !v.config.penalty) {
+    if (style.doubleDeal && !v.config.penalty && v.config.n === 2) {
       const dd = doubleDeal(v);
       if (dd) return { type: "line", line: dd };
     }
@@ -82,7 +82,7 @@ export function advise(v, seat) {
   if (v.phase !== "play" || v.turn !== seat) return null;
   const close = closingLines(v);
   if (close.length) {
-    if (!v.config.penalty) {
+    if (!v.config.penalty && v.config.n === 2) {
       const dd = doubleDeal(v);
       if (dd) return { action: { type: "line", line: dd }, why: "Deja las dos últimas cajas: el otro se las lleva y tiene que abrir la siguiente cadena." };
     }

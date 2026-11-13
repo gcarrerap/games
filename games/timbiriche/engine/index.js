@@ -1,4 +1,4 @@
-// Reglas del timbiriche (puntos y cajas) para 2. Funciones puras: estado entra, estado sale. No hay azar; la hora
+// Reglas del timbiriche (puntos y cajas) para 2 a 6 jugadores. Funciones puras: estado entra, estado sale. No hay azar; la hora
 // llega como `now`.
 //
 // El tablero es una rejilla de puntos. En tu turno trazas una raya entre dos puntos vecinos (horizontal o
@@ -6,44 +6,48 @@
 // vuelves a tirar; si no cierras ninguna, le toca al otro. Cuando ya no quedan rayas, gana quien tenga más cajas.
 //
 // Castigo (opción de la mesa, prendido por omisión): si podías cerrar una caja y trazaste una raya que no cierra
-// ninguna, pierdes tu siguiente turno: el otro tira dos veces seguidas (o más, si cierra cajas).
+// ninguna, pierdes tu siguiente turno: se te salta cuando te toque y tira el siguiente (con 2 jugadores, el otro tira
+// dos veces seguidas, o más si cierra cajas). El turno va en orden de asiento: 0, 1, 2…, y vuelve al 0.
 //
 // Rayas: "h:r:c" va del punto (r, c) al (r, c+1); "v:r:c" del (r, c) al (r+1, c). Con W×H cajas hay (H+1)·W
 // horizontales y H·(W+1) verticales. La caja (r, c) tiene arriba "h:r:c", abajo "h:r+1:c", a la izquierda "v:r:c" y
 // a la derecha "v:r:c+1".
 
 export const RULES = {
+  players: [2, 3, 4, 5, 6],
   sizes: [3, 4, 5, 6], // cajas por lado
   defaultSize: 4,
   secs: [10, 20, 30, 60], // segundos por raya cuando la mesa va con reloj
   defaultSecs: 20,
 };
 
-export const validConfig = (c) => c.n === 2 && RULES.sizes.includes(c.size) && RULES.secs.includes(c.secs);
+export const validConfig = (c) => RULES.players.includes(c.n) && RULES.sizes.includes(c.size) && RULES.secs.includes(c.secs);
 
-// config: { n: 2, size, secs, penalty: true|false, timer: true|false }
+// config: { n: 2..6, size, secs, penalty: true|false, timer: true|false }
 export function newGame(config, names = [], now = 0) {
   const size = config.size ?? RULES.defaultSize;
-  const c = { n: 2, size, secs: config.secs ?? RULES.defaultSecs, penalty: config.penalty !== false, timer: config.timer !== false };
+  const n = config.n ?? 2;
+  const c = { n, size, secs: config.secs ?? RULES.defaultSecs, penalty: config.penalty !== false, timer: config.timer !== false };
   if (!validConfig(c)) throw new Error("Configuración de timbiriche no válida");
   const W = size, H = size;
   return {
     v: 1,
     config: c,
-    names: [0, 1].map((i) => names[i] || `Jugador ${i + 1}`),
+    names: Array.from({ length: n }, (_, i) => names[i] || `Jugador ${i + 1}`),
     w: W,
     h: H,
     lines: {}, // raya trazada → asiento que la trazó
     boxes: Array(W * H).fill(-1), // de quién es cada caja (-1 = abierta), en orden r·W + c
-    scores: [0, 0],
+    scores: Array(n).fill(0),
     turn: 0,
-    skip: [false, false], // castigo pendiente: ese asiento pierde su siguiente turno
-    penalties: [0, 0], // cuántas veces se castigó a cada quien
+    skip: Array(n).fill(false), // castigo pendiente: ese asiento pierde su siguiente turno
+    penalties: Array(n).fill(0), // cuántas veces se castigó a cada quien
     phase: "play", // "play" | "over"
-    last: null, // la última raya: { seat, line, closed: [cajas], penalized, skipped: asiento que perdió turno o -1 }
+    last: null, // la última raya: { seat, line, closed: [cajas], penalized, skipped: [asientos que perdieron su turno] }
     moves: 0,
     seq: 0,
-    winner: null,
+    winner: null, // el único ganador, o null si nadie o hay empate en el primer lugar
+    winners: [], // todos los que quedaron con más cajas (más de uno = empate)
     draw: false,
     started: now,
     log: [],
@@ -51,7 +55,7 @@ export function newGame(config, names = [], now = 0) {
 }
 
 export const nameOf = (st, seat) => st.names[seat];
-export const other = (seat) => 1 - seat;
+export const nextSeat = (st, seat) => (seat + 1) % st.config.n;
 
 // Todas las rayas del tablero, en orden fijo: primero las horizontales, luego las verticales
 export function allLines(st) {
@@ -102,19 +106,22 @@ export function legalActions(st, seat) {
   return freeLines(st).map((line) => ({ type: "line", line }));
 }
 
-// El siguiente en tirar después de que `seat` termina su turno sin cerrar: el otro, salvo que tenga castigo
-// pendiente; en ese caso lo pierde (se consume) y sigue el mismo. Devuelve { turn, skip, skipped }.
+// El siguiente en tirar después de que `seat` termina su turno sin cerrar: el que sigue en orden, saltando (y
+// consumiendo) a los que tienen castigo pendiente. Si todos los demás tienen castigo, vuelve a tirar el mismo; y si
+// además él tiene el suyo (todos dejaron pasar una caja, uno tras otro), los castigos se cancelan y sigue el que
+// toca por orden. Devuelve { turn, skip, skipped: [asientos a los que se les saltó el turno] }.
 function passTurn(skip, seat) {
+  const n = skip.length;
   const s = skip.slice();
-  const nxt = other(seat);
-  if (s[nxt]) {
-    s[nxt] = false;
-    // Si el que tiró también tiene castigo pendiente (los dos dejaron pasar una caja, uno tras otro), los castigos
-    // se cancelan: le toca al otro como siempre.
-    if (s[seat]) { s[seat] = false; return { turn: nxt, skip: s, skipped: -1 }; }
-    return { turn: seat, skip: s, skipped: nxt };
+  const skipped = [];
+  for (let k = 1; k < n; k++) {
+    const c = (seat + k) % n;
+    if (!s[c]) return { turn: c, skip: s, skipped };
+    s[c] = false;
+    skipped.push(c);
   }
-  return { turn: nxt, skip: s, skipped: -1 };
+  if (s[seat]) { s[seat] = false; return { turn: (seat + 1) % n, skip: s, skipped: [] }; }
+  return { turn: seat, skip: s, skipped };
 }
 
 export function apply(st, seat, action) {
@@ -138,7 +145,7 @@ export function apply(st, seat, action) {
 
   if (closed.length) {
     log.push(`${who} cierra ${closed.length === 1 ? "una caja" : "dos cajas"} y vuelve a tirar`);
-    const next = { ...base, last: { seat, line: id, closed, penalized: false, skipped: -1 }, log };
+    const next = { ...base, last: { seat, line: id, closed, penalized: false, skipped: [] }, log };
     if (boxes.every((b) => b >= 0)) return finish(next);
     return next;
   }
@@ -151,16 +158,19 @@ export function apply(st, seat, action) {
     log.push(`${who} dejó pasar una caja: pierde su siguiente turno`);
   } else log.push(`${who} traza una raya`);
   const p = passTurn(skip, seat);
-  if (p.skipped >= 0) log.push(`${nameOf(st, p.skipped)} pierde este turno por el castigo; ${nameOf(st, p.turn)} vuelve a tirar`);
+  if (p.skipped.length) log.push(`${p.skipped.map((x) => nameOf(st, x)).join(" y ")} ${p.skipped.length === 1 ? "pierde" : "pierden"} este turno por el castigo; tira ${nameOf(st, p.turn)}`);
   return { ...base, turn: p.turn, skip: p.skip, penalties, last: { seat, line: id, closed, penalized, skipped: p.skipped }, log };
 }
 
 function finish(st) {
-  const [a, b] = st.scores;
-  const draw = a === b;
-  const winner = draw ? null : a > b ? 0 : 1;
-  const msg = draw ? `Empate ${a} a ${b}` : `¡${nameOf(st, winner)} gana ${Math.max(a, b)} a ${Math.min(a, b)}!`;
-  return { ...st, phase: "over", winner, draw, log: [...st.log, msg] };
+  const top = Math.max(...st.scores);
+  const winners = st.scores.map((v, i) => (v === top ? i : -1)).filter((i) => i >= 0);
+  const draw = winners.length > 1;
+  const winner = draw ? null : winners[0];
+  const msg = draw
+    ? `Empate entre ${winners.map((i) => nameOf(st, i)).join(", ")} con ${top}`
+    : `¡${nameOf(st, winner)} gana con ${top}!`;
+  return { ...st, phase: "over", winner, winners, draw, log: [...st.log, msg] };
 }
 
 // Cuántas cajas puede llevarse quien tira con esas rayas, cerrando todo lo que se pueda (con la cadena que se

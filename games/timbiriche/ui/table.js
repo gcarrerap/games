@@ -1,7 +1,7 @@
 // La mesa del timbiriche: los dos jugadores con sus cajas, el tablero y tus botones. Dibuja con ctx.view y juega con
 // ctx.act(). Lo propio de esta pantalla vive en `ui`: la raya escogida (`sel`) y la última jugada que ya se animó
 // (`seenSeq`).
-import { nameOf, other } from "../engine/index.js";
+import { nameOf } from "../engine/index.js";
 import { $, esc } from "../../../platform/ui/dom.js";
 import { overlay, openOverlay, closeOverlay, renderSheet } from "../../../platform/ui/sheet.js";
 import { modeMenu, wireModeMenu } from "../../../platform/ui/modes.js";
@@ -9,7 +9,14 @@ import { boardSVG } from "./board.js";
 import { rulesHelp } from "./rules.js";
 
 const initial = (name) => (String(name || "?").trim()[0] || "?").toUpperCase();
-const youTag = (s, seat, st) => (s === seat && !(st && nameOf(st, s) === "Tú") ? " <small>(tú)</small>" : "");
+// En el mismo aparato (varias personas en la práctica) no hay "tú": el aparato pasa de mano en mano
+const isHotseat = (ctx) => !!ctx.practice && ctx.table.seats.filter((x) => x && !x.bot).length > 1;
+const youTag = (s, seat, st, hot) => (s === seat && !hot && !(st && nameOf(st, s) === "Tú") ? " <small>(tú)</small>" : "");
+// La letra que sale en cada caja; si dos se repiten (todos son "Jugador n"), el número de asiento
+const initialsOf = (names) => {
+  const l = names.map(initial);
+  return l.some((x, i) => l.indexOf(x) !== i) ? names.map((_, i) => String(i + 1)) : l;
+};
 
 function renderRules(ctx, st) {
   renderSheet(ctx.modal, "rules", "Reglas del timbiriche", `${rulesHelp(st.config)}
@@ -20,7 +27,7 @@ function renderRules(ctx, st) {
 function renderMenu(ctx, st) {
   const c = st.config;
   renderSheet(ctx.modal, "gameMenu", ctx.practice ? "Práctica" : "Mesa " + ctx.table.code, `
-    <p class="hint">${c.size} × ${c.size} cajas · ${c.timer ? `${c.secs} s por raya` : "sin límite de tiempo"} · ${c.penalty ? "con castigo" : "sin castigo"}</p>
+    <p class="hint">${st.scores.length} jugadores · ${c.size} × ${c.size} cajas · ${c.timer ? `${c.secs} s por raya` : "sin límite de tiempo"} · ${c.penalty ? "con castigo" : "sin castigo"}</p>
     <details class="help"><summary>Reglas</summary>${rulesHelp(c)}</details>
     <details class="help"><summary>Jugadas (${st.log.length})</summary><div class="log">${st.log.slice().reverse().map((l) => `<div>${esc(l)}</div>`).join("")}</div></details>
     ${modeMenu(ctx)}
@@ -33,11 +40,14 @@ function renderMenu(ctx, st) {
 
 function renderResult(ctx, st, seat) {
   closeOverlay();
-  const title = st.draw ? "¡Empate!" : st.winner === seat ? "¡Ganaste!" : `¡Ganó ${nameOf(st, st.winner)}!`;
-  const order = [0, 1].sort((a, b) => st.scores[b] - st.scores[a]);
+  const hot = isHotseat(ctx);
+  const top = st.winners.map((w) => nameOf(st, w)).join(" y ");
+  const title = st.draw ? (st.winners.length === st.scores.length ? "¡Empate!" : `¡Empate entre ${top}!`)
+    : !hot && st.winner === seat ? "¡Ganaste!" : `¡Ganó ${nameOf(st, st.winner)}!`;
+  const order = st.scores.map((_, i) => i).sort((a, b) => st.scores[b] - st.scores[a] || a - b);
   renderSheet(ctx.modal, `result-${ctx.table.round}`, title, `
-    <div class="res">${order.map((s) => `<div class="resrow ${s === st.winner ? "win" : ""}">
-      <span><i class="dot c${s}"></i>${esc(nameOf(st, s))}${youTag(s, seat, st)}${st.penalties[s] ? ` <small class="pen">· ${st.penalties[s]} ${st.penalties[s] === 1 ? "castigo" : "castigos"}</small>` : ""}</span>
+    <div class="res">${order.map((s) => `<div class="resrow ${st.winners.includes(s) ? "win" : ""}">
+      <span><i class="dot c${s}"></i>${esc(nameOf(st, s))}${youTag(s, seat, st, hot)}${st.penalties[s] ? ` <small class="pen">· ${st.penalties[s]} ${st.penalties[s] === 1 ? "castigo" : "castigos"}</small>` : ""}</span>
       <b>${st.scores[s]}</b></div>`).join("")}</div>
     ${seat >= 0 ? `<button class="primary big-cta" id="again">Revancha</button>` : ""}
     <button class="ghost" id="exit">Salir</button>`, { closable: false });
@@ -45,10 +55,10 @@ function renderResult(ctx, st, seat) {
   $("#exit", ctx.modal).onclick = () => ctx.leave();
 }
 
-function playerHTML(st, s, seat, playing) {
-  return `<div class="prow c${s} ${playing && st.turn === s ? "turn" : ""} ${s === seat ? "mine" : ""}">
+function playerHTML(st, s, seat, playing, hot) {
+  return `<div class="prow c${s} ${playing && st.turn === s ? "turn" : ""} ${s === seat && !hot ? "mine" : ""}">
     <i class="dot" aria-hidden="true"></i>
-    <span class="pname">${esc(nameOf(st, s))}${youTag(s, seat, st)}</span>
+    <span class="pname">${esc(nameOf(st, s))}${youTag(s, seat, st, hot)}</span>
     ${st.skip[s] ? `<span class="skip" title="Dejó pasar una caja">pierde turno</span>` : ""}
     <span class="pscore" aria-label="${st.scores[s]} cajas"><b>${st.scores[s]}</b></span>
   </div>`;
@@ -58,8 +68,9 @@ function playerHTML(st, s, seat, playing) {
 function newsOf(st) {
   const l = st.last;
   if (!l) return "";
-  if (l.skipped >= 0 && l.penalized) return `${nameOf(st, l.seat)} dejó pasar una caja y ${nameOf(st, l.skipped)} pierde este turno por su castigo`;
-  if (l.skipped >= 0) return `${nameOf(st, l.skipped)} pierde este turno por el castigo: ${nameOf(st, st.turn)} vuelve a tirar`;
+  const lost = (l.skipped || []).map((x) => nameOf(st, x)).join(" y ");
+  if (lost && l.penalized) return `${nameOf(st, l.seat)} dejó pasar una caja y ${lost} pierde este turno por su castigo`;
+  if (lost) return `${lost} pierde este turno por el castigo: tira ${nameOf(st, st.turn)}`;
   if (l.penalized) return `${nameOf(st, l.seat)} dejó pasar una caja: pierde su siguiente turno`;
   return "";
 }
@@ -75,18 +86,19 @@ export function renderTable(app, ctx, ui) {
   const clockOn = playing && st.config.timer !== false;
   const adv = ctx.advice && ctx.advice.data;
   const advice = myTurn && adv && adv.action ? adv : null;
-  const initials = st.names.map(initial);
-  if (initials[0] === initials[1]) initials[1] = initials[1] + "²";
-
-  // Arriba el otro, abajo tú (quien mira: el asiento 0 abajo)
-  const me = seat >= 0 ? seat : 0, opp = other(me);
+  const initials = initialsOf(st.names);
+  const hot = isHotseat(ctx);
   const news = playing ? newsOf(st) : "";
+  const turnName = nameOf(st, st.turn);
 
   let statusTxt;
-  if (!playing) statusTxt = st.draw ? `Empate ${st.scores[0]} a ${st.scores[1]}` : `Ganó ${nameOf(st, st.winner)}`;
-  else if (!myTurn) statusTxt = `Turno de ${nameOf(st, st.turn)}`;
+  const again = !!(st.last && st.last.seat === st.turn && st.last.closed.length);
+  const handOver = hot && myTurn && !!st.last && st.last.seat !== st.turn; // le toca a otra persona: se pasa el aparato
+  if (!playing) statusTxt = st.draw ? `Empate entre ${st.winners.map((w) => nameOf(st, w)).join(", ")}` : `Ganó ${nameOf(st, st.winner)}`;
+  else if (!myTurn) statusTxt = `Turno de ${turnName}`;
   else if (ui.sel) statusTxt = "Toca otra vez para trazarla";
-  else if (st.last && st.last.seat === seat && st.last.closed.length) statusTxt = "¡Caja! Vuelve a tirar";
+  else if (hot) statusTxt = again ? `¡Caja! ${turnName} vuelve a tirar` : handOver ? `Pásale el aparato a ${turnName}` : `Turno de ${turnName}`;
+  else if (again) statusTxt = "¡Caja! Vuelve a tirar";
   else statusTxt = "Te toca: escoge una raya";
 
   const advBox = advice ? `<div class="advbox" role="status"><span>Consejo: ${esc(advice.why || "")}</span>
@@ -99,7 +111,7 @@ export function renderTable(app, ctx, ui) {
       <div class="gtitle">Timbiriche</div>
       <button class="rulesbtn" id="rules" aria-haspopup="dialog">Reglas</button>
     </header>
-    <section class="players">${playerHTML(st, opp, seat, playing)}</section>
+    <section class="players n${st.scores.length}">${st.scores.map((_, i) => playerHTML(st, i, seat, playing, hot)).join("")}</section>
     <section class="paperwrap">
       <div class="status ${myTurn ? "me" : ""}"><i class="dot c${playing ? st.turn : st.winner ?? 0}" aria-hidden="true"></i>${esc(statusTxt)}${clockOn ? ` <span id="clock" class="clock"></span>` : ""}</div>
       ${clockOn ? `<div class="timer" aria-hidden="true"><i id="clockbar"></i></div>` : ""}
@@ -108,7 +120,6 @@ export function renderTable(app, ctx, ui) {
       ${advBox}
     </section>
     <section class="me">
-      ${playerHTML(st, me, seat, playing)}
       ${myTurn ? `<div class="actions">
         <button id="draw" class="primary big" ${ui.sel ? "" : "disabled"}>Trazar</button>
         <button id="advice" class="ghost">Consejo</button>

@@ -2,8 +2,10 @@
 export default {
   id: "timbiriche",
   name: "Timbiriche",
-  players: { min: 2, max: 2 },
-  modes: [{ id: "2", label: "2 jugadores", n: 2 }],
+  players: { min: 2, max: 6 },
+  modes: [2, 3, 4, 5, 6].map((n) => ({ id: String(n), label: `${n} jugadores`, n })),
+  // Sin nada oculto: en la práctica se puede jugar por turnos en un solo aparato ("Persona" en cada asiento).
+  hotseat: true,
   // Se escogen al crear la mesa (platform/core/contract.js → GameOption). Llegan a setup() como config.size,
   // config.secs y config.penalty. "Con reloj / Sin límite" lo pone la plataforma aparte (config.timer).
   options: [
@@ -18,7 +20,7 @@ export default {
     {
       id: "penalty", label: "Si dejas pasar una caja", default: "on",
       choices: [
-        { id: "on", label: "Pierdes tu siguiente turno", hint: "Si podías cerrar una caja y trazaste una raya que no cierra ninguna, el otro tira dos veces seguidas." },
+        { id: "on", label: "Pierdes tu siguiente turno", hint: "Si podías cerrar una caja y trazaste una raya que no cierra ninguna, se te salta tu siguiente turno." },
         { id: "off", label: "Sin castigo", hint: "Se vale dejar cajas a propósito (la doble jugada del final)." },
       ],
     },
