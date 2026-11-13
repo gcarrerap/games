@@ -93,7 +93,7 @@ with sync_playwright() as p:
 
     moves = 0
     for _ in range(400):
-        if _ in (0, 1, 2, 3, 10, 20): print("DOMINO", _, page.locator("#dock").inner_text(), page.locator("#hand").inner_text(), page.locator(".err").all_text_contents(), flush=True)
+        if _ in (0, 1, 2, 3, 10, 20): print("DOMINO", _, page.locator("body").inner_text(), page.locator(".err").all_text_contents(), flush=True)
         if page.query_selector(".sheet #next, .sheet #again"):
             break
         if tap(".tilebtn.play, .tilebtn.sel"):
