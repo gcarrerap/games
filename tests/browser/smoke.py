@@ -87,18 +87,16 @@ with sync_playwright() as p:
             el = page.query_selector(selector)
             if not el: return False
             el.click(timeout=1000); return True
-        except PWError as e:
-            print("TOQUE FALLIDO", selector, str(e)[-700:], flush=True)
+        except PWError:
             return False
 
     moves = 0
     for _ in range(400):
-        if _ in (0, 1, 2, 3, 10, 20): print("DOMINO", _, page.locator("body").inner_text(), page.locator(".err").all_text_contents(), flush=True)
         if page.query_selector(".sheet #next, .sheet #again"):
             break
-        if tap(".tilebtn.play, .tilebtn.sel"):
+        # El render llega en requestAnimationFrame: elegir el extremo antes de volver a tocar fichas.
+        if tap("[data-side]") or tap(".tilebtn.play"):
             moves += 1
-            tap("[data-side]")
         elif not tap("#draw:not([disabled])"):
             tap("#pass:not([disabled])")
         page.wait_for_timeout(250)
@@ -579,9 +577,8 @@ with sync_playwright() as p:
     for _ in range(400):
         if on.query_selector(".sheet #next, .sheet #again"):
             break
-        if tap(".tilebtn.play, .tilebtn.sel"):
+        if tap("[data-side]") or tap(".tilebtn.play"):
             online_moves += 1
-            tap("[data-side]")
         elif not tap("#draw:not([disabled])"):
             tap("#pass:not([disabled])")
         on.wait_for_timeout(250)
