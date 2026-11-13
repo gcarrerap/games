@@ -88,7 +88,9 @@ try:
       page.click('#mm-hint'); page.wait_for_selector('#mm-use-hint')
       page.click('#mm-use-hint'); page.click('#mm-submit')
       page.wait_for_timeout(150)
-    assert 'Misterio resuelto' in page.locator('.mm-attempt-title').inner_text()
+    print('Resultado visible:', page.locator('.mm-attempt-title').inner_text(), flush=True)
+    if shots: page.screenshot(path=f'{shots}/result-check.png',full_page=True)
+    assert 'misterio resuelto' in page.locator('.mm-attempt-title').inner_text().casefold()
     assert page.locator('.mm-secret .mm-token').count()==4
     assert not page.locator('#mm-submit').count()
     if shots: page.screenshot(path=f'{shots}/victory.png',full_page=True)

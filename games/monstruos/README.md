@@ -28,7 +28,7 @@ Pista usa exclusivamente la vista pública, filtra códigos compatibles y propon
 
 Diez efectos MP3 cortos y una melodía original de marimba/pizzicato, incluidos en el repositorio. Se reproducen con `modules/sfx` y `modules/music`; comienzan tras una interacción y tienen silencio/volumen independientes que se recuerdan por juego. Los reproductores se destruyen al salir. No se envían datos ni se necesitan claves API para jugar.
 
-Los sonidos se reproducen con `python3 games/monstruos/scripts/generate_audio.py` (requiere ffmpeg). No es un paso de compilación del sitio.
+Los sonidos se regeneran con `python3 games/monstruos/scripts/generate_audio.py` (requiere ffmpeg). No es un paso de compilación del sitio.
 
 Fish Audio **no se ejecutó**: el conector disponible no expone `workflow_dispatch`, el CLI no tiene autenticación y el navegador no tiene sesión iniciada. `audio/fish-lines.json` prepara tres frases con el modelo de voz público Zib de la lista existente en `api-access`. No son clips ya generados ni se solicitan desde la interfaz. Se pueden generar con `FishBatchTextToSpeech` y luego integrar explícitamente; no se incluyeron credenciales.
 
