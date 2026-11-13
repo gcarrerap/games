@@ -24,6 +24,7 @@ El sitio tiene tres tipos de piezas:
 | Memoria Veloz | `games/memoria/` | 1–4 | Pares sin turnos: gana el más rápido. Práctica contra la compu y mesas en línea |
 | Cucharas | `games/cucharas/` | 3–8 | Arma un póker cambiando cartas con la mesa, sin turnos; el que se queda sin cuchara pierde ficha. Práctica contra la compu y mesas en línea |
 | Timbiriche | `games/timbiriche/` | 2 | Puntos y cajas. Tablero de 3×3 a 6×6, segundos por raya a escoger y castigo opcional por dejar pasar una caja. Práctica contra la compu y mesas en línea |
+| Láser de los Faraones | `games/khet/` | 2 | Estilo Khet 2.0: espejos, láser y faraones. Gráficos con láser animado y explosiones, voz de narrador. Contra la compu, dos personas en el mismo aparato, o en línea; la tele como tablero (Monitor) o para jugar en ella con el control |
 
 En cualquier mesa en línea, cada aparato escoge desde el menú de la partida cómo la usa: **Teléfono** (el tablero y lo tuyo), **Control** (solo lo tuyo) o **Monitor** (el tablero para todos, como tele, sin tirar).
 

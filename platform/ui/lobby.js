@@ -1,7 +1,7 @@
 // Lobby de un juego: tu nombre y cuenta, el modo, practicar contra la compu, crear una mesa en línea y las mesas
 // abiertas. Genérico: las opciones salen del manifiesto (modos), de si el juego tiene reloj (timing) y de sus
 // perfiles de la compu (bots.profiles).
-import { BOT_NAMES } from "../app/session.js";
+import { BOT_NAMES, LOCAL_PLAYER } from "../app/session.js";
 import { $, esc } from "./dom.js";
 import { optionLabels } from "../core/contract.js";
 
@@ -37,7 +37,11 @@ export function renderLobby(app, { state, actions }) {
   const mode = game.modes.find((m) => m.id === cfg.mode);
   const nBots = (mode.n ?? game.players.max) - 1;
   const profiles = game.bots ? game.bots.profiles : [];
-  const botSelect = (i) => `<select class="botsel" data-bot="${i}" aria-label="Compu ${i + 1}">${profiles.map((p) => `<option value="${esc(p.id)}"${p.id === cfg.bots[i] ? " selected" : ""}>${esc(p.name)}</option>`).join("")}</select>`;
+  // En un juego sin nada oculto (game.hotseat) cada asiento puede ser la compu o una persona en este mismo aparato
+  const people = game.hotseat ? [{ id: LOCAL_PLAYER, name: "Persona (este aparato)" }] : [];
+  const botSelect = (i) => `<select class="botsel" data-bot="${i}" aria-label="Asiento ${i + 2}">${[...profiles, ...people].map((p) => `<option value="${esc(p.id)}"${p.id === cfg.bots[i] ? " selected" : ""}>${esc(p.name)}</option>`).join("")}</select>`;
+  const seatName = (i) => (cfg.bots[i] === LOCAL_PLAYER ? `Jugador ${i + 2}` : BOT_NAMES[i % BOT_NAMES.length]);
+  const hotseatOn = game.hotseat && cfg.bots.slice(0, nBots).includes(LOCAL_PLAYER);
   const online = state.online === "on";
   app.innerHTML = `
     <header class="shell-head">${back}<div><h1>${esc(game.name)}</h1><small>Solo contra la compu o con la familia</small></div></header>
@@ -59,9 +63,10 @@ export function renderLobby(app, { state, actions }) {
       <p class="hint">Los asientos libres se pueden llenar con la compu.</p>
     </section>
     <section class="panel">
-      <h2>Practicar contra la compu</h2>
-      ${profiles.length && nBots > 0 ? `<div class="cpu">${Array.from({ length: nBots }, (_, i) => `<div class="cpurow bot"><span class="cpuname">${esc(BOT_NAMES[i % BOT_NAMES.length])}</span>${botSelect(i)}</div>`).join("")}</div>` : ""}
-      <button class="big-cta" id="practice">Empezar práctica</button>
+      <h2>${game.hotseat ? "En este aparato" : "Practicar contra la compu"}</h2>
+      ${game.hotseat ? `<p class="hint">Contra la compu, o con alguien más por turnos en este mismo aparato: escoge «Persona» en su asiento.</p>` : ""}
+      ${profiles.length && nBots > 0 ? `<div class="cpu">${Array.from({ length: nBots }, (_, i) => `<div class="cpurow ${cfg.bots[i] === LOCAL_PLAYER ? "person" : "bot"}"><span class="cpuname">${esc(seatName(i))}</span>${botSelect(i)}</div>`).join("")}</div>` : ""}
+      <button class="big-cta" id="practice">${hotseatOn ? "Jugar en este aparato" : "Empezar práctica"}</button>
     </section>
     <section class="panel">
       <h2>Mesas abiertas${state.tables.length ? ` · ${state.tables.length}` : ""}</h2>

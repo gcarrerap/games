@@ -1,0 +1,184 @@
+/* Mesa del Láser de los Faraones. Siempre de noche en el templo (no cambia con el tema claro u oscuro): piedra
+   oscura, oro y los dos bandos, Plata (.c0) y Rojo (.c1). En vertical los bandos van arriba y abajo; en horizontal, a
+   los lados, y el tablero toma toda la altura. La tele (.tv) agranda todo con vh. */
+.game.khet{
+  --kh-gold:#e2b041; --kh-gold2:#f6d77e; --kh-ink:#f3e6c4; --kh-muted:#b9a57a; --kh-panel:rgba(26,21,14,.78);
+  --kh-p0:#cfe3f2; --kh-p0l:#3ee8ff; --kh-p1:#ff6b5c; --kh-p1l:#ff2b3d;
+  --cell:40px;
+  height:100%; box-sizing:border-box; overflow:hidden;
+  display:flex; flex-direction:column; gap:6px; padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  color:var(--kh-ink); font-family:var(--body);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(226,176,65,.16), transparent 60%),
+    radial-gradient(90% 60% at 50% 110%, rgba(120,40,20,.35), transparent 70%),
+    linear-gradient(#17120c, #0b0907);
+}
+.khet .c0{--c:var(--kh-p0);--cl:var(--kh-p0l)}
+.khet .c1{--c:var(--kh-p1);--cl:var(--kh-p1l)}
+.khet .t0{color:var(--kh-p0)} .khet .t1{color:var(--kh-p1)}
+
+/* Barra de arriba */
+.khet .gbar{display:flex;align-items:center;gap:8px;min-height:40px;flex:none}
+.khet .gbar button{color:var(--kh-ink);background:rgba(255,255,255,.06);border:1px solid rgba(226,176,65,.35)}
+.khet .menubtn{width:40px;height:40px;min-height:40px;padding:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;flex:none}
+.khet .menubtn span{display:block;width:18px;height:2px;background:var(--kh-gold2);border-radius:1px}
+.khet .gtitle{flex:1;min-width:0;font-family:var(--display);font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:linear-gradient(#fff3c4,#e2b041 55%,#a8761d);-webkit-background-clip:text;background-clip:text;color:transparent;display:flex;align-items:center;gap:8px}
+.khet .gtitle small{font-size:.6em;opacity:.85}
+.khet .kh-logo{width:22px;height:20px;flex:none;background:linear-gradient(135deg,#fff3c4,#e2b041 50%,#7a5212);clip-path:polygon(50% 0,100% 100%,0 100%);filter:drop-shadow(0 0 6px rgba(255,43,61,.6))}
+.khet #sfxslot{display:flex;gap:6px;align-items:center}
+.khet .rulesbtn{min-height:36px;padding:0 12px;font-weight:800;font-size:14px;flex:none}
+.khet .sfxbtn{min-height:36px;min-width:40px}
+
+/* Arena: bandos y tablero */
+.khet .arena{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px}
+.khet .bwrap{flex:1;min-height:0;min-width:0;display:flex;align-items:center;justify-content:center}
+.khet .bbox{position:relative;width:100%;aspect-ratio:11/9;filter:drop-shadow(0 10px 30px rgba(0,0,0,.6))}
+.khet .bsvg,.khet .bsvg svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.khet canvas.fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.khet .bbox.shake{animation:khshake .45s cubic-bezier(.36,.07,.19,.97)}
+@keyframes khshake{10%,90%{transform:translate(-1px,1px)}20%,80%{transform:translate(3px,-2px)}30%,50%,70%{transform:translate(-5px,3px)}40%,60%{transform:translate(5px,-1px)}}
+
+.khet .side{flex:none;min-width:0;display:flex;flex-direction:column;gap:6px}
+.khet .crest{display:flex;align-items:center;gap:10px;padding:8px 10px 6px;border-radius:12px;background:var(--kh-panel);
+  border:1px solid rgba(226,176,65,.25);border-left:4px solid var(--c);position:relative;transition:box-shadow .3s,border-color .3s}
+.khet .crest.turn{border-color:var(--c);box-shadow:0 0 0 1px var(--c),0 0 18px -2px var(--cl)}
+.khet .crest .medal{flex:none;display:flex;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
+.khet .crest.turn .medal{animation:khbreathe 1.6s ease-in-out infinite}
+@keyframes khbreathe{50%{filter:drop-shadow(0 0 10px var(--cl))}}
+.khet .who{flex:1;min-width:0}
+.khet .pname{font-weight:800;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.khet .pname small{font-weight:600;color:var(--kh-muted)}
+.khet .pteam{font-size:12px;color:var(--kh-muted)}
+.khet .turnflag{position:absolute;top:-10px;right:10px;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#120d06;background:var(--c);border-radius:999px;padding:3px 10px}
+.khet .timer{height:5px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+.khet .timer.idle{visibility:hidden}
+.khet .timer i{display:block;height:100%;width:100%;border-radius:4px;background:linear-gradient(90deg,var(--kh-gold),var(--cl));transition:width .25s linear}
+.khet .timer i.low{background:#ff4d3d}
+.khet .turnflag span{text-transform:none}
+.khet .turnflag span.low{color:#7a0a05}
+.khet .lost{display:flex;align-items:center;gap:8px;min-height:26px}
+.khet .lost .lbl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--kh-muted);flex:none}
+.khet .lost .icons{display:flex;flex-wrap:wrap;gap:2px;opacity:.8;filter:grayscale(.35)}
+.khet .lost .none{font-size:12px;color:var(--kh-muted);opacity:.7}
+.khet .kicon{display:block;overflow:visible}
+.khet .crest .medal .kicon{width:34px;height:34px}
+.khet .lost .kicon{width:24px;height:24px}
+.khet .klog{display:none}
+.khet .dock .actions.idle{visibility:hidden}
+
+/* Vertical: los paneles en una línea compacta */
+.khet .side.far{order:0} .khet .bwrap{order:1} .khet .side.near{order:2}
+
+/* Lo de tu turno */
+.khet .dock{display:flex;flex-direction:column;gap:6px}
+.khet .dock .status{font-weight:800;font-size:15px;text-align:center;min-height:1.4em}
+.khet .dock .status.me{color:var(--kh-gold2)}
+.khet .dock .actions{display:flex;gap:8px}
+.khet .dock .actions button{flex:1;min-height:46px;font-weight:800;color:var(--kh-ink);background:rgba(255,255,255,.06);border:1px solid rgba(226,176,65,.35)}
+.khet .advbox{display:flex;align-items:center;gap:8px;font-size:13px;background:var(--kh-panel);border:1px solid rgba(124,204,255,.5);border-radius:10px;padding:6px 8px}
+.khet .advbox span{flex:1}
+.khet .advbox button{min-height:36px;padding:0 12px}
+.khet .dock .hint,.khet .dock .err{text-align:center;margin:0}
+
+/* Girar (en tu panel, para no tapar casillas del tablero) */
+.khet .dock .actions .rot{color:#1a1206;background:linear-gradient(#fff3c4,#e2b041 60%,#a8761d);border:1px solid #fff3c4;box-shadow:0 0 12px rgba(226,176,65,.35)}
+.khet .dock .actions .rot b{font-size:1.4em;line-height:0;vertical-align:-.12em}
+.khet .dock .actions .rot.kfocus{outline:3px solid #7cf;outline-offset:2px}
+
+/* Aviso de turno sobre el tablero */
+.khet .banner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0}
+.khet .banner.show{animation:khbanner 1.9s ease-out both}
+.khet .banner span{font-family:var(--display);font-size:calc(var(--cell) * .9);padding:.2em .8em;border-radius:.4em;color:var(--c);
+  background:rgba(10,8,5,.72);border:2px solid var(--c);text-shadow:0 0 18px var(--cl);box-shadow:0 0 40px -6px var(--cl)}
+@keyframes khbanner{0%{opacity:0;transform:scale(.8)}15%{opacity:1;transform:scale(1)}75%{opacity:1}100%{opacity:0;transform:scale(1.04)}}
+
+/* Dentro del SVG */
+.kh-board{touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none}
+.kh-board .coord{fill:#d9b25c;font:700 .26px var(--body);text-anchor:middle;opacity:.8}
+.kh-board .lastfrom{fill:none;stroke:#e2b041;stroke-width:.03;stroke-dasharray:.08 .06;opacity:.6}
+.kh-board .lastto{fill:rgba(226,176,65,.13);stroke:#e2b041;stroke-width:.03;opacity:.85}
+.kh-board .sel{fill:rgba(246,215,126,.12);stroke:#f6d77e;stroke-width:.06;animation:khsel 1s ease-in-out infinite alternate}
+@keyframes khsel{to{stroke-opacity:.45}}
+.kh-board .tgt{fill:#f6d77e;stroke:#5a3a08;stroke-width:.02;animation:khtgt .9s ease-in-out infinite alternate;pointer-events:none}
+.kh-board .tgt.swap{fill:none;stroke:#f6d77e;stroke-width:.06;stroke-dasharray:.14 .08}
+@keyframes khtgt{to{opacity:.55}}
+.kh-board .adv{fill:rgba(124,204,255,.14);stroke:#7cf;stroke-width:.05;stroke-dasharray:.12 .07;animation:khsel .8s infinite alternate}
+.kh-board .cursor{fill:none;stroke:#7cf;stroke-width:.07}
+.kh-board .hit{fill:transparent;cursor:pointer}
+.kh-board .pc{pointer-events:none}
+.kh-board .lens{animation:khlens 1.4s ease-in-out infinite alternate}
+@keyframes khlens{from{opacity:.55}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .kh-board .sel,.kh-board .tgt,.kh-board .adv,.kh-board .lens,.khet .crest.turn .medal{animation:none}
+  .khet .bbox.shake{animation:none}
+}
+
+/* Horizontal (tableta acostada, computadora, tele): bandos a los lados y el tablero con toda la altura */
+@media (min-aspect-ratio:6/5){
+  .khet .arena{flex-direction:row;gap:12px}
+  .khet .side{width:clamp(170px,21vw,380px);align-self:stretch;justify-content:flex-start;padding-top:4px}
+  .khet .side.near .dock{margin-top:auto}
+  .khet .dock .actions{flex-direction:column}
+}
+/* Teléfono acostado: poco alto, todo más chico */
+@media (min-aspect-ratio:6/5) and (max-height:480px){
+  .game.khet{padding-block:4px;gap:4px}
+  .khet .gbar{min-height:34px}
+  .khet .gtitle small{display:none}
+  .khet .side{width:clamp(150px,24vw,260px)}
+  .khet .crest{padding:4px 8px}
+  .khet .dock .actions button{min-height:38px}
+}
+
+
+/* Pantalla grande acostada (computadora, o la tele jugando en ella): los paneles crecen con la altura */
+@media (min-aspect-ratio:6/5) and (min-height:700px){
+  .khet .side{width:clamp(220px,18vw,480px);gap:1.4vh}
+  .khet .lost .none{font-size:1.6vh}
+  .khet .crest{padding:1.6vh 1vw 1.1vh;gap:1vw;border-radius:1.4vh}
+  .khet .crest .medal .kicon{width:6vh;height:6vh}
+  .khet .pname{font-size:2.8vh}
+  .khet .pteam{font-size:1.8vh}
+  .khet .turnflag{font-size:1.6vh;padding:.4vh .9vw;top:-1.3vh}
+  .khet .timer{height:.8vh}
+  .khet .lost{flex-direction:column;align-items:flex-start}
+  .khet .lost .lbl{font-size:1.5vh}
+  .khet .lost .kicon{width:4vh;height:4vh}
+  .khet .klog{display:flex;flex-direction:column;gap:.6vh;font-size:1.7vh;color:var(--kh-muted);background:var(--kh-panel);border-radius:1.2vh;padding:1.2vh 1vw;border:1px solid rgba(226,176,65,.2)}
+  .khet .klog .new{color:var(--kh-ink);font-weight:700}
+  .khet .klog:empty{display:none}
+  .khet .dock .status{font-size:2vh}
+  .khet .dock .actions button{min-height:6vh;font-size:2vh}
+  .khet .gbar{min-height:5vh}
+  .khet .gtitle{font-size:3vh}
+}
+
+/* La tele (Monitor): nada que tocar, todo grande */
+.game.khet.tv{padding:1.2vh 1.6vw;gap:1vh}
+.khet.tv .gbar{min-height:5vh}
+.khet.tv .gtitle{font-size:3.4vh}
+.khet.tv .arena{gap:1.6vw}
+.khet.tv .side{width:clamp(200px,17vw,460px);gap:1.4vh}
+.khet.tv .crest .medal .kicon{width:7vh;height:7vh}
+.khet.tv .pname{font-size:3.2vh}
+.khet.tv .klog{display:flex;flex-direction:column;gap:.6vh;font-size:2vh;color:var(--kh-muted);background:var(--kh-panel);border-radius:1.2vh;padding:1.2vh 1vw;border:1px solid rgba(226,176,65,.2)}
+.khet.tv .klog .new{color:var(--kh-ink);font-weight:700}
+@media (max-aspect-ratio:6/5){ .khet.tv .klog{display:none} }
+
+/* Ventanas */
+.sheet .khres{display:flex;flex-direction:column;align-items:center;gap:8px}
+.sheet .khres .crown{filter:drop-shadow(0 0 18px rgba(226,176,65,.8));animation:khcrown 2.4s ease-in-out infinite alternate}
+@keyframes khcrown{to{transform:translateY(-4px) scale(1.04)}}
+.sheet .khres .reason{font-weight:700;text-align:center;margin:0}
+.sheet .khres .res{width:100%;display:flex;flex-direction:column;gap:6px}
+.sheet .khres .resrow{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:15px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.sheet .khres .resrow.win b{color:var(--accent)}
+.sheet .khres .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.sheet .khres .dot.c0{background:#9fb4c6} .sheet .khres .dot.c1{background:#e0352b}
+.sheet .khrules p,.sheet .khrules li{margin:6px 0;font-size:14px;line-height:1.45}
+.sheet .khrules ul{padding-left:20px;margin:4px 0}
+.sheet .khpieces{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.sheet .khpieces>div{display:flex;gap:10px;align-items:center;font-size:14px;line-height:1.35}
+.sheet .khpieces .kicon{flex:none;background:#211d18;border-radius:6px;padding:2px}
+.sheet .log{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}

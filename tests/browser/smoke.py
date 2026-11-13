@@ -20,6 +20,9 @@ consola:
      varias veces contra la compu.
   3e. Timbiriche en práctica: escoger tablero y segundos por raya en el lobby, con reloj; el botón "Reglas" (con el
      castigo); escoger una raya y trazarla con «Trazar» varias veces contra la compu.
+  3f. Láser en el mismo aparato: "Persona (este aparato)" en el asiento de Rojo; jugar un turno de cada uno (girar con
+     «Girar ⟳» y mover a un punto dorado), el láser se ve en el canvas, el turno pasa de uno a otro; las reglas; con el
+     teclado (flechas, Enter, E) también se juega; en pantalla de tele (1920×1080) el tablero usa casi toda la altura.
   4. El Continental en práctica: escoger la regla de compra, comprar fuera de turno, robar, descartar, bajarse con
      el consejo y abrir el menú. En línea: la regla escogida se ve en la pantalla de asientos.
   5. Escribir tu nombre: el teclado del teléfono cambia el tamaño de la pantalla y la lista de mesas puede cambiar
@@ -432,6 +435,41 @@ with sync_playwright() as p:
     shot("17c-timbiriche-rayas")
     tb_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
 
+    # ---------- Láser en el mismo aparato ----------
+    page.evaluate("location.hash = '#/khet'"); page.wait_for_selector("#practice")
+    page.select_option("select[data-bot='0']", "persona"); page.wait_for_timeout(150)
+    kh_lobby = "Jugar en este aparato" in page.inner_text("#practice")
+    page.click("#practice"); page.wait_for_selector(".game.khet .kh-board [data-cell]", timeout=10000); shot("17d-laser")
+    def kh_turn(): return page.inner_text("#dock .status")
+    # Plata gira su pirámide de H2 (casilla 67)
+    tap("[data-cell='67']"); page.wait_for_timeout(150)
+    kh_rot = bool(page.query_selector("#dock .rot.cw"))
+    tap("#dock .rot.cw"); page.wait_for_timeout(700)
+    kh_beam = page.evaluate("(() => { const c = document.querySelector('.khet canvas.fx'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 400) if (d[i] > 0) n++; return n; })()") > 0
+    shot("17e-laser-rayo")
+    page.wait_for_timeout(3500)
+    kh_red = "Rojo" in kh_turn()
+    # Rojo mueve su pirámide de C7 (casilla 12) a un punto dorado
+    tap("[data-cell='12']"); page.wait_for_timeout(150)
+    kh_targets = len(page.query_selector_all(".kh-board .tgt"))
+    tap("[data-cell='13']"); page.wait_for_timeout(4000)
+    kh_silver = "Plata" in kh_turn()
+    # Con el teclado: Enter muestra el cursor, flechas, Enter escoge el faraón y E… no gira (el faraón no gira); mejor
+    # la esfinge: cursor a J1 y E
+    page.keyboard.press("Enter"); page.wait_for_timeout(100)
+    for _ in range(5): page.keyboard.press("ArrowRight")
+    page.keyboard.press("Enter"); page.wait_for_timeout(100)
+    page.keyboard.press("e"); page.wait_for_timeout(4000)
+    kh_keys = "Rojo" in kh_turn()
+    tap("#rules"); page.wait_for_timeout(200)
+    kh_rules = "faraón" in page.inner_text(".sheet[data-sheet='rules']")
+    tap("#rulesclose"); page.wait_for_timeout(200)
+    page.set_viewport_size({"width": 1920, "height": 1080}); page.wait_for_timeout(400)
+    kh_tall = page.evaluate("document.querySelector('.khet .bbox').getBoundingClientRect().height") > 1080 * 0.78
+    shot("17f-laser-tele")
+    page.set_viewport_size({"width": 390, "height": 844}); page.wait_for_timeout(200)
+    kh_styles = page.eval_on_selector_all("link[data-game-style]", "ls => ls.map(l => l.dataset.gameStyle)")
+
     # ---------- Escribir tu nombre sin que se cierre el teclado ----------
     kb = browser.new_page(viewport={"width": 390, "height": 844})
     kb.on("pageerror", lambda e: errors.append(f"pageerror (teclado): {e}"))
@@ -698,6 +736,14 @@ if not tb_clock: problems.append("Timbiriche: con reloj no se ve la barra del ti
 if not tb_rules: problems.append("Timbiriche: el botón Reglas no mostró las reglas con el castigo")
 if tb_lines < 5: problems.append(f"Timbiriche: solo se trazaron {tb_lines} rayas")
 if tb_styles != ["timbiriche"]: problems.append(f"Timbiriche: estilos cargados {tb_styles}")
+if not kh_lobby: problems.append("Láser: el lobby no ofrece jugar en el mismo aparato")
+if not (kh_rot and kh_beam): problems.append(f"Láser: girar o el rayo (botones {kh_rot}, rayo {kh_beam})")
+if not (kh_red and kh_silver): problems.append(f"Láser: el turno no pasó entre las dos personas ({kh_red}, {kh_silver})")
+if kh_targets < 3: problems.append(f"Láser: solo {kh_targets} destinos al escoger una pirámide")
+if not kh_keys: problems.append("Láser: con el teclado no se pudo girar la esfinge")
+if not kh_rules: problems.append("Láser: el botón Reglas no mostró las reglas")
+if not kh_tall: problems.append("Láser: en 1920×1080 el tablero no usa la altura")
+if set(kh_styles) != {"khet"}: problems.append(f"Láser: estilos cargados {kh_styles}")
 if set(viuda_styles) != {"viuda"}: problems.append(f"La Viuda: estilos cargados {viuda_styles}")
 if "domino" in pata_styles: problems.append("los estilos del dominó siguen cargados en La Pata")
 if not tv_hint: problems.append("Skull con tele: la pantalla de asientos no explica cómo abrir la tele")

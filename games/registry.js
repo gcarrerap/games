@@ -14,6 +14,7 @@ import chihuahuas from "./chihuahuas/manifest.js";
 import memoria from "./memoria/manifest.js";
 import cucharas from "./cucharas/manifest.js";
 import timbiriche from "./timbiriche/manifest.js";
+import khet from "./khet/manifest.js";
 
 export const GAMES = [
   { ...domino, load: () => import("./domino/index.js") },
@@ -28,6 +29,7 @@ export const GAMES = [
   { ...memoria, load: () => import("./memoria/index.js") },
   { ...cucharas, load: () => import("./cucharas/index.js") },
   { ...timbiriche, load: () => import("./timbiriche/index.js") },
+  { ...khet, load: () => import("./khet/index.js") },
 ];
 
 export const findGame = (id) => GAMES.find((g) => g.id === id) || null;

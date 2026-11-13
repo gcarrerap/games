@@ -62,6 +62,9 @@
  * @property {boolean} [remote]
  *   El juego dibuja el modo Control (ctx.display "phone"): solo lo de ese asiento, sin el tablero. Sin remote, Control
  *   se juega con la mesa de siempre ("full"). Monitor (ctx.display "tv") lo tienen todos (docs/ARCHITECTURE.md §5).
+ * @property {boolean} [hotseat]
+ *   No hay nada oculto: en la práctica, un asiento puede ser otra persona en el mismo aparato (por turnos), y la mesa
+ *   recibe en ctx.seat el asiento de quien le toca.
  * @property {string} [tvCover]
  *   Una imagen (16:9) de fondo para la espera del Monitor mientras se sientan (platform/ui/tv.js).
  * @property {() => Promise<{mount: Function, update: Function, unmount: Function, tick?: Function}>} ui
@@ -110,6 +113,8 @@ export function validateGame(g) {
   if (g.tv !== undefined) errs.push("tv: ya no existe; todos los juegos tienen Monitor (usa remote si dibujas Control)");
   if (g.remote !== undefined && typeof g.remote !== "boolean") errs.push("remote: true o false");
   if (g.realtime !== undefined && typeof g.realtime !== "boolean") errs.push("realtime: true o false");
+  if (g.hotseat !== undefined && typeof g.hotseat !== "boolean") errs.push("hotseat: true o false");
+  if (g.hotseat && g.realtime) errs.push("hotseat: no se puede en un juego en tiempo real");
   if (g.tvCover !== undefined && typeof g.tvCover !== "string") errs.push("tvCover: la dirección de una imagen");
   if (g.teamOf && typeof g.teamOf !== "function") errs.push("teamOf: es una función");
   if (g.timing && (typeof g.timing.turnMs !== "function" || typeof g.timing.autoAction !== "function")) errs.push("timing: turnMs y autoAction son funciones");
