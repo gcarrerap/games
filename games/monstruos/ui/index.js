@@ -22,7 +22,7 @@ export function mount(el, ctx) {
 }
 export function update(ctx) { if (ui) render(ctx); }
 export function unmount() {
-  if (ui) { ui.offSfx(); ui.offMusic(); ui.sfx.destroy(); ui.music.destroy(); ui.el.innerHTML = ""; }
+  if (ui) { ui.offSfx(); ui.offMusic(); ui.sfx.destroy(); ui.music.destroy(); ui.el.onkeydown = null; ui.el.innerHTML = ""; }
   ui = null; unloadStyles("monstruos");
 }
 

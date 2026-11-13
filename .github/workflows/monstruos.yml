@@ -11,7 +11,7 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -33,10 +33,6 @@ jobs:
         run: |
           mkdir -p screenshots
           python tests/browser/monstruos.py
-      - name: Prueba de navegador de toda la plataforma
-        run: |
-          python -m http.server 8765 > /tmp/http.log 2>&1 &
-          python tests/browser/smoke.py
       - name: Capturas para revisión
         if: always()
         uses: actions/upload-artifact@v4
@@ -44,3 +40,7 @@ jobs:
           name: monstruos-screenshots
           path: screenshots/
           if-no-files-found: ignore
+      - name: Prueba de navegador de toda la plataforma
+        run: |
+          python -m http.server 8765 > /tmp/http.log 2>&1 &
+          python tests/browser/smoke.py

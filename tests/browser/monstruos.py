@@ -21,6 +21,20 @@ try:
     browser = p.chromium.launch(**opts)
     page = browser.new_page(viewport={'width':1280,'height':1000}, device_scale_factor=1)
     page.add_init_script(FAKE)
+    page.add_init_script("""(() => {
+      window.mmSoundsStarted = 0; window.mmAudioElements = [];
+      const AC = window.AudioContext;
+      if (AC) window.AudioContext = class extends AC {
+        createBufferSource() {
+          const src = super.createBufferSource(), start = src.start.bind(src);
+          src.start = (...args) => { window.mmSoundsStarted++; return start(...args); };
+          return src;
+        }
+      };
+      const AudioCtor = window.Audio;
+      window.Audio = function(...args) { const el = new AudioCtor(...args); window.mmAudioElements.push(el); return el; };
+      window.Audio.prototype = AudioCtor.prototype;
+    })();""")
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.on('response', lambda r: bad_assets.append(r.url) if '/monstruos/' in r.url and r.status>=400 else None)
     page.on('request', lambda r: audio.append(r.url) if '/monstruos/audio/' in r.url else None)
@@ -52,9 +66,12 @@ try:
     page.click('[data-mark="5"]'); assert page.locator('[data-mark="5"]').get_attribute('aria-pressed')=='true'
     # Sonido real desbloqueado, mute persistente y canales independientes.
     page.wait_for_function("performance.getEntriesByType('resource').some(x=>x.name.includes('pick0.mp3'))")
+    page.wait_for_function("window.mmSoundsStarted > 0")
+    page.wait_for_function("window.mmAudioElements.some(a => a.src.includes('club-theme.mp3') && !a.paused && a.currentTime > 0)")
     page.click('[data-sfx="toggle"]')
     assert page.locator('[data-sfx="toggle"]').get_attribute('aria-pressed')=='true'
     assert 'true' in page.evaluate("localStorage.getItem('juegos.monstruos.sfx')")
+    assert page.evaluate("window.mmAudioElements.some(a => a.src.includes('club-theme.mp3') && !a.paused)")
     page.click('[data-sfx="toggle"]')
     page.click('[data-music="toggle"]')
     # Responsive y recortes: todos los controles caben horizontalmente.
@@ -93,6 +110,7 @@ try:
     assert page.locator('.mm-idle').first.evaluate('(e)=>getComputedStyle(e).animationName')=='none'
     page.click('#mm-back'); page.wait_for_selector('#practice')
     assert page.locator('link[data-game-style="monstruos"]').count()==0
+    page.locator('#practice').focus(); page.keyboard.press('1')
     assert len(audio)>=11, audio
     assert not bad_assets, bad_assets
     assert not errors, errors
