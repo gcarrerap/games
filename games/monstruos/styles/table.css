@@ -11,3 +11,5 @@
 
 /* Los botones compactos no heredan el relleno de formularios de la plataforma. */
 .mm-tools>button,.mm-back{padding:0;display:grid;place-items:center;flex-shrink:0}.mm-character:disabled{opacity:1}.mm-roster .mm-character:disabled .mm-monster{animation:none}
+
+.mm-slot.active{color:#794b86}.mm-intro h1{font-weight:400}
