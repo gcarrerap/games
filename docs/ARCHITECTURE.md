@@ -305,6 +305,7 @@ Cada fase es un PR que deja las pruebas en verde.
 | 13 ✅ | Carrera de Chihuahuas (estilo Camel Up, 2–8): perros que se apilan, boletos de etapa, tapete de hueso o aspiradora y apuestas secretas; compu con probabilidades exactas de la etapa y carreras simuladas, y consejo. Mesa solo para teléfono con las ilustraciones de Petra (#33, elegidas e integradas en el #34); la tele va en el #35. No tocó `platform/` ni `modules/`. |
 | 14 ✅ | Modos del aparato (§5, #57): cada aparato escoge Teléfono, Control o Monitor desde el menú de la partida, en todos los juegos. Reemplaza la opción de mesa "La tele como tablero" (`tv`); los dibujos de tele y teléfono de Skull y la Carrera quedan como Monitor y Control. |
 | 15 ✅ | Memoria Veloz (#83): el juego de pares sin turnos, de 1 a 4, con congelado al fallar y timers entre jugadores. Primer juego en tiempo real: el contrato agrega `realtime` (la jugada se aplica sobre lo último, cada bot con su temporizador, `thinkMs` con el perfil) y el Firestore de mentira de las pruebas reintenta transacciones como el de verdad. |
+| 16 ✅ | Vikingos: el primer rompecabezas para uno. Los 60 retos del cuadernillo (copiados a mano y revisados con un solucionador), mesa en SVG con piezas que giran animadas, selector de retos con lo resuelto en el aparato, consejo y la compu con la solución más corta (en el hilo aparte). No tocó `platform/` ni `modules/`. |
 
 **Pendientes heredados** (de `DESIGN.md` de myDomino):
 
