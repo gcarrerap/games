@@ -6,7 +6,7 @@
 // su pin cuando la mesa se vuelve a dibujar. La mesa solo se redibuja entera cuando cambia algo que se ve (la pregunta,
 // el turno, la pista…); lo demás (poner el pin, escribir, el reloj) toca solo su pedacito.
 import { BY_CODE, CONTINENTS, CONTINENT_BY_ID, COUNTRIES, LEVEL_BY_ID, REGION_BY_ID, nameOf, search, exact, subregionName, sameFlag } from "../engine/catalog.js";
-import { question, POINTS } from "../engine/index.js";
+import { question, levelOf, LIMITS_MS, POINTS } from "../engine/index.js";
 import { nearest, mainlandBox, countryAt } from "../engine/geo.js";
 import { createWorld, countryMeta } from "./world.js";
 import { flagUrl, shapeSVG } from "./art.js";
@@ -62,23 +62,43 @@ export function unmount() {
 }
 export function tick(ctx, clock) {
   if (!ui) return;
-  ui.ctx = ctx; paintClock(clock);
+  ui.ctx = ctx;
   const st = ctx.view;
-  if (clock && st.phase === "play" && ctx.seat === st.turn && clock.secs > 0 && clock.secs <= 5 && ui.lastTick !== clock.secs) {
-    ui.lastTick = clock.secs; ui.sound.play("tick", clock.secs === 1);
+  let c = clock;
+  if (st.sim && st.phase === "play" && st.config.timer !== false) {
+    // «A la vez» el reloj de la mesa se reinicia con cada respuesta: cada pantalla cuenta desde que vio la pregunta
+    const q = qFor(ctx, st), limit = LIMITS_MS[q.t], left = limit - (performance.now() - ui.t0);
+    c = { secs: Math.max(0, Math.ceil(left / 1000)), pct: Math.max(0, Math.min(100, (left / limit) * 100)) };
+    if (left <= 0 && canAct() && !ui.busy) answer({ timeout: true });
+  }
+  paintClock(c);
+  if (c && st.phase === "play" && canAct() && c.secs > 0 && c.secs <= 5 && ui.lastTick !== c.secs) {
+    ui.lastTick = c.secs; ui.sound.play("tick", c.secs === 1);
   }
 }
 function paintClock(c) {
   if (!ui || !c) return;
   const t = ui.el.querySelector("#geo-clock"), b = ui.el.querySelector("#geo-clockbar");
   if (t) t.textContent = `${c.secs} s`;
-  if (b) { b.style.width = `${c.pct}%`; b.classList.toggle("low", c.secs <= 5); }
-  ui.el.querySelector(".geo-timer")?.classList.toggle("low", c.secs <= 5);
+  const reveal = ui.ctx.view.phase === "reveal";
+  if (b) { b.style.width = `${c.pct}%`; b.classList.toggle("low", !reveal && c.secs <= 5); }
+  ui.el.querySelector(".geo-timer")?.classList.toggle("low", !reveal && c.secs <= 5);
+  const ns = ui.el.querySelector("#geo-next-secs");
+  if (ns) ns.textContent = reveal && c.secs > 0 ? ` (${c.secs})` : "";
 }
 
 // ───────── Ayudas
 const later = (f, ms) => { const id = setTimeout(() => { ui && (ui.timers = ui.timers.filter((x) => x !== id)); f(); }, ms); ui.timers.push(id); };
-const canAct = () => { const st = ui.ctx.view; return st.phase === "play" && ui.ctx.seat === st.turn && ui.ctx.display !== "tv"; };
+const mySeat = (ctx) => (ctx.seat >= 0 ? ctx.seat : 0);
+/** La pregunta que ve esta pantalla: «a la vez», la de mi asiento; por turnos, la de quien le toca. */
+const qFor = (ctx, st) => question(st, st.sim ? mySeat(ctx) : st.turn);
+const canAct = () => {
+  const { view: st, seat, display } = ui.ctx;
+  if (st.phase !== "play" || display === "tv") return false;
+  return st.sim ? seat >= 0 && seat < st.n && !st.pend[seat] : seat === st.turn;
+};
+/** Si esta pantalla puede pasar a la siguiente pregunta (por turnos, solo quien contestó; «a la vez», cualquiera sentado). */
+const canNext = (ctx, st) => ctx.display !== "tv" && (st.sim ? ctx.seat >= 0 && ctx.seat < st.n : ctx.seat === st.turn);
 const isRight = (q, pick) => { const c = BY_CODE[q.code]; return q.t === "cont" ? pick === c.cont || pick === c.alt : pick === q.code || (q.t === "flag" && sameFlag(pick, q.code)); };
 const seatName = (st, i) => st.names[i] || `Jugador ${i + 1}`;
 
@@ -102,7 +122,8 @@ function regionBox(id) {
 
 // ───────── Una pregunta nueva: el mapa se prepara aparte
 function newQuestion(st) {
-  const q = question(st);
+  const q = qFor(ui.ctx, st);
+  ui.qi = st.i; ui.picked = null;
   ui.pin = null; ui.typed = ""; ui.sel = 0; ui.selTouched = false; ui.hint = false; ui.busy = false; ui.t0 = performance.now(); ui.lastTick = -1;
   const w = ui.world;
   w.setMarkers([]); w.setLines([]);
@@ -124,6 +145,7 @@ function newQuestion(st) {
 async function answer(payload) {
   if (!ui || ui.busy || !canAct()) return;
   const mine = ui;
+  mine.picked = payload.pick ?? null;
   mine.busy = true; paintBusy();
   try {
     await mine.ctx.act({ type: "answer", ...payload, ...(mine.hint ? { hint: true } : {}), ms: Math.round(performance.now() - mine.t0) });
@@ -134,7 +156,7 @@ async function answer(payload) {
 function paintBusy() { ui.el.querySelectorAll(".geo-answer button, .geo-actions button, .geo-answer input").forEach((b) => { b.disabled = true; }); }
 function mapTap(ll) {
   if (!ui || !ll || !canAct()) return;
-  const q = question(ui.ctx.view);
+  const q = qFor(ui.ctx, ui.ctx.view);
   if (q.t === "pin") {
     ui.pin = ll;
     ui.world.setMarkers([{ kind: "pin", lon: ll[0], lat: ll[1], color: SEAT_COLORS[ui.ctx.seat % 4] }]);
@@ -148,7 +170,7 @@ function mapTap(ll) {
 }
 function mapKey(e) {
   if (!ui || e.ctrlKey || e.metaKey || e.altKey) return;
-  const step = 60, w = ui.world, q = question(ui.ctx.view);
+  const step = 60, w = ui.world, q = qFor(ui.ctx, ui.ctx.view);
   const keys = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
   if (!q || q.t !== "pin") return;
   if (keys[e.key]) { e.preventDefault(); w.pan(...keys[e.key]); }
@@ -159,7 +181,7 @@ function mapKey(e) {
 
 // ───────── Qué suena y qué se mueve cuando algo cambia
 function onChange(st, first) {
-  const q = question(st), L = st.last;
+  const me = mySeat(ui.ctx);
   if (st.phase === "over") {
     const top = Math.max(...st.scores);
     ui.sound.play(top > 0 ? "fanfare" : "soft");
@@ -167,12 +189,13 @@ function onChange(st, first) {
     return;
   }
   if (st.phase === "play") {
-    newQuestion(st);
-    ui.sound.play(first && st.i === 0 ? "start" : "whoosh");
+    // «A la vez» cada respuesta de otro cambia el estado, pero la pregunta sigue siendo la misma
+    if (ui.qi !== st.i) { newQuestion(st); ui.sound.play(first && st.i === 0 ? "start" : "whoosh"); }
     return;
   }
-  // reveal
-  if (!L) return;
+  const lasts = st.lasts && st.lasts.length ? st.lasts : st.last ? [st.last] : [];
+  if (!lasts.length) return;
+  const L = lasts.find((l) => l.seat === me) || lasts[0];
   const c = BY_CODE[L.code];
   ui.sound.play(L.timeout ? "timeout" : L.ok ? (L.t === "pin" && L.base < 100 ? "near" : "correct") : "wrong", L.streak);
   if (L.ok && !ui.reduced && (L.streak >= 3 || (L.t === "pin" && L.base >= 100))) later(() => ui && ui.confetti.burst(0.5, 0.4, 70 + Math.min(80, L.streak * 12)), 150);
@@ -181,11 +204,12 @@ function onChange(st, first) {
   if (L.t === "pin") {
     const mb = mainlandBox(L.code), pts = [[mb.box[0], mb.box[1]], [mb.box[2], mb.box[3]], [mb.box[0], mb.box[3]], [mb.box[2], mb.box[1]]];
     const markers = [{ kind: "star", lon: c.ll[1], lat: c.ll[0], color: "#ffd45a", text: c.name }], lines = [];
-    if (L.lon != null) {
-      markers.push({ kind: "pin", lon: L.lon, lat: L.lat, color: SEAT_COLORS[L.seat % 4], t0: -1e9 });
-      pts.push([L.lon, L.lat]);
-      const nr = nearest(L.code, L.lon, L.lat, c.ll);
-      if (!L.inside && nr.point) { lines.push({ a: [L.lon, L.lat], b: nr.point, color: "#fff", text: `${fmt(L.dist)} km` }); pts.push(nr.point); }
+    // Los pines de todos los que contestaron este mismo país (con hándicap puede tocar otro país a cada quien)
+    for (const l of lasts.filter((x) => x.code === L.code && x.lon != null)) {
+      markers.push({ kind: "pin", lon: l.lon, lat: l.lat, color: SEAT_COLORS[l.seat % 4], t0: -1e9, ...(lasts.length > 1 ? { text: seatName(st, l.seat) } : {}) });
+      pts.push([l.lon, l.lat]);
+      const nr = nearest(l.code, l.lon, l.lat, c.ll);
+      if (!l.inside && nr.point) { lines.push({ a: [l.lon, l.lat], b: nr.point, color: "#fff", text: `${fmt(l.dist)} km` }); pts.push(nr.point); }
     }
     w.setStyle({ highlight: L.code, tint: "#ffd45a" });
     w.setMarkers(markers); w.setLines(lines);
@@ -200,12 +224,14 @@ function render(ctx) {
   const st = ctx.view, first = ui.seq === null, changed = ui.seq !== st.seq;
   if (changed) { ui.seq = st.seq; onChange(st, first); }
   const ov = overlay();
-  const sig = [st.seq, st.phase, ctx.seat === st.turn, ctx.display, ctx.mode, ui.busy, ui.hint, ctx.advice ? (ctx.advice.data ? 2 : 1) : 0, ctx.err || "", ov ? ov.id : "", ctx.clock ? 1 : 0].join("|");
+  const sig = [st.seq, st.phase, canAct(), ctx.display, ctx.mode, ui.busy, ui.hint, ui.picked, ctx.advice ? (ctx.advice.data ? 2 : 1) : 0, ctx.err || "", ov ? ov.id : "", ctx.clock ? 1 : 0].join("|");
   if (sig === ui.sig && !changed) { paintClock(ctx.clock); return; }
   ui.sig = sig;
-  const intro = changed || first;
+  // Las animaciones de entrada solo al llegar una pregunta nueva (no cada vez que otro contesta)
+  const intro = first || (st.phase === "play" && ui.introQ !== st.i) || (st.phase !== "play" && ui.introPhase !== st.phase);
+  ui.introQ = st.phase === "play" ? st.i : ui.introQ; ui.introPhase = st.phase;
 
-  const q = question(st), over = st.phase === "over", reveal = st.phase === "reveal", mine = canAct();
+  const q = qFor(ctx, st), over = st.phase === "over", reveal = st.phase === "reveal", mine = canAct();
   const lv = LEVEL_BY_ID[st.config.level], rg = REGION_BY_ID[st.config.region];
   const focused = ui.el.contains(document.activeElement) ? document.activeElement.id : "";
   const caret = document.activeElement?.id === "geo-input" ? document.activeElement.selectionStart : null;
@@ -227,7 +253,7 @@ function render(ctx) {
   paintClock(ctx.clock);
   animateScores(st);
   if (focused && focused !== "geo-input") ui.el.querySelector(`#${focused}`)?.focus({ preventScroll: true });
-  if (focused === "geo-input" || (mine && q && !reveal && !over && LEVEL_BY_ID[st.config.level].typed && q.t !== "pin" && q.t !== "cont" && intro)) {
+  if (focused === "geo-input" || (mine && q && !reveal && !over && LEVEL_BY_ID[levelOf(st, st.sim ? mySeat(ctx) : st.turn)].typed && q.t !== "pin" && q.t !== "cont" && intro)) {
     const inp = ui.el.querySelector("#geo-input");
     if (inp) { if (focused === "geo-input" || !matchMedia("(pointer: coarse)").matches) inp.focus({ preventScroll: true }); if (caret != null) inp.setSelectionRange(caret, caret); }
   }
@@ -237,11 +263,13 @@ function render(ctx) {
 const sfxButton = () => `<button class="geo-ib" data-sfx="toggle" aria-label="${ui.sound.sfx.muted ? "Poner los efectos" : "Silenciar los efectos"}" aria-pressed="${ui.sound.sfx.muted}" title="Efectos">${ui.sound.sfx.muted ? "🔕" : "🔔"}</button>`;
 
 function scoreboard(st) {
-  const solo = st.n === 1;
+  const solo = st.n === 1, play = st.phase === "play";
   return `<section class="geo-board ${solo ? "solo" : ""}" aria-label="Marcador">${st.scores.map((s, i) => {
-    const turn = st.phase !== "over" && st.turn === i, streak = st.streaks[i];
-    return `<div class="geo-chip ${turn ? "turn" : ""}" style="--c:${SEAT_COLORS[i % 4]}" ${turn ? 'aria-current="true"' : ""}>
+    const turn = !st.sim && st.phase !== "over" && st.turn === i, streak = st.streaks[i], done = st.sim && play && !!st.pend[i];
+    const hc = st.config.handicap && st.phase !== "over" && st.lv[i] !== st.config.level;
+    return `<div class="geo-chip ${turn ? "turn" : ""} ${done ? "done" : ""}" style="--c:${SEAT_COLORS[i % 4]}" ${turn ? 'aria-current="true"' : ""}>
       <span class="geo-dot" aria-hidden="true"></span><span class="geo-pname">${esc(seatName(st, i))}</span>
+      ${st.sim && play ? (done ? '<span class="geo-ok" title="Ya contestó">✓</span>' : '<span class="geo-think" title="Está pensando">…</span>') : ""}${hc ? `<span class="geo-hc" title="Hándicap: preguntas de nivel ${esc(LEVEL_BY_ID[st.lv[i]].name)}">🎯</span>` : ""}
       <b class="geo-score" data-score="${i}">${fmt(ui.shown ? ui.shown[i] ?? s : s)}</b>${streak >= 2 ? `<span class="geo-streak" title="Racha de ${streak}">🔥${streak}</span>` : ""}</div>`;
   }).join("")}</section>`;
 }
@@ -264,35 +292,44 @@ function animateScores(st) {
 
 // ───────── La pregunta
 function questionHTML(st, ctx, q, { mine, reveal }) {
-  const k = KINDS[q.t], c = BY_CODE[q.code], L = st.last;
-  const round = Math.floor(st.i / st.n) + 1, per = st.config.rounds;
-  const who = !mine && !reveal ? `<p class="geo-wait" role="status">Piensa ${esc(seatName(st, st.turn))}…</p>` : "";
-  const header = `<div class="geo-progress"><span>Ronda <b>${round}</b> de ${per}${st.n > 1 ? ` · turno de <b style="color:${SEAT_COLORS[st.turn % 4]}">${esc(seatName(st, st.turn))}</b>` : ""}</span><span class="geo-kind">${k.icon} ${k.title}</span></div>
-    ${ctx.clock && st.phase === "play" ? `<div class="geo-timer" aria-hidden="true"><i id="geo-clockbar"></i><span id="geo-clock"></span></div>` : '<div class="geo-timer idle" aria-hidden="true"></div>'}`;
+  const k = KINDS[q.t], c = BY_CODE[q.code], me = mySeat(ctx);
+  const lasts = st.lasts && st.lasts.length ? st.lasts : st.last ? [st.last] : [];
+  const L = lasts.find((l) => l.seat === me) || lasts[0];
+  const round = st.sim ? st.i + 1 : Math.floor(st.i / st.n) + 1, per = st.config.rounds;
+  // Quién falta: por turnos, el que piensa; «a la vez», los que aún no contestan (si yo ya contesté)
+  const waiting = st.sim ? st.pend[me] && !reveal : false;
+  const missing = st.sim ? Array.from({ length: st.n }, (_, i) => i).filter((i) => !st.pend[i]).map((i) => seatName(st, i)) : [];
+  const who = reveal ? "" : st.sim ? (waiting ? `<p class="geo-wait" role="status">✓ Contestaste. Esperando a ${esc(missing.join(" y "))}…</p>` : "")
+    : !mine ? `<p class="geo-wait" role="status">Piensa ${esc(seatName(st, st.turn))}…</p>` : "";
+  const asked = st.sim ? me : st.turn, lvl = levelOf(st, asked);
+  const hcBadge = st.config.handicap && lvl !== st.config.level ? `<span class="geo-hcbadge" title="Vas ganando: tus preguntas suben de nivel mientras mantengas la ventaja">🎯 Hándicap: nivel ${esc(LEVEL_BY_ID[lvl].name)}</span>` : "";
+  const showBar = reveal ? !!ctx.clock : !!ctx.clock || (st.sim && st.config.timer !== false);
+  const header = `<div class="geo-progress"><span>Ronda <b>${round}</b> de ${per}${st.n > 1 && !st.sim ? ` · turno de <b style="color:${SEAT_COLORS[st.turn % 4]}">${esc(seatName(st, st.turn))}</b>` : ""}${st.sim ? " · todos a la vez" : ""}</span><span class="geo-kind">${k.icon} ${k.title}</span></div>
+    ${showBar ? `<div class="geo-timer ${reveal ? "rv" : ""}" aria-hidden="true"><i id="geo-clockbar"></i><span id="geo-clock"></span></div>` : '<div class="geo-timer idle" aria-hidden="true"></div>'}`;
   let stage = "", answer = "";
   if (q.t === "cont") {
-    stage = `<div class="geo-prompt"><small>¿En qué continente está…?</small><h1>${esc(c.name)}</h1></div>
+    stage = `<div class="geo-prompt"><small>¿En qué continente está…?</small><h1>${esc(c.name)}</h1>${hcBadge}</div>
       <div class="geo-map geo-map-cont"><div class="geo-map-slot"></div></div>`;
     answer = `<div class="geo-conts" role="group" aria-label="Continentes">${CONTINENTS.map((ct, i) => {
-      const cls = reveal ? (isRight(q, ct.id) ? "good" : L.pick === ct.id ? "bad" : "faded") : "";
+      const cls = reveal ? (isRight(q, ct.id) ? "good" : L.pick === ct.id ? "bad" : "faded") : ui.picked === ct.id ? "picked" : "";
       return `<button class="geo-cont ${cls}" data-pick="${ct.id}" style="--c:${ct.color}" ${mine && !reveal && !ui.busy ? "" : "disabled"}><kbd>${i + 1}</kbd><b>${esc(ct.short)}</b>${ct.hint ? `<small>${esc(ct.hint)}</small>` : ""}</button>`;
     }).join("")}</div>`;
   } else if (q.t === "pin") {
-    stage = `<div class="geo-prompt"><small>${ui.world ? "Clava el pin donde está…" : ""}</small><h1>${esc(c.name)}</h1><span class="geo-borders">${q.borders ? "🧭 Con división política" : "🌊 Sin división política"}</span></div>
+    stage = `<div class="geo-prompt"><small>${ui.world ? "Clava el pin donde está…" : ""}</small><h1>${esc(c.name)}</h1><span class="geo-borders">${q.borders ? "🧭 Con división política" : "🌊 Sin división política"}</span>${hcBadge}</div>
       <div class="geo-map"><div class="geo-map-slot"></div>
         <div class="geo-zoom" role="group" aria-label="Zoom del mapa"><button class="geo-ib" id="geo-zin" aria-label="Acercar">+</button><button class="geo-ib" id="geo-zout" aria-label="Alejar">−</button><button class="geo-ib" id="geo-fit" aria-label="Ver todo el mapa">⌂</button></div>
         <p class="geo-mapnote" aria-hidden="true">Arrastra · pellizca para acercar</p></div>`;
   } else if (q.t === "shape") {
-    stage = `<div class="geo-prompt"><small>¿De qué país es esta forma?</small></div>
+    stage = `<div class="geo-prompt"><small>¿De qué país es esta forma?</small>${hcBadge}</div>
       <div class="geo-art">${shapeSVG(q.code, { solved: reveal })}</div>`;
   } else {
-    stage = `<div class="geo-prompt"><small>¿De qué país es esta bandera?</small></div>
+    stage = `<div class="geo-prompt"><small>¿De qué país es esta bandera?</small>${hcBadge}</div>
       <div class="geo-art"><div class="geo-flagwrap"><span class="geo-pole" aria-hidden="true"></span><div class="geo-flag"><img src="${flagUrl(q.code)}" alt="Una bandera" draggable="false"><i aria-hidden="true"></i></div></div></div>`;
   }
   if (q.t === "shape" || q.t === "flag") {
     if (q.opts) {
       answer = `<div class="geo-opts n${q.opts.length}" role="group" aria-label="Respuestas">${q.opts.map((code, i) => {
-        const cls = reveal ? (isRight(q, code) ? "good" : L.pick === code ? "bad" : "faded") : "";
+        const cls = reveal ? (isRight(q, code) ? "good" : L.pick === code ? "bad" : "faded") : ui.picked === code ? "picked" : "";
         return `<button class="geo-opt ${cls}" data-pick="${code}" ${mine && !reveal && !ui.busy ? "" : "disabled"}><kbd>${i + 1}</kbd><span>${esc(nameOf(code))}</span></button>`;
       }).join("")}</div>`;
     } else if (!reveal) {
@@ -319,27 +356,53 @@ function hintHTML(ctx, mine) {
   return `<div class="geo-hint" role="status">${d ? `<p>💡 ${esc(d.why)}</p><button class="geo-ghost" id="geo-hint-close">Cerrar</button>` : "<p>💡 Pensando…</p>"}</div>`;
 }
 
-function resultHTML(st, ctx, q) {
-  const L = st.last, c = BY_CODE[L.code], ct = CONTINENT_BY_ID[c.cont], sub = subregionName(L.code);
-  const last = st.i + 1 >= st.questions.length, mine = ctx.seat === st.turn && ctx.display !== "tv";
-  const head = L.skipped ? "Te la saltaste" : L.timeout ? "⏰ ¡Se acabó el tiempo!" : L.ok ? PRAISE[(st.i + L.gain) % PRAISE.length] : "¡Casi!";
-  let detail = "";
-  if (L.t === "pin" && L.lon != null) detail = L.inside ? "📍 ¡Justo dentro del país!" : L.near ? `📍 Casi en la orilla (${fmt(L.dist)} km)` : `📍 Quedaste a ${fmt(L.dist)} km del país`;
-  else if (L.pick && L.t !== "pin" && !L.ok) detail = `Elegiste: ${L.t === "cont" ? CONTINENT_BY_ID[L.pick]?.name : nameOf(L.pick)}`;
+// Lo que pasó con una respuesta: el texto corto, el detalle y las etiquetas de puntos
+const statusOf = (l) => (l.skipped ? "Se la saltó" : l.timeout ? "Se acabó el tiempo" : l.ok ? "Acertó" : "Falló");
+function detailOf(l) {
+  if (l.t === "pin" && l.lon != null) return l.inside ? "📍 ¡Justo dentro del país!" : l.near ? `📍 Casi en la orilla (${fmt(l.dist)} km)` : `📍 A ${fmt(l.dist)} km del país`;
+  if (l.pick && l.t !== "pin" && !l.ok) return `Eligió: ${l.t === "cont" ? CONTINENT_BY_ID[l.pick]?.name : nameOf(l.pick)}`;
+  return "";
+}
+function chipsOf(l) {
   const chips = [];
-  if (L.gain > 0 || L.ok) {
-    chips.push(`<span>${L.t === "pin" ? "Cercanía" : "Acierto"} +${L.base}</span>`);
-    if (L.streakBonus) chips.push(`<span class="hot">🔥 Racha ×${L.streak} +${L.streakBonus}</span>`);
-    if (L.speedBonus) chips.push(`<span class="fast">⚡ Rapidez +${L.speedBonus}</span>`);
+  if (l.gain > 0 || l.ok) {
+    chips.push(`<span>${l.t === "pin" ? "Cercanía" : "Acierto"} +${l.base}</span>`);
+    if (l.streakBonus) chips.push(`<span class="hot">🔥 Racha ×${l.streak} +${l.streakBonus}</span>`);
+    if (l.speedBonus) chips.push(`<span class="fast">⚡ Rapidez +${l.speedBonus}</span>`);
   }
-  if (L.hint) chips.push(`<span class="dim">💡 Con pista: vale la mitad</span>`);
-  return `<section class="geo-result ${L.ok ? "ok" : "no"}" role="status" aria-live="polite">
+  if (l.hint) chips.push(`<span class="dim">💡 Con pista: vale la mitad</span>`);
+  return chips.length ? `<div class="geo-chips">${chips.join("")}</div>` : "";
+}
+
+function resultHTML(st, ctx, q) {
+  const lasts = st.lasts && st.lasts.length ? st.lasts : [st.last], me = mySeat(ctx);
+  const L = lasts.find((l) => l.seat === me) || lasts[0], multi = lasts.length > 1;
+  const c = BY_CODE[L.code], ct = CONTINENT_BY_ID[c.cont], sub = subregionName(L.code);
+  const last = st.i + 1 >= st.questions.length, next = canNext(ctx, st);
+  const head = L.skipped ? "Te la saltaste" : L.timeout ? "⏰ ¡Se acabó el tiempo!" : L.ok ? PRAISE[(st.i + L.gain) % PRAISE.length] : "¡Casi!";
+  const detail = detailOf(L).replace("Eligió:", "Elegiste:");
+  const card = `<div class="geo-answer-card"><img src="${flagUrl(L.code)}" alt="" draggable="false"><div><b>${esc(c.name)}</b><span>${esc(ct.name)}${sub ? ` · ${esc(sub)}` : ""}</span>
+      ${c.alt ? `<em>También cuenta ${esc(CONTINENT_BY_ID[c.alt].name)}: está en los dos.</em>` : ""}</div></div>`;
+  const nextBtn = next ? `<button class="geo-go big" id="geo-next" autofocus>${last ? "Ver resultados" : "Siguiente"}<span id="geo-next-secs"></span> <span aria-hidden="true">→</span></button>`
+    : `<p class="geo-wait">${ctx.display === "tv" || ctx.seat < 0 ? "Siguiente pregunta en un momento…" : "Siguiente pregunta en un momento…"}</p>`;
+  if (!multi) {
+    return `<section class="geo-result ${L.ok ? "ok" : "no"}" role="status" aria-live="polite">
     <div class="geo-result-head"><div><h2>${esc(head)}</h2>${st.n > 1 ? `<small>${esc(seatName(st, L.seat))}</small>` : ""}${detail ? `<p>${esc(detail)}</p>` : ""}</div>
       <div class="geo-gain ${L.gain > 0 ? "pos" : ""}">+${L.gain}</div></div>
-    <div class="geo-answer-card"><img src="${flagUrl(L.code)}" alt="" draggable="false"><div><b>${esc(c.name)}</b><span>${esc(ct.name)}${sub ? ` · ${esc(sub)}` : ""}</span>
-      ${c.alt ? `<em>También cuenta ${esc(CONTINENT_BY_ID[c.alt].name)}: está en los dos.</em>` : ""}</div></div>
-    ${chips.length ? `<div class="geo-chips">${chips.join("")}</div>` : ""}
-    ${mine ? `<button class="geo-go big" id="geo-next" autofocus>${last ? "Ver resultados" : "Siguiente"} <span aria-hidden="true">→</span></button>` : `<p class="geo-wait">Siguiente pregunta en un momento…</p>`}
+    ${card}${chipsOf(L)}${nextBtn}
+  </section>`;
+  }
+  // «A la vez»: lo de todos juntos, el más rápido primero entre los que acertaron
+  const order = lasts.slice().sort((a, b) => b.gain - a.gain || a.seat - b.seat);
+  return `<section class="geo-result ${L.ok ? "ok" : "no"}" role="status" aria-live="polite">
+    <div class="geo-result-head"><div><h2>${esc(L.seat === me ? head : "Resultados")}</h2><p>Todos contestaron a la vez</p></div><div class="geo-gain ${L.gain > 0 ? "pos" : ""}">+${L.gain}</div></div>
+    ${card}
+    <ul class="geo-seats">${order.map((l) => {
+    const other = l.code !== L.code ? ` · ${esc(BY_CODE[l.code].name)}` : "", d = detailOf(l);
+    return `<li class="geo-seatres ${l.ok ? "ok" : "no"}" style="--c:${SEAT_COLORS[l.seat % 4]}"><span class="geo-dot" aria-hidden="true"></span>
+      <div><b>${esc(seatName(st, l.seat))}${l.seat === me ? " (tú)" : ""}</b><small>${statusOf(l)}${other}${d ? ` · ${esc(d)}` : ""}${l.lvl !== st.config.level ? " · 🎯" : ""}</small>${chipsOf(l)}</div><strong>+${l.gain}</strong></li>`;
+  }).join("")}</ul>
+    ${nextBtn}
   </section>`;
 }
 
@@ -384,7 +447,7 @@ function wire(ctx, st, q, { mine, reveal, over }) {
   if (inp) wireTyped(inp);
   ui.keyHandler = (e) => {
     if (e.altKey || e.ctrlKey || e.metaKey || overlay() || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target === ui.canvas) return;
-    if (reveal && mine && (e.key === "Enter" || e.key === " ") && !/BUTTON/.test(e.target.tagName)) { e.preventDefault(); ui.sound.play("tap"); ctx.act({ type: "next" }); return; }
+    if (reveal && canNext(ctx, st) && (e.key === "Enter" || e.key === " ") && !/BUTTON/.test(e.target.tagName)) { e.preventDefault(); ui.sound.play("tap"); ctx.act({ type: "next" }); return; }
     if (!mine || reveal || over || !/^[1-6]$/.test(e.key)) return;
     const n = Number(e.key) - 1;
     if (q.t === "cont" && CONTINENTS[n]) answer({ pick: CONTINENTS[n].id });
@@ -426,7 +489,7 @@ function rules(ctx) {
       <li><b>🚩 Banderas:</b> ¿de quién es esta bandera?</li></ul>
     <p><b>Puntos:</b> hasta ${POINTS.base} por pregunta. Cada acierto seguido suma <b>racha</b> (+${POINTS.streakStep} cada vez, hasta +${POINTS.streakMax}) y contestar rápido da hasta +${POINTS.speedMax}. Si usas la <b>pista</b>, ese acierto vale la mitad.</p>
     <p>En el mapa, acercar y mover ayuda: arrastra, pellizca o usa la rueda. Con el teclado, flechas para moverte, + y − para acercar, Enter para poner el pin al centro. Con 1–6 escoges una respuesta.</p>
-    <p>Con varias personas se juega por turnos en el mismo aparato.</p>
+    <p>Con varias personas se juega por turnos en el mismo aparato. Casillas del lobby: <b>Todos contestan a la vez</b> (las mismas preguntas al mismo tiempo, cada quien en su aparato; las respuestas se ven cuando contesta el último), <b>Hándicap automático</b> (quien va ganando por mucho recibe preguntas más difíciles, 🎯) y <b>Avanzar solo</b> (la siguiente pregunta llega sola; «Siguiente» sirve para no esperar).</p>
     <p class="hint">Los niveles cambian los países y las opciones; en Experto escribes el nombre.</p>
   </div><button class="primary big-cta" id="geo-rules-close">¡A explorar!</button>`);
   ctx.modal.querySelector("#geo-rules-close").onclick = closeOverlay;

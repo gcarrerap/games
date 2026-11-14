@@ -1,7 +1,7 @@
 // La compu de Geografía. Solo usa la vista (que no esconde nada: todo lo del mapa es público); lo que la hace
 // «tonta» o «sabia» es cuánto sabe de cada país, que depende de su estilo y de qué tan conocido es el país.
 import { BY_CODE, CONTINENTS, RANK, LEVEL_BY_ID } from "../engine/catalog.js";
-import { question } from "../engine/index.js";
+import { question, levelOf, revealMs } from "../engine/index.js";
 import { contains, mainlandBox, geometry, mainland } from "../engine/geo.js";
 
 export const STYLES = {
@@ -31,10 +31,12 @@ function pointIn(code, rnd) {
 }
 
 export function decide(view, seat, profile, { rnd }) {
-  if (view.phase === "reveal") return seat === view.turn ? { type: "next" } : null;
-  if (view.phase !== "play" || seat !== view.turn) return null;
-  const q = question(view);
-  const typed = !!LEVEL_BY_ID[view.config.level].typed;
+  // Ver la respuesta: avanza quien tiene el reloj (por turnos, el del turno; «a la vez», el asiento 0), después de thinkMs
+  if (view.phase === "reveal") return seat === (view.sim ? 0 : view.turn) ? { type: "next" } : null;
+  if (view.phase !== "play") return null;
+  if (view.sim ? view.pend[seat] : seat !== view.turn) return null;
+  const q = question(view, seat);
+  const typed = !!LEVEL_BY_ID[levelOf(view, seat)].typed;
   const know = rnd() < knows(profile, q.code, typed);
   if (q.t === "cont") {
     const right = BY_CODE[q.code].cont;
@@ -53,5 +55,12 @@ export function decide(view, seat, profile, { rnd }) {
   return { type: "answer", pick: pool[Math.floor(rnd() * pool.length)] };
 }
 
-// Mientras se ve la respuesta la compu espera un poco para que se alcance a ver
-export const thinkMs = (view) => (view.phase === "reveal" ? 3200 : view.questions[view.i]?.t === "pin" ? 4200 : 2600);
+// Lo que tarda en pensar: mientras se ve la respuesta espera lo mismo que el reloj de la mesa; «a la vez» cada estilo tarda
+// distinto (el geógrafo contesta antes) y los asientos no coinciden.
+export function thinkMs(view, seat = 0, _now = 0, profile = "viajero") {
+  if (view.phase === "reveal") return revealMs(view) + 250;
+  const q = question(view, seat), base = q && q.t === "pin" ? 4200 : 2600;
+  if (!view.sim) return base;
+  const skill = (STYLES[profile] || STYLES.viajero).skill;
+  return Math.round(base * (1.35 - 0.6 * skill) + seat * 300);
+}

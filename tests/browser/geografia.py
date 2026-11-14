@@ -25,9 +25,14 @@ errors, bad = [], []
 def shot(page, name):
     if shots: page.screenshot(path=f'{shots}/{name}.png')
 
-def start(page, game, level='Fácil', rounds='5', extra=None):
+def toggle(page, opt, on):
+    box = page.locator(f'input[data-opt-toggle="{opt}"]')
+    if box.is_checked() != on: box.click()
+
+def start(page, game, level='Fácil', rounds='5', extra=None, auto=False):
     page.goto(URL); page.click('[data-game="geografia"]'); page.wait_for_selector('#practice')
     page.click(f'button:has-text("{game}")'); page.click(f'button:text-is("{level}")'); page.click(f'button:text-is("{rounds}")')
+    toggle(page, 'auto', auto)          # por defecto se avanza solo; las pruebas que pulsan «Siguiente» lo apagan
     if extra: extra(page)
     page.click('#practice'); page.wait_for_selector('.geo')
 
@@ -123,6 +128,23 @@ with sync_playwright() as p:
     page.wait_for_selector('.geo-final'); page.wait_for_timeout(500)
     assert page.locator('.geo-rank li').count() == 2; shot(page, 'final')
     page.click('#geo-again'); page.wait_for_selector('.geo-cont')
+
+    # 7. Avanzar solo: sin pulsar «Siguiente» llega la pregunta siguiente
+    start(page, 'Continentes', 'Fácil', '5', None, auto=True)
+    page.keyboard.press('1'); page.wait_for_selector('.geo-result')
+    page.wait_for_selector('.geo-result', state='detached', timeout=8000)
+    page.wait_for_selector('.geo-cont:not([disabled])')
+
+    # 8. «A la vez» contra la compu, con hándicap: las dos contestan la misma pregunta y se ven los resultados de ambas
+    def sim(pg):
+        pg.click('button:text-is("2 jugadores")')
+        toggle(pg, 'sim', True); toggle(pg, 'handicap', True)
+        assert pg.locator('select[data-bot="0"] option', has_text='Persona').count() == 0, 'a la vez no cabe en un aparato'
+    start(page, 'Continentes', 'Fácil', '5', sim)
+    page.wait_for_selector('.geo-cont:not([disabled])'); shot(page, 'sim_pregunta')
+    page.keyboard.press('1'); page.wait_for_selector('.geo-seatres'); shot(page, 'sim_resultado')
+    assert page.locator('.geo-seatres').count() == 2
+    next_q(page); page.wait_for_selector('.geo-cont:not([disabled])')
     browser.close()
 
 assert not errors, errors

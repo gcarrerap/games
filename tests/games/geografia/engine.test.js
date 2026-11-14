@@ -307,3 +307,152 @@ test("decide solo mueve a quien le toca", () => {
   assert.ok(decide(view(st, 0), 0, "viajero", ctx()));
   assert.equal(decide({ ...st, phase: "reveal" }, 0, "viajero", ctx()).type, "next");
 });
+
+// ───────── Opciones: a la vez, hándicap y avance automático
+import { levelsFor, levelOf, revealMs, timing, currentSeats, HANDICAP_STEPS, LEVEL_ORDER } from "../../../games/geografia/engine/index.js";
+
+test("las casillas del lobby llegan como \"1\"/\"0\" y valen solo con 2 o más jugadores (avanzar solo vale siempre)", () => {
+  assert.deepEqual([normalizeConfig({}).sim, normalizeConfig({}).handicap, normalizeConfig({}).auto], [false, false, true]);
+  const c = normalizeConfig({ n: 2, sim: "1", handicap: "1", auto: "0" });
+  assert.deepEqual([c.sim, c.handicap, c.auto], [true, true, false]);
+  const solo = normalizeConfig({ n: 1, sim: "1", handicap: "1" });
+  assert.deepEqual([solo.sim, solo.handicap], [false, false]);
+  assert.equal(normalizeConfig({ n: 2, sim: true }).sim, true);
+});
+
+test("a la vez: las mismas preguntas para todos, las respuestas se esconden hasta que contesta el último", () => {
+  let st = fresh({ n: 2, sim: "1", game: "continentes", rounds: "5" }, 3);
+  assert.equal(st.questions.length, 5, "5 preguntas en total, no 5 por jugador");
+  assert.deepEqual(currentSeats(st), [0, 1]);
+  assert.deepEqual(question(st, 0), question(st, 1));
+  const right = BY_CODE[st.questions[0].code].cont;
+  st = apply(st, 1, { type: "answer", pick: right });
+  assert.equal(st.phase, "play");
+  assert.deepEqual(currentSeats(st), [0]);
+  assert.deepEqual(legalActions(st, 1), [], "ya contestó");
+  assert.throws(() => apply(st, 1, { type: "answer", pick: right }), /Ya contestaste/);
+  const v = view(st, 0);
+  assert.deepEqual(v.pend, { 1: true }, "la vista no trae lo que contestó el otro");
+  assert.equal(JSON.stringify(v).includes(`"pick":"${right}"`) && v.pend[1] !== true, false);
+  st = apply(st, 0, { type: "answer", skip: true });
+  assert.equal(st.phase, "reveal");
+  assert.equal(st.lasts.length, 2);
+  assert.deepEqual(st.lasts.map((l) => [l.seat, l.ok]), [[0, false], [1, true]]);
+  assert.equal(st.scores[0], 0); assert.ok(st.scores[1] >= 100);
+  assert.deepEqual(currentSeats(st), [0]);
+  assert.deepEqual(legalActions(st, 1), [{ type: "next" }]);
+  st = apply(st, 1, { type: "next" });
+  assert.equal(st.phase, "play"); assert.equal(st.i, 1); assert.deepEqual(st.pend, {});
+});
+
+test("a la vez: el reloj cuenta como tiempo agotado a quien no contestó; las jugadas inválidas fallan sin guardarse", () => {
+  let st = fresh({ n: 3, sim: "1", game: "banderas", level: "facil", rounds: "5" }, 4);
+  assert.throws(() => apply(st, 2, { type: "answer", pick: "ZZ" }), /respuestas/);
+  assert.deepEqual(st.pend, {});
+  st = apply(st, 0, { type: "answer", pick: question(st, 0).code });
+  assert.equal(timing.turnMs(st), LIMITS_MS.flag);
+  assert.deepEqual(timing.autoAction(st, 1), { type: "timeout" });
+  st = apply(st, 1, timing.autoAction(st, 1));
+  assert.equal(st.phase, "reveal");
+  assert.deepEqual(st.lasts.map((l) => l.timeout), [false, true, true]);
+  assert.equal(st.streaks[1], 0);
+});
+
+test("a la vez: la partida termina al acabar las preguntas y cada quien suma sus puntos y su racha", () => {
+  let st = fresh({ n: 2, sim: "1", game: "continentes", rounds: "5", timer: false }, 5);
+  for (let i = 0; i < 5; i++) {
+    const c = BY_CODE[st.questions[st.i].code].cont;
+    st = apply(st, 0, { type: "answer", pick: c }); st = apply(st, 1, { type: "answer", skip: true });
+    st = apply(st, 0, { type: "next" });
+  }
+  assert.equal(st.phase, "over");
+  assert.equal(st.log.length, 10);
+  assert.deepEqual(result(st).champions, [0]); assert.equal(st.best[0], 5); assert.equal(st.hits[1], 0);
+});
+
+test("hándicap: el nivel sube para quien va ganando por mucho (tope Difícil) y baja si pierde la ventaja", () => {
+  const cfg = normalizeConfig({ n: 2, handicap: "1", level: "facil" });
+  assert.deepEqual(levelsFor(cfg, [0, 0]), ["facil", "facil"]);
+  assert.deepEqual(levelsFor(cfg, [HANDICAP_STEPS[0] - 1, 0]), ["facil", "facil"]);
+  assert.deepEqual(levelsFor(cfg, [HANDICAP_STEPS[0], 0]), ["medio", "facil"]);
+  assert.deepEqual(levelsFor(cfg, [0, HANDICAP_STEPS[1]]), ["facil", "dificil"]);
+  assert.deepEqual(levelsFor(cfg, [5000, 0]), ["dificil", "facil"], "nunca pasa de Difícil (Experto cambia la forma de contestar)");
+  assert.deepEqual(levelsFor(cfg, [HANDICAP_STEPS[0], HANDICAP_STEPS[0] - 10]), ["facil", "facil"], "la ventaja es sobre el que sigue");
+  const four = normalizeConfig({ n: 4, handicap: "1", level: "medio" });
+  assert.deepEqual(levelsFor(four, [400, 300, 100, 0]), ["medio", "medio", "medio", "medio"], "la ventaja es sobre el mejor de los demás");
+  assert.deepEqual(levelsFor(four, [500, 100, 100, 0]), ["dificil", "medio", "medio", "medio"]);
+  assert.deepEqual(levelsFor(normalizeConfig({ n: 2, handicap: "1", level: "dificil" }), [900, 0]), ["dificil", "dificil"]);
+  assert.deepEqual(levelsFor(normalizeConfig({ n: 2, level: "facil" }), [900, 0]), ["facil", "facil"], "sin la casilla no hay hándicap");
+});
+
+test("hándicap: la pregunta de quien va ganando es otra, más difícil (más opciones, países menos conocidos)", () => {
+  let st = fresh({ n: 2, handicap: "1", level: "facil", game: "banderas", rounds: "10", timer: false }, 6);
+  const base = question(st, 0);
+  assert.equal(base.opts.length, 4);
+  // Fuerza una ventaja grande de 0 sobre 1 y pasa a la siguiente pregunta
+  st = { ...st, i: 1, turn: 1, phase: "reveal", scores: [400, 0] };
+  st = apply(st, 1, { type: "next" });
+  assert.deepEqual(st.lv, ["dificil", "facil"]);
+  const lead = question(st, 0), trail = question(st, 1), plain = st.questions[st.i];
+  assert.equal(lead.opts.length, 6, "Difícil tiene 6 opciones");
+  assert.equal(trail.opts.length, 4);
+  assert.deepEqual(trail, plain, "quien va atrás sigue con su nivel");
+  assert.ok(lead.opts.includes(lead.code));
+  assert.equal(levelOf(st, 0), "dificil");
+  // El resultado dice con qué nivel se contestó
+  st = apply(st, 0, { type: "answer", pick: lead.code });
+  assert.equal(st.last.lvl, "dificil");
+  assert.ok(st.last.ok);
+});
+
+test("hándicap: el pin del que va ganando es más exigente y la pregunta lleva la misma clase y mapa", () => {
+  let st = fresh({ n: 2, handicap: "1", level: "facil", game: "mapa", rounds: "5", timer: false }, 7);
+  st = { ...st, i: 1, turn: 1, phase: "reveal", scores: [500, 0] }; st = apply(st, 1, { type: "next" });
+  const lead = question(st, 0), plain = st.questions[st.i];
+  assert.equal(lead.t, "pin"); assert.equal(lead.borders, plain.borders);
+  const c = BY_CODE[lead.code], off = [c.ll[1] + 4, c.ll[0] + 4];
+  const a = apply(st, 0, { type: "answer", lon: off[0], lat: off[1] }).last;
+  const scale = (id) => LEVELS.find((l) => l.id === id).scale;
+  assert.equal(a.lvl, "dificil");
+  assert.equal(a.base, pinPoints(a.dist, toleranceKm(lead.code), scale("dificil")), "puntúa con la escala de Difícil");
+  assert.ok(scale("dificil") < scale("facil"));
+});
+
+test("avanzar solo: al ver la respuesta corre un reloj (más largo si se falló o es un pin); sin la casilla no hay reloj", () => {
+  let st = fresh({ n: 1, game: "continentes", rounds: "5" }, 8);
+  st = apply(st, 0, { type: "answer", pick: BY_CODE[st.questions[0].code].cont });
+  assert.equal(timing.turnMs(st), revealMs(st)); assert.equal(revealMs(st), 2600);
+  assert.deepEqual(timing.autoAction(st, 0), { type: "next" });
+  let bad = fresh({ n: 1, game: "continentes", rounds: "5" }, 8); bad = apply(bad, 0, { type: "answer", skip: true });
+  assert.ok(revealMs(bad) > revealMs(st));
+  let pin = fresh({ n: 1, game: "mapa", rounds: "5" }, 8); pin = apply(pin, 0, { type: "answer", skip: true });
+  assert.ok(revealMs(pin) > revealMs(bad));
+  const off = apply(fresh({ n: 1, game: "continentes", auto: "0" }, 8), 0, { type: "answer", skip: true });
+  assert.equal(timing.turnMs(off), null);
+  assert.equal(timing.turnMs(apply(fresh({ n: 1, game: "continentes", timer: false }, 8), 0, { type: "answer", skip: true })), 2600 + 1000, "sin reloj de pregunta, el de la respuesta sigue");
+});
+
+test("partidas completas a la vez y con hándicap: nadie se atora y todo se graba y se repite igual", () => {
+  for (const [n, extra] of [[2, { sim: "1" }], [4, { sim: "1", handicap: "1", level: "facil" }], [3, { handicap: "1", level: "medio", game: "mezcla" }]]) {
+    for (const style of ["aprendiz", "geografo"]) {
+      const cfg = { n, game: "mezcla", level: "medio", rounds: "5", timer: false, ...extra };
+      const r = playGame(game, Array(n).fill(style), { config: cfg, seed: 21 });
+      assert.equal(r.stalled, false); assert.ok(game.isOver(r.state), `${n} ${style}`);
+      assert.equal(r.state.log.length, 5 * n);
+      assert.ok(r.result.scores.every((s) => s >= 0));
+      const again = playGame(game, Array(n).fill(style), { config: cfg, seed: 21 });
+      assert.deepEqual(again.state.scores, r.state.scores, "determinista");
+    }
+  }
+});
+
+test("a la vez: la compu no ve lo que contestaron los demás y tarda según su estilo", () => {
+  const st = fresh({ n: 2, sim: "1", game: "banderas", rounds: "5" }, 9);
+  const v = view(apply(st, 1, { type: "answer", pick: question(st, 1).code }), 0);
+  const act = decide(v, 0, "viajero", ctx(1));
+  assert.equal(act.type, "answer");
+  assert.equal(decide(v, 1, "viajero", ctx(1)), null, "ya contestó");
+  const fast = game.bots.thinkMs(st, 0, 0, "geografo"), slow = game.bots.thinkMs(st, 0, 0, "aprendiz");
+  assert.ok(fast < slow);
+  assert.equal(LEVEL_ORDER.length, 4);
+});

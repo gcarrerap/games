@@ -11,6 +11,9 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--mute
 label{font-weight:700;font-size:13px}
 input[type=text]{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);width:100%}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
+.check{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;cursor:pointer;min-height:48px}
+.check input{width:22px;height:22px;margin:2px 0 0;flex:none;accent-color:var(--accent)}
+.check b{display:block;font-size:15px}.check small{display:block;margin-top:2px;font-size:12px;font-weight:400;color:var(--muted,inherit);opacity:.85}
 .seg button{flex:1 1 auto}
 button{font:inherit;font-weight:700;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:9px 14px;min-height:40px}
 button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}

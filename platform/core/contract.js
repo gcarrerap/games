@@ -54,7 +54,9 @@
  * @property {(config: object, seat: number) => number|null} [teamOf]
  *   El equipo de un asiento con esa configuración (0, 1, …), o null si se juega individual. Lo usa la pantalla
  *   de asientos para mostrar quién va con quién.
- * @property {boolean} [realtime]
+ * @property {boolean | ((config: object) => boolean)} [realtime]
+ *   Puede ser una función de la configuración (las opciones escogidas): así un juego por turnos ofrece «a la vez» como
+ *   casilla del lobby (Geografía). Usa isRealtime(game, config) para leerlo. En ese caso hotseat solo vale por turnos.
  *   Sin turnos: todos actúan a la vez y gana el más rápido (Memoria Veloz). currentSeats da todos los que pueden
  *   actuar; la plataforma aplica cada jugada sobre el estado más reciente (no la descarta porque otro se adelantó) y
  *   mueve a cada asiento de la compu con su propio temporizador. timing, si lo hay, es parte de las reglas: el lobby
@@ -72,6 +74,9 @@
  */
 
 const REQUIRED_FNS = ["setup", "currentSeats", "legalActions", "apply", "view", "isOver", "result", "ui"];
+
+/** Si la partida con esa configuración es en tiempo real (game.realtime puede ser true/false o una función de la configuración). */
+export const isRealtime = (game, config = {}) => (typeof game.realtime === "function" ? !!game.realtime(config || {}) : !!game.realtime);
 
 // Las opciones escogidas (o el default de cada una), listas para agregarse a config
 export function optionValues(game, chosen = {}) {
@@ -105,6 +110,7 @@ export function validateGame(g) {
       if (["n", "timer", "names", "code", "tv", "remote", "realtime"].includes(o.id)) errs.push(`options.${o.id}: ese nombre ya lo usa la plataforma`);
       if (!Array.isArray(o.choices) || o.choices.length < 2 || o.choices.some((c) => !c || typeof c.id !== "string" || typeof c.label !== "string")) errs.push(`options.${o.id}: al menos dos choices con id y label`);
       else if (!o.choices.some((c) => c.id === o.default)) errs.push(`options.${o.id}: default no es una de sus choices`);
+      if (o.toggle && !(o.choices.length === 2 && o.choices.every((c) => c.id === "0" || c.id === "1") && o.choices[0].id !== o.choices[1].id)) errs.push(`options.${o.id}: una casilla (toggle) tiene exactamente las choices "0" y "1"`);
     }
   }
   if (g.bots && typeof g.bots.decide !== "function") errs.push("bots.decide: falta la función");
@@ -112,9 +118,9 @@ export function validateGame(g) {
   if (g.bots && g.bots.thinkMs && typeof g.bots.thinkMs !== "function") errs.push("bots.thinkMs: es una función");
   if (g.tv !== undefined) errs.push("tv: ya no existe; todos los juegos tienen Monitor (usa remote si dibujas Control)");
   if (g.remote !== undefined && typeof g.remote !== "boolean") errs.push("remote: true o false");
-  if (g.realtime !== undefined && typeof g.realtime !== "boolean") errs.push("realtime: true o false");
+  if (g.realtime !== undefined && typeof g.realtime !== "boolean" && typeof g.realtime !== "function") errs.push("realtime: true, false o una función de la configuración");
   if (g.hotseat !== undefined && typeof g.hotseat !== "boolean") errs.push("hotseat: true o false");
-  if (g.hotseat && g.realtime) errs.push("hotseat: no se puede en un juego en tiempo real");
+  if (g.hotseat && g.realtime === true) errs.push("hotseat: no se puede en un juego en tiempo real");
   if (g.tvCover !== undefined && typeof g.tvCover !== "string") errs.push("tvCover: la dirección de una imagen");
   if (g.teamOf && typeof g.teamOf !== "function") errs.push("teamOf: es una función");
   if (g.timing && (typeof g.timing.turnMs !== "function" || typeof g.timing.autoAction !== "function")) errs.push("timing: turnMs y autoAction son funciones");

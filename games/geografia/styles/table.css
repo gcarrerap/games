@@ -114,6 +114,20 @@
 .geo-hint{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:#ffc94a1f;border:1px solid #ffc94a66;font-size:14px;animation:geo-in .35s ease-out}
 .geo-hint p{margin:0;flex:1}
 
+/* Hándicap, «a la vez» y avance solo */
+.geo-hcbadge{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:800;background:#ff8a3d2b;color:#ffc79a;border:1px solid #ff8a3d66}
+.geo-hc{font-size:13px;animation:geo-flick 1.6s ease-in-out infinite}
+.geo-ok{color:#8df0b6;font-weight:900;font-size:15px}.geo-think{color:var(--mute);font-weight:900;animation:geo-pulse 1.2s ease-in-out infinite}
+.geo-chip.done{border-color:#2fbf7188}
+.geo-cont.picked,.geo-opt.picked{border-color:var(--gold);box-shadow:0 0 0 3px #ffc94a40;background:rgba(255,201,74,.16)}
+.geo-timer.rv i{background:linear-gradient(90deg,#8fb8ff,#6a8fe0);transition:width .3s linear}
+.geo-seats{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.geo-seatres{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-radius:13px;background:#0a193066;border:1.5px solid color-mix(in srgb,var(--c) 45%,transparent)}
+.geo-seatres.ok{background:linear-gradient(90deg,#2fbf7122,#0a193066)}
+.geo-seatres .geo-dot{margin-top:6px}.geo-seatres div{flex:1;min-width:0}.geo-seatres b{display:block;font-size:14px}.geo-seatres small{display:block;font-size:12px;color:var(--mute)}
+.geo-seatres strong{font-size:20px;color:var(--gold);font-variant-numeric:tabular-nums}
+.geo-seatres .geo-chips{margin-top:5px}.geo-seatres .geo-chips span{font-size:11px;padding:2px 8px}
+
 /* Resultado de la pregunta */
 .geo-result{padding:14px;border-radius:20px;background:var(--card);border:1.5px solid var(--line);display:flex;flex-direction:column;gap:11px;animation:geo-rise .45s cubic-bezier(.2,.9,.3,1.1) both}
 .geo-result.ok{border-color:#2fbf71aa;background:linear-gradient(180deg,#2fbf7127,var(--card))}

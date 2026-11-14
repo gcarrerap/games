@@ -3,7 +3,7 @@
 // perfiles de la compu (bots.profiles).
 import { BOT_NAMES, LOCAL_PLAYER } from "../app/session.js";
 import { $, esc } from "./dom.js";
-import { optionLabels } from "../core/contract.js";
+import { optionLabels, isRealtime } from "../core/contract.js";
 
 function account(state, actions) {
   if (state.online === "connecting") return `<p class="hint">Conectando con las mesas en línea…</p>`;
@@ -38,10 +38,11 @@ export function renderLobby(app, { state, actions }) {
   const nBots = (mode.n ?? game.players.max) - 1;
   const profiles = game.bots ? game.bots.profiles : [];
   // En un juego sin nada oculto (game.hotseat) cada asiento puede ser la compu o una persona en este mismo aparato
-  const people = game.hotseat ? [{ id: LOCAL_PLAYER, name: "Persona (este aparato)" }] : [];
+  const rt = isRealtime(game, cfg.options); // en tiempo real no hay turnos: el aparato no se comparte
+  const people = game.hotseat && !rt ? [{ id: LOCAL_PLAYER, name: "Persona (este aparato)" }] : [];
   const botSelect = (i) => `<select class="botsel" data-bot="${i}" aria-label="Asiento ${i + 2}">${[...profiles, ...people].map((p) => `<option value="${esc(p.id)}"${p.id === cfg.bots[i] ? " selected" : ""}>${esc(p.name)}</option>`).join("")}</select>`;
   const seatName = (i) => (cfg.bots[i] === LOCAL_PLAYER ? `Jugador ${i + 2}` : BOT_NAMES[i % BOT_NAMES.length]);
-  const hotseatOn = game.hotseat && cfg.bots.slice(0, nBots).includes(LOCAL_PLAYER);
+  const hotseatOn = game.hotseat && !rt && cfg.bots.slice(0, nBots).includes(LOCAL_PLAYER);
   const online = state.online === "on";
   app.innerHTML = `
     <header class="shell-head">${back}<div><h1>${esc(game.name)}</h1><small>Solo contra la compu o con la familia</small></div></header>
@@ -53,18 +54,19 @@ export function renderLobby(app, { state, actions }) {
     <section class="panel">
       <span class="field-label">Modo</span>
       <div class="seg col" role="group" aria-label="Modo">${game.modes.map((m) => `<button data-mode="${esc(m.id)}" aria-pressed="${m.id === cfg.mode}">${esc(m.label || m.id)}</button>`).join("")}</div>
-      ${game.timing && !game.realtime ? `<span class="field-label">Tiempo por turno</span>
+      ${game.timing && !rt ? `<span class="field-label">Tiempo por turno</span>
       <div class="seg" role="group" aria-label="Tiempo por turno"><button data-timer="1" aria-pressed="${cfg.timer}">Con reloj</button><button data-timer="0" aria-pressed="${!cfg.timer}">Sin límite</button></div>` : ""}
-      ${(game.options || []).map((o) => `<span class="field-label">${esc(o.label)}</span>
+      ${(game.options || []).map((o) => (o.toggle ? `<label class="check"><input type="checkbox" data-opt-toggle="${esc(o.id)}" ${cfg.options[o.id] === "1" ? "checked" : ""}><span><b>${esc(o.label)}</b>${o.hint ? `<small>${esc(o.hint)}</small>` : ""}</span></label>` : `<span class="field-label">${esc(o.label)}</span>
       <div class="seg col" role="group" aria-label="${esc(o.label)}">${o.choices.map((c) => `<button data-opt="${esc(o.id)}" data-val="${esc(c.id)}" aria-pressed="${cfg.options[o.id] === c.id}">${esc(c.label)}</button>`).join("")}</div>
-      ${(() => { const c = o.choices.find((x) => x.id === cfg.options[o.id]); return c && c.hint ? `<p class="hint">${esc(c.hint)}</p>` : ""; })()}`).join("")}
+      ${(() => { const c = o.choices.find((x) => x.id === cfg.options[o.id]); return c && c.hint ? `<p class="hint">${esc(c.hint)}</p>` : ""; })()}`)).join("")}
       <p class="err" role="alert">${esc(state.err)}</p>
       <button class="primary big-cta" id="create" ${online ? "" : "disabled"}>Crear mesa en línea</button>
       <p class="hint">Los asientos libres se pueden llenar con la compu.</p>
     </section>
     <section class="panel">
       <h2>${game.hotseat ? "En este aparato" : "Practicar contra la compu"}</h2>
-      ${game.hotseat ? `<p class="hint">Contra la compu, o con alguien más por turnos en este mismo aparato: escoge «Persona» en su asiento.</p>` : ""}
+      ${game.hotseat && !rt ? `<p class="hint">Contra la compu, o con alguien más por turnos en este mismo aparato: escoge «Persona» en su asiento.</p>` : ""}
+      ${game.hotseat && rt ? `<p class="hint">Así, todos juegan a la vez y no se puede compartir un aparato: practica contra la compu o crea una mesa en línea.</p>` : ""}
       ${profiles.length && nBots > 0 ? `<div class="cpu">${Array.from({ length: nBots }, (_, i) => `<div class="cpurow ${cfg.bots[i] === LOCAL_PLAYER ? "person" : "bot"}"><span class="cpuname">${esc(seatName(i))}</span>${botSelect(i)}</div>`).join("")}</div>` : ""}
       <button class="big-cta" id="practice">${hotseatOn ? "Jugar en este aparato" : "Empezar práctica"}</button>
     </section>
@@ -79,6 +81,7 @@ export function renderLobby(app, { state, actions }) {
   $("#gin")?.addEventListener("click", () => actions.googleIn());
   $("#gout")?.addEventListener("click", () => actions.googleOut());
   app.querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => actions.savePractice({ mode: b.dataset.mode }));
+  app.querySelectorAll("[data-opt-toggle]").forEach((c) => c.onchange = () => actions.savePractice({ options: { ...actions.practiceSettings().options, [c.dataset.optToggle]: c.checked ? "1" : "0" } }));
   app.querySelectorAll("[data-opt]").forEach((b) => b.onclick = () => actions.savePractice({ options: { ...actions.practiceSettings().options, [b.dataset.opt]: b.dataset.val } }));
   app.querySelectorAll("[data-tv]").forEach((b) => b.onclick = () => { location.hash = `#/${game.id}/${b.dataset.tv}/tele`; });
   app.querySelectorAll("[data-timer]").forEach((b) => b.onclick = () => actions.savePractice({ timer: b.dataset.timer === "1" }));
