@@ -28,9 +28,12 @@ export const KINDS = ["cont", "shape", "pin", "flag"];
 export function normalizeConfig(config = {}) {
   const pick = (v, ok, dflt) => (ok(v) ? v : dflt);
   const n = clamp(Math.round(Number(config.n) || 1), 1, 4);
+  const kinds = kindsOf(config);
   return {
     n,
-    game: pick(config.game, (v) => GAMES.some((g) => g.id === v), "mezcla"),
+    kinds,
+    game: kinds.length === 1 ? GAMES.find((g) => g.kind === kinds[0]).id : "mezcla", // solo informativo
+
     level: pick(config.level, (v) => !!LEVEL_BY_ID[v], "medio"),
     region: pick(config.region, (v) => ["mundo", "africa", "america", "asia", "europa", "oceania"].includes(v), "mundo"),
     rounds: pick(Number(config.rounds), (v) => ROUNDS.includes(v), 10),
@@ -40,6 +43,15 @@ export function normalizeConfig(config = {}) {
     handicap: n > 1 && flag(config.handicap, false),
     auto: flag(config.auto, true),
   };
+}
+// Las clases de pregunta: de las casillas k_cont/k_shape/k_pin/k_flag del lobby; si no vienen, de `kinds` (ya
+// normalizada) o del `game` antiguo (una clase, o «mezcla»). Sin ninguna marcada salen las cuatro.
+function kindsOf(config) {
+  let ks;
+  if (KINDS.some((k) => config[`k_${k}`] !== undefined)) ks = KINDS.filter((k) => flag(config[`k_${k}`], false));
+  else if (Array.isArray(config.kinds)) ks = KINDS.filter((k) => config.kinds.includes(k));
+  else { const g = GAMES.find((x) => x.id === config.game); ks = g && g.kind ? [g.kind] : []; }
+  return ks.length ? ks : KINDS.slice();
 }
 // Las opciones de tipo casilla llegan como "1"/"0" (o true/false)
 const flag = (v, dflt) => (v === undefined || v === null || v === "" ? dflt : v === true || v === "1" || v === 1);
@@ -80,9 +92,8 @@ export const HANDICAP_STEPS = [150, 350];
 
 // Qué clase toca en cada pregunta (la mezcla reparte las cuatro en bloques al azar) y si el mapa del pin lleva fronteras
 function planQuestions(cfg, rnd, total) {
-  const game = GAMES.find((g) => g.id === cfg.game);
   const seq = [];
-  while (seq.length < total) seq.push(...(game.kind ? [game.kind] : shuffle(KINDS, rnd)));
+  while (seq.length < total) seq.push(...(cfg.kinds.length === 1 ? cfg.kinds : shuffle(cfg.kinds, rnd)));
   seq.length = total;
   let pins = 0;
   const borderFirst = rnd() < 0.5;

@@ -17,6 +17,7 @@ Los seis continentes son los de América: Centroamérica y el Caribe van con Nor
 
 ## Opciones del lobby (casillas)
 
+- **Qué jugar** (Continentes, Siluetas, Ubica en el mapa, Banderas): se marcan los modos que se quieran; con varios salen mezclados y sin ninguno salen los cuatro. En Continentes el país no se marca en el mapa hasta ver la respuesta.
 - **Todos contestan a la vez** (2+ jugadores): todos reciben la misma pregunta al mismo tiempo, cada quien en su aparato (en línea o contra la compu; no cabe en un solo aparato). Se ve quién ya contestó, pero no qué; las respuestas salen cuando contesta el último o se acaba el tiempo. Las preguntas son las de la partida, no por jugador.
 - **Hándicap automático** (2+ jugadores): quien lleva mucha ventaja (150 y 350 puntos sobre el mejor de los demás) recibe preguntas un nivel y luego dos niveles más difíciles, hasta «Difícil» (🎯).
 - **Avanzar solo** (activa por defecto): tras ver la respuesta, la siguiente pregunta llega sola con cuenta regresiva; «Siguiente» sirve para no esperar.

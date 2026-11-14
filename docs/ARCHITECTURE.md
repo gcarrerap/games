@@ -160,7 +160,7 @@ export default {
 };
 ```
 
-- **Opciones de la mesa.** `options: [{ id, label, default, choices: [{ id, label, hint? }], toggle?, hint? }]` (con `toggle: true` y las choices `"0"`/`"1"` el lobby la muestra como casilla). El lobby las muestra
+- **Opciones de la mesa.** `options: [{ id, label, default, choices: [{ id, label, hint? }], toggle?, group?, hint? }]` (con `toggle: true` y las choices `"0"`/`"1"` el lobby la muestra como casilla; `group` pone un título sobre la primera casilla del grupo). El lobby las muestra
   como botones junto al modo y al reloj, se recuerdan por juego, y la escogida llega a `setup()` en `config[id]` (y se
   ve en la lista de mesas y en los asientos). Si no viene (pruebas, mesas viejas), el juego usa su default. Ejemplo: la
   regla de compra del Continental.
