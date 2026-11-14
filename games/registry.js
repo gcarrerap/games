@@ -19,6 +19,7 @@ import vikingos from "./vikingos/manifest.js";
 import yatzi from "./yatzi/manifest.js";
 
 import monstruos from "./monstruos/manifest.js";
+import geografia from "./geografia/manifest.js";
 
 export const GAMES = [
   { ...monstruos, load: () => import("./monstruos/index.js") },
@@ -37,6 +38,7 @@ export const GAMES = [
   { ...khet, load: () => import("./khet/index.js") },
   { ...vikingos, load: () => import("./vikingos/index.js") },
   { ...yatzi, load: () => import("./yatzi/index.js") },
+  { ...geografia, load: () => import("./geografia/index.js") },
 ];
 
 export const findGame = (id) => GAMES.find((g) => g.id === id) || null;
