@@ -15,6 +15,12 @@ Juego de geografía de 1 a 4 personas, por turnos (también en el mismo aparato)
 
 Los seis continentes son los de América: Centroamérica y el Caribe van con Norteamérica. Los países en dos continentes (Rusia, Turquía, Kazajistán, Egipto, Georgia, Armenia, Azerbaiyán, Chipre) aceptan los dos. Banderas casi idénticas (Indonesia/Mónaco, Rumania/Chad) nunca salen juntas y, al escribir, vale cualquiera de las dos. La lista tiene los 193 miembros de la ONU más Vaticano, Palestina, Kosovo y Taiwán (197).
 
+## Opciones del lobby (casillas)
+
+- **Todos contestan a la vez** (2+ jugadores): todos reciben la misma pregunta al mismo tiempo, cada quien en su aparato (en línea o contra la compu; no cabe en un solo aparato). Se ve quién ya contestó, pero no qué; las respuestas salen cuando contesta el último o se acaba el tiempo. Las preguntas son las de la partida, no por jugador.
+- **Hándicap automático** (2+ jugadores): quien lleva mucha ventaja (150 y 350 puntos sobre el mejor de los demás) recibe preguntas un nivel y luego dos niveles más difíciles, hasta «Difícil» (🎯).
+- **Avanzar solo** (activa por defecto): tras ver la respuesta, la siguiente pregunta llega sola con cuenta regresiva; «Siguiente» sirve para no esperar.
+
 ## Estructura
 
 - `engine/` (puro): `geo.js` (geometría decodificada, punto en polígono, distancia, proyecciones Tierra Igual y acimutal de Lambert), `catalog.js` (países, niveles, regiones, buscador de nombres), `index.js` (reglas conforme al contrato).
@@ -34,4 +40,4 @@ node scripts/geografia-datos.mjs <world-atlas> <countries.json> <flags/4x3> game
 
 ## Pruebas
 
-`npm test` (`tests/games/geografia/engine.test.js`: datos, geometría, proyecciones, catálogo, reglas, pista, compu y partidas completas) y `python3 tests/browser/geografia.py` (navegador de verdad: los cuatro modos, pista, escribir, sonido, ventanas, teclado, dos personas en un aparato y el final).
+`npm test` (`tests/games/geografia/engine.test.js`: datos, geometría, proyecciones, catálogo, reglas, pista, compu y partidas completas) y `python3 tests/browser/geografia.py` (navegador de verdad: los cuatro modos, pista, escribir, sonido, ventanas, teclado, dos personas en un aparato, avanzar solo, a la vez contra la compu con hándicap y el final).

@@ -32,5 +32,12 @@ export default {
       { id: "con", label: "Con división política", hint: "Se ven las fronteras de los países." },
       { id: "sin", label: "Sin división política", hint: "Solo costas: sin fronteras que te ayuden." },
     ] },
+    // Casillas (toggle: "1" = marcada). «A la vez» y «Hándicap» valen con 2 o más jugadores.
+    { id: "sim", toggle: true, label: "Todos contestan a la vez", default: "0", hint: "Las mismas preguntas al mismo tiempo, cada quien en su aparato (o contra la compu). Las respuestas se ven cuando contesta el último. No se comparte un aparato.",
+      choices: [{ id: "0", label: "No" }, { id: "1", label: "Sí" }] },
+    { id: "handicap", toggle: true, label: "Hándicap automático", default: "0", hint: "Quien va ganando por mucho recibe preguntas más difíciles (hasta Difícil) mientras mantenga la ventaja.",
+      choices: [{ id: "0", label: "No" }, { id: "1", label: "Sí" }] },
+    { id: "auto", toggle: true, label: "Avanzar solo", default: "1", hint: "Después de contestar, la siguiente pregunta llega sola (con «Siguiente» para no esperar).",
+      choices: [{ id: "0", label: "No" }, { id: "1", label: "Sí" }] },
   ],
 };

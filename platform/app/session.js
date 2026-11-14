@@ -14,7 +14,7 @@ import {
   deviceMode, deviceModes, DEVICE_MODES,
 } from "./table.js";
 import { clockStatus, timeoutAction } from "./clock.js";
-import { optionValues } from "../core/contract.js";
+import { optionValues, isRealtime } from "../core/contract.js";
 import { cleanupInactiveTables, CLEANUP_EVERY_MS } from "./cleanup.js";
 import { TABLES, SKIP, watchTableList, watchTable, saveNewTable, updateTable, saveRecording, callSignaling } from "../services/index.js";
 import { createCallController, createCallSession } from "../../modules/call/index.js";
@@ -201,9 +201,11 @@ export function createSession(deps) {
     const mode = game.modes.find((m) => m.id === saved.mode) || game.modes[game.modes.length - 1];
     const profiles = game.bots ? game.bots.profiles.map((x) => x.id) : [];
     const def = profiles.includes(saved.defaultBot) ? saved.defaultBot : profiles[Math.min(1, profiles.length - 1)];
-    const okSeat = (x) => profiles.includes(x) || (game.hotseat && x === LOCAL_PLAYER);
+    const options = optionValues(game, saved.options || {});
+    // Personas en este aparato solo por turnos: en tiempo real (por ejemplo «a la vez») no hay cómo compartir el aparato
+    const okSeat = (x) => profiles.includes(x) || (game.hotseat && !isRealtime(game, options) && x === LOCAL_PLAYER);
     const bots = Array.from({ length: 8 }, (_, i) => (okSeat(saved.bots && saved.bots[i]) ? saved.bots[i] : def));
-    return { mode: mode.id, timer: saved.timer !== false, bots, options: optionValues(game, saved.options || {}) };
+    return { mode: mode.id, timer: saved.timer !== false, bots, options };
   }
   function savePractice(patch) {
     gamePrefs(s.game.id).setJSON("practice", { ...practiceSettings(), ...patch });
@@ -212,7 +214,10 @@ export function createSession(deps) {
   const newSeed = () => Math.floor(random() * 2 ** 31).toString(36);
   // Lo que se escoge aparte del modo: el reloj (si el juego tiene) y las opciones del juego (game.options)
   // (En un juego en tiempo real el reloj es parte de las reglas: no se escoge.)
-  const optionsFor = (game, settings) => ({ ...optionValues(game, settings.options || {}), ...(game.timing && !game.realtime ? { timer: settings.timer !== false } : {}) });
+  const optionsFor = (game, settings) => {
+    const options = optionValues(game, settings.options || {});
+    return { ...options, ...(game.timing && !isRealtime(game, options) ? { timer: settings.timer !== false } : {}) };
+  };
 
   function startPractice(settings = practiceSettings()) {
     const game = s.game; if (!game) return;
@@ -220,7 +225,7 @@ export function createSession(deps) {
     try {
       closeTable(); stopList();
       let t = newTable(game, { code: PRACTICE_CODE, mode: settings.mode, options: optionsFor(game, settings), host: s.me.id, seed: newSeed(), now: now(), version });
-      const local = (i) => !!game.hotseat && settings.bots[i - 1] === LOCAL_PLAYER;
+      const local = (i) => !!game.hotseat && !isRealtime(game, t.config) && settings.bots[i - 1] === LOCAL_PLAYER;
       const people = t.seats.some((_, i) => i > 0 && local(i));
       t = sit(t, 0, { id: s.me.id, name: s.me.name || (people ? "Jugador 1" : "Tú") });
       for (let i = 1; i < t.seats.length; i++) {
@@ -311,7 +316,7 @@ export function createSession(deps) {
       return Promise.resolve(false);
     }
     const seat = me(); if (seat < 0 || !s.table) return Promise.resolve(false);
-    if (s.game.realtime) {
+    if (isRealtime(s.game, s.table.config)) {
       const round = s.table.round;
       return run((t) => (t.status === "playing" && t.round === round ? act(s.game, t, seat, action, now()) : SKIP));
     }
@@ -348,7 +353,7 @@ export function createSession(deps) {
   function stopRealtimeBots() { for (const id of rtTimers.values()) cancel(id); rtTimers.clear(); rtGen++; }
 
   function scheduleBot() {
-    if (s.game && s.game.realtime) { scheduleRealtimeBots(); return; }
+    if (s.game && s.table && isRealtime(s.game, s.table.config)) { scheduleRealtimeBots(); return; }
     const t = s.table, game = s.game;
     const key = turnKey(t);
     if (botKey !== key) stopBots();

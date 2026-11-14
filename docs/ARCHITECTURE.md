@@ -160,7 +160,7 @@ export default {
 };
 ```
 
-- **Opciones de la mesa.** `options: [{ id, label, default, choices: [{ id, label, hint? }] }]`. El lobby las muestra
+- **Opciones de la mesa.** `options: [{ id, label, default, choices: [{ id, label, hint? }], toggle?, hint? }]` (con `toggle: true` y las choices `"0"`/`"1"` el lobby la muestra como casilla). El lobby las muestra
   como botones junto al modo y al reloj, se recuerdan por juego, y la escogida llega a `setup()` en `config[id]` (y se
   ve en la lista de mesas y en los asientos). Si no viene (pruebas, mesas viejas), el juego usa su default. Ejemplo: la
   regla de compra del Continental.
@@ -169,7 +169,7 @@ export default {
 - **En el mismo aparato** (`hotseat: true`, el Láser). Para juegos sin nada oculto: en la práctica, el lobby deja
   poner **Persona (este aparato)** en lugar de la compu en cualquier asiento, y la sesión juega por la persona a la que
   le toca (`ctx.seat` cambia con el turno). No se puede junto con `realtime`.
-- **Juegos en tiempo real** (`realtime: true`, Memoria Veloz). Sin turnos: `currentSeats` da todos los que pueden actuar,
+- **Juegos en tiempo real** (`realtime: true`, Memoria Veloz; también puede ser una función de la configuración, `realtime: (config) => bool`, para que una opción del lobby lo active, como «A la vez» en Geografía; la plataforma lo lee con `isRealtime(game, config)` de `core/contract.js`, y en ese caso el aparato no se comparte: no hay «Persona (este aparato)»). Sin turnos: `currentSeats` da todos los que pueden actuar,
   y la plataforma aplica cada jugada sobre el estado más reciente de la misma partida en lugar de descartarla porque
   otro se adelantó (solo se rechaza si ahí ya no se vale). Cada asiento de la compu tiene su propio temporizador
   (`thinkMs` recibe el perfil para que unos sean más rápidos) y decide con lo último que ve; en línea la mueve solo el
