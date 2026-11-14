@@ -56,7 +56,7 @@ export function renderLobby(app, { state, actions }) {
       <div class="seg col" role="group" aria-label="Modo">${game.modes.map((m) => `<button data-mode="${esc(m.id)}" aria-pressed="${m.id === cfg.mode}">${esc(m.label || m.id)}</button>`).join("")}</div>
       ${game.timing && !rt ? `<span class="field-label">Tiempo por turno</span>
       <div class="seg" role="group" aria-label="Tiempo por turno"><button data-timer="1" aria-pressed="${cfg.timer}">Con reloj</button><button data-timer="0" aria-pressed="${!cfg.timer}">Sin límite</button></div>` : ""}
-      ${(game.options || []).map((o) => (o.toggle ? `<label class="check"><input type="checkbox" data-opt-toggle="${esc(o.id)}" ${cfg.options[o.id] === "1" ? "checked" : ""}><span><b>${esc(o.label)}</b>${o.hint ? `<small>${esc(o.hint)}</small>` : ""}</span></label>` : `<span class="field-label">${esc(o.label)}</span>
+      ${(game.options || []).map((o, i, all) => (o.toggle ? `${o.group && o.group !== all[i - 1]?.group ? `<span class="field-label">${esc(o.group)}</span>` : ""}<label class="check"><input type="checkbox" data-opt-toggle="${esc(o.id)}" ${cfg.options[o.id] === "1" ? "checked" : ""}><span><b>${esc(o.label)}</b>${o.hint ? `<small>${esc(o.hint)}</small>` : ""}</span></label>` : `<span class="field-label">${esc(o.label)}</span>
       <div class="seg col" role="group" aria-label="${esc(o.label)}">${o.choices.map((c) => `<button data-opt="${esc(o.id)}" data-val="${esc(c.id)}" aria-pressed="${cfg.options[o.id] === c.id}">${esc(c.label)}</button>`).join("")}</div>
       ${(() => { const c = o.choices.find((x) => x.id === cfg.options[o.id]); return c && c.hint ? `<p class="hint">${esc(c.hint)}</p>` : ""; })()}`)).join("")}
       <p class="err" role="alert">${esc(state.err)}</p>

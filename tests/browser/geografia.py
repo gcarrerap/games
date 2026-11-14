@@ -31,7 +31,9 @@ def toggle(page, opt, on):
 
 def start(page, game, level='Fácil', rounds='5', extra=None, auto=False):
     page.goto(URL); page.click('[data-game="geografia"]'); page.wait_for_selector('#practice')
-    page.click(f'button:has-text("{game}")'); page.click(f'button:text-is("{level}")'); page.click(f'button:text-is("{rounds}")')
+    kinds = {'Continentes': 'k_cont', 'Siluetas': 'k_shape', 'Ubica en el mapa': 'k_pin', 'Banderas': 'k_flag'}
+    for label, opt in kinds.items(): toggle(page, opt, game == label or game == 'Mezcla')   # los modos son casillas
+    page.click(f'button:text-is("{level}")'); page.click(f'button:text-is("{rounds}")')
     toggle(page, 'auto', auto)          # por defecto se avanza solo; las pruebas que pulsan «Siguiente» lo apagan
     if extra: extra(page)
     page.click('#practice'); page.wait_for_selector('.geo')
@@ -128,6 +130,10 @@ with sync_playwright() as p:
     page.wait_for_selector('.geo-final'); page.wait_for_timeout(500)
     assert page.locator('.geo-rank li').count() == 2; shot(page, 'final')
     page.click('#geo-again'); page.wait_for_selector('.geo-cont')
+
+    # 6b. Los modos son casillas: con las cuatro marcadas (mezcla) la partida arranca y la pregunta es de alguna clase
+    start(page, 'Mezcla', 'Fácil', '10')
+    assert page.locator('.geo-prompt, .geo-flag, .geo-shape, .geo-canvas').count() >= 1
 
     # 7. Avanzar solo: sin pulsar «Siguiente» llega la pregunta siguiente
     start(page, 'Continentes', 'Fácil', '5', None, auto=True)

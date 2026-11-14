@@ -5,7 +5,7 @@ import game from "../../../games/geografia/index.js";
 import manifest from "../../../games/geografia/manifest.js";
 import { COUNTRIES, TERRITORIES, BY_CODE, CONTINENTS, LEVELS, REGIONS, GAMES, ROUNDS, poolFor, shapeOk, sameFlag, search, exact, normalize, RANK } from "../../../games/geografia/engine/catalog.js";
 import * as G from "../../../games/geografia/engine/geo.js";
-import { setup, apply, legalActions, view, result, normalizeConfig, pinPoints, toleranceKm, question, POINTS, LIMITS_MS, advise } from "../../../games/geografia/engine/index.js";
+import { KINDS, setup, apply, legalActions, view, result, normalizeConfig, pinPoints, toleranceKm, question, POINTS, LIMITS_MS, advise } from "../../../games/geografia/engine/index.js";
 import { knows, decide, STYLES } from "../../../games/geografia/ai/index.js";
 import { seededRandom } from "../../../modules/random/index.js";
 import { playGame } from "../../../modules/tournament/index.js";
@@ -99,7 +99,7 @@ test("buscador de nombres: sin acentos, por alias y por palabras", () => {
 
 test("el manifiesto coincide con el catálogo", () => {
   const opt = (id) => manifest.options.find((o) => o.id === id).choices.map((c) => c.id);
-  assert.deepEqual([...opt("game")].sort(), GAMES.map((g) => g.id).sort());
+  assert.deepEqual(manifest.options.filter((o) => /^k_/.test(o.id)).map((o) => o.id), KINDS.map((k) => `k_${k}`), "una casilla por clase de pregunta");
   assert.deepEqual(opt("level"), LEVELS.map((l) => l.id));
   assert.deepEqual(opt("region"), REGIONS.map((r) => r.id));
   assert.deepEqual(opt("rounds"), ROUNDS.map(String));
@@ -455,4 +455,13 @@ test("a la vez: la compu no ve lo que contestaron los demás y tarda según su e
   const fast = game.bots.thinkMs(st, 0, 0, "geografo"), slow = game.bots.thinkMs(st, 0, 0, "aprendiz");
   assert.ok(fast < slow);
   assert.equal(LEVEL_ORDER.length, 4);
+});
+
+test("los modos son casillas combinables: una sola clase, varias o ninguna", () => {
+  const kinds = (c) => fresh({ rounds: "20", ...c }, 7).questions.map((q) => q.t);
+  assert.deepEqual([...new Set(kinds({ k_cont: "1", k_shape: "0", k_pin: "0", k_flag: "0" }))], ["cont"]);
+  assert.deepEqual([...new Set(kinds({ k_cont: "0", k_shape: "1", k_pin: "0", k_flag: "1" }))].sort(), ["flag", "shape"]);
+  assert.deepEqual([...new Set(kinds({ k_cont: "0", k_shape: "0", k_pin: "0", k_flag: "0" }))].sort(), [...KINDS].sort(), "sin marcar ninguna salen las cuatro");
+  assert.deepEqual(normalizeConfig(normalizeConfig({ k_pin: "1", k_cont: "0", k_shape: "0", k_flag: "0" })).kinds, ["pin"], "normalizar dos veces no cambia nada");
+  assert.deepEqual(normalizeConfig({ game: "banderas" }).kinds, ["flag"], "el `game` antiguo sigue valiendo");
 });

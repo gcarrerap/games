@@ -133,10 +133,9 @@ function newQuestion(st) {
     w.setStyle({ paint: q.borders ? "con" : "sin", highlight: null, dim: false });
     w.flyTo(regionBox(st.config.region), { pad: 0.08, instant: true });
   } else if (q.t === "cont") {
-    const c = BY_CODE[q.code];
+    // Sin estrella ni brillo: marcar el país regalaría la respuesta. Se señala hasta que se ve el resultado.
     w.setInteractive(false);
-    w.setStyle({ paint: "cont", highlight: q.code, tint: "#fff6c2", dim: false });
-    w.setMarkers([{ kind: "star", lon: c.ll[1], lat: c.ll[0], color: "#ffd45a" }]);
+    w.setStyle({ paint: "cont", highlight: null, dim: false });
     w.fit({ instant: true });
   }
 }
@@ -200,7 +199,10 @@ function onChange(st, first) {
   ui.sound.play(L.timeout ? "timeout" : L.ok ? (L.t === "pin" && L.base < 100 ? "near" : "correct") : "wrong", L.streak);
   if (L.ok && !ui.reduced && (L.streak >= 3 || (L.t === "pin" && L.base >= 100))) later(() => ui && ui.confetti.burst(0.5, 0.4, 70 + Math.min(80, L.streak * 12)), 150);
   const w = ui.world;
-  if (L.t === "cont") w.setStyle({ dim: true });
+  if (L.t === "cont") {
+    w.setStyle({ paint: "cont", highlight: L.code, tint: "#fff6c2", dim: true });
+    w.setMarkers([{ kind: "star", lon: c.ll[1], lat: c.ll[0], color: "#ffd45a", text: c.name }]);
+  }
   if (L.t === "pin") {
     const mb = mainlandBox(L.code), pts = [[mb.box[0], mb.box[1]], [mb.box[2], mb.box[3]], [mb.box[0], mb.box[3]], [mb.box[2], mb.box[1]]];
     const markers = [{ kind: "star", lon: c.ll[1], lat: c.ll[0], color: "#ffd45a", text: c.name }], lines = [];
@@ -482,8 +484,8 @@ function wireTyped(inp) {
 // ───────── Ventanas
 function rules(ctx) {
   renderSheet(ctx.modal, "geo-rules", "Cómo se juega", `<div class="geo-help">
-    <p>Un viaje por el mundo con cuatro tipos de pregunta (o todas mezcladas):</p>
-    <ul><li><b>🌎 Continentes:</b> ¿en qué continente está el país? Toca un botón o el propio mapa.</li>
+    <p>Un viaje por el mundo con cuatro tipos de pregunta (marca en el lobby los que quieras; si marcas varios, salen mezclados):</p>
+    <ul><li><b>🌎 Continentes:</b> ¿en qué continente está el país? Toca un botón o el propio mapa (el país no se marca hasta ver la respuesta).</li>
       <li><b>🗺️ Siluetas:</b> adivina el país por su forma.</li>
       <li><b>📍 Ubica en el mapa:</b> clava un pin donde crees que está. Mientras más cerca, más puntos. A veces el mapa trae fronteras y a veces no.</li>
       <li><b>🚩 Banderas:</b> ¿de quién es esta bandera?</li></ul>

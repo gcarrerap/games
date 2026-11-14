@@ -9,13 +9,10 @@ export default {
   // Sin nada oculto: por turnos en un solo aparato (en la práctica se escoge «Persona» en cada asiento) o en línea
   hotseat: true,
   options: [
-    { id: "game", label: "Juego", default: "mezcla", choices: [
-      { id: "mezcla", label: "🎲 Mezcla de todo", hint: "Un poco de cada modo, en orden al azar." },
-      { id: "continentes", label: "🌎 Continentes", hint: "¿En qué continente está este país?" },
-      { id: "siluetas", label: "🗺️ Siluetas", hint: "¿De qué país es esta forma?" },
-      { id: "mapa", label: "📍 Ubica en el mapa", hint: "Clava un pin donde crees que está el país. Mientras más cerca, más puntos." },
-      { id: "banderas", label: "🚩 Banderas", hint: "¿De qué país es esta bandera?" },
-    ] },
+    { id: "k_cont", toggle: true, group: "Qué jugar", label: "🌎 Continentes", hint: "¿En qué continente está este país? Si no marcas ningún modo, salen los cuatro.", default: "1", choices: [{ id: "0", label: "No" }, { id: "1", label: "Sí" }] },
+    { id: "k_shape", toggle: true, group: "Qué jugar", label: "🗺️ Siluetas", hint: "¿De qué país es esta forma?", default: "1", choices: [{ id: "0", label: "No" }, { id: "1", label: "Sí" }] },
+    { id: "k_pin", toggle: true, group: "Qué jugar", label: "📍 Ubica en el mapa", hint: "Clava un pin donde crees que está el país. Mientras más cerca, más puntos.", default: "1", choices: [{ id: "0", label: "No" }, { id: "1", label: "Sí" }] },
+    { id: "k_flag", toggle: true, group: "Qué jugar", label: "🚩 Banderas", hint: "¿De qué país es esta bandera? Con varios modos marcados salen mezclados.", default: "1", choices: [{ id: "0", label: "No" }, { id: "1", label: "Sí" }] },
     { id: "level", label: "Nivel", default: "medio", choices: [
       { id: "facil", label: "Fácil", hint: "Los 60 países más conocidos · 4 opciones." },
       { id: "medio", label: "Medio", hint: "Unos 125 países · 4 opciones." },
